@@ -123,7 +123,7 @@ flowchart TD
 - 一鍵複製處理後文字、一鍵下載 `.txt`
 - 全程零外部依賴，`file://` 直接開啟也能用，操作過程沒有任何一筆對外網路請求（含內嵌的 OpenCC 詞典資料，都是本機內容，不即時連網查詢）
 
-**線上體驗**：[lushinshang.github.io/2026ironman/VibeCoding/Day3](https://lushinshang.github.io/2026ironman/VibeCoding/Day3/index.html)
+**線上體驗**：[lushinshang.github.io/2026ironman/VibeCoding/Day3](https://lushinshang.github.io/2026ironman/VibeCoding/Day3/index.html)（`curl -sI` 已確認回應 200）
 **原始碼**：[github.com/lushinshang/2026ironman/tree/main/VibeCoding/Day3](https://github.com/lushinshang/2026ironman/tree/main/VibeCoding/Day3)
 
 ## 6. 心得與反思

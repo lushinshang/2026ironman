@@ -20,7 +20,7 @@
 |:---:|---|:---:|:---:|---|
 | 1 | 字數與段落統計器（100 題清單 #9） | ✅ 已完成，含離線下載功能 | ✅ 草稿與總編潤飾完成 | [工具](Day1/index.html) ・ [PRD](Day1/PRD.md) ・ [文章](Day1/article_draft.md) |
 | 2 | 贅詞與 AI 味檢查器（原定「中英文排版工具」100 題清單 #10，經腦力激盪與需求強度檢視後換題；個人寫作發布流程第 2 步：定稿前檢查） | ✅ 已完成，fresh agent 獨立驗收 11 條驗收條件全數通過，另加測 3 項邊界情況 | ✅ 草稿與總編潤飾完成，GitHub Pages 連結已上線（curl -sI 200） | [工具](Day2/index.html) ・ [PRD](Day2/PRD.md) ・ [文章](Day2/article_draft.md) |
-| 3 | 繁簡與在地化轉換器（原定「台灣用語轉換器」100 題清單 #12，併入 #11 繁簡轉換器；個人寫作發布流程第 3 步：在地化用語校正）| ✅ 已完成，fresh agent 獨立驗收 11 條驗收條件全數通過，另加測 3 項邊界情況 | ✅ 草稿與總編潤飾完成，GitHub Pages 連結待推送後補上 | [工具](Day3/index.html) ・ [PRD](Day3/PRD.md) ・ [文章](Day3/article_draft.md) |
+| 3 | 繁簡與在地化轉換器（原定「台灣用語轉換器」100 題清單 #12，併入 #11 繁簡轉換器；個人寫作發布流程第 3 步：在地化用語校正）| ✅ 已完成，fresh agent 獨立驗收 11 條驗收條件全數通過，另加測 3 項邊界情況 | ✅ 草稿與總編潤飾完成，GitHub Pages 連結已上線（curl -sI 200） | [工具](Day3/index.html) ・ [PRD](Day3/PRD.md) ・ [文章](Day3/article_draft.md) |
 | 4 | ⬜ Markdown 轉 HTML（100 題清單 #5，個人寫作發布流程第 4 步：轉成網頁發布） | ⬜ 待開發 | ⬜ 待開發 | — |
 | 5 | ⬜ 分享連結產生器（100 題清單 #20，QR Code，個人寫作發布流程收尾） | ⬜ 待開發 | ⬜ 待開發 | — |
 | 6 | 招標文件轉文字（原 Day2，100 題清單 #4，只支援有文字層 PDF、不含 OCR、自動過濾旋轉浮水印；docx 建議先另存 PDF 再上傳，沿用 pdf.js 不另開發 docx 解析器） | ✅ 已完成，fresh agent 獨立驗收 7 條驗收條件全數通過 | ✅ 草稿與總編潤飾完成，GitHub Pages 連結已上線（curl -sI 200） | [工具](Day6/index.html) ・ [PRD](Day6/PRD.md) ・ [資安檢測](Day6/SECURITY_REVIEW.md) ・ [文章](Day6/article_draft.md) |
