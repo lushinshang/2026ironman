@@ -4,7 +4,7 @@
 ![零依賴](https://img.shields.io/badge/依賴-零外部套件-7a8f5c)
 ![純前端](https://img.shields.io/badge/技術-Vanilla%20JS-c07a3e)
 
-> 👉 **原始碼**：[Day2/index.html](https://github.com/lushinshang/2026ironman/tree/main/VibeCoding/Day2)（GitHub Pages 連結待推送部署後補上，見文末說明）
+> 👉 **直接玩玩看**：[贅詞與 AI 味檢查器（GitHub Pages）](https://lushinshang.github.io/2026ironman/VibeCoding/Day2/index.html) ・ [原始碼](https://github.com/lushinshang/2026ironman/tree/main/VibeCoding/Day2)
 
 **目錄**
 [1. 情境](#1-情境) · [2. 解題思路](#2-解題思路) · [3. 資源](#3-資源) · [4. Vibe 過程](#4-vibe-過程) · [5. 產品](#5-產品) · [6. 心得與反思](#6-心得與反思)
@@ -149,8 +149,8 @@ flowchart TD
 - 一鍵複製處理後文字、一鍵下載 `.txt`
 - 全程零外部依賴，`file://` 直接開啟也能用，操作過程沒有任何一筆對外網路請求
 
+**線上體驗**：[lushinshang.github.io/2026ironman/VibeCoding/Day2](https://lushinshang.github.io/2026ironman/VibeCoding/Day2/index.html)
 **原始碼**：[github.com/lushinshang/2026ironman/tree/main/VibeCoding/Day2](https://github.com/lushinshang/2026ironman/tree/main/VibeCoding/Day2)
-**線上體驗**：待推送部署後補上連結（見第 6 節說明）
 
 ## 6. 心得與反思
 
@@ -158,4 +158,4 @@ flowchart TD
 
 驗證習慣延續 Day1 的做法，但這次多了一個新的坑：一段邏輯被三個功能（F2／F4／F5）共用時，測試資料要故意往「共用邏輯的極端情況」設計，而不是三個功能分開各測一次自己最明顯的案例——第 4 節那個「整段包在引號裡」的測試，就是先想過「三個功能共用同一份挖空邏輯，哪裡最容易漏」才寫出來的，不是踩到才補測。這個習慣比記住某一個具體 bug 更值得留著，下一次遇到別的共用邏輯也用得上。
 
-還有一個誠實要交代的地方：這篇文章的 GitHub Pages 連結目前還沒放，因為 Day2 的程式碼還沒推送上去，沒推送就沒辦法真的 `curl -sI` 測到 200，貼一個沒驗證過的連結等於在文章裡留一個自己都不確定能不能點的東西。等推送部署、確認連結真的能打開，才會回來補上這一段——這也是這 30 天想維持的同一個原則：沒驗證過的事，不會寫得像已經驗證過。
+這篇文章寫到這裡時，GitHub Pages 連結一度是空的——程式碼還沒推送，沒推送就沒辦法真的 `curl -sI` 測到 200，貼一個沒驗證過的連結等於在文章裡留一個自己都不確定能不能點的東西。後來推送、部署、`curl -sI` 確認回應 200，才把連結補進文末，不是先寫好連結再假裝驗證過。這也是這 30 天想維持的同一個原則：沒驗證過的事，不會寫得像已經驗證過。
