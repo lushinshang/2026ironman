@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Day 3 PRD — 文字差異比對器 - 2026 iThome 鐵人賽</title>
+    <style>
+        /* CSS Reset & Variables */
+        :root {
+            --bg-color: #f9f7f4;
+            --text-color: #1a1a1a;
+            --primary-color: #0f56d9;
+            --border-color: #e3e1de;
+            --code-bg: #f1efec;
+            --quote-bg: #f4f1ec;
+            
+            /* Alert Colors */
+            --alert-note-bg: #ebf5ff;
+            --alert-note-border: #1e70e3;
+            --alert-important-bg: #fdf2f2;
+            --alert-important-border: #e02424;
+            --alert-tip-bg: #f0fdf4;
+            --alert-tip-border: #16a34a;
+            --alert-warning-bg: #fffbeb;
+            --alert-warning-border: #d97706;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+            line-height: 1.68;
+            font-size: 16px;
+            padding: 40px 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* Notion-like Layout */
+        .container {
+            max-width: 1120px;
+            margin: 0 auto;
+        }
+        
+        article {
+            max-width: 760px;
+            margin: 0 auto;
+        }
+        
+        /* Typography */
+        h1, h2, h3, h4, h5, h6 {
+            color: #111111;
+            font-weight: 700;
+            line-height: 1.25;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            text-wrap: balance;
+        }
+        
+        h1 { font-size: 2.2rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 1rem; }
+        h2 { font-size: 1.6rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3rem; }
+        h3 { font-size: 1.25rem; }
+        
+        p {
+            margin-bottom: 1.2rem;
+        }
+        
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(15, 86, 217, 0.2);
+            transition: all 0.2s ease;
+        }
+        
+        a:hover {
+            border-bottom-color: var(--primary-color);
+            background: rgba(15, 86, 217, 0.05);
+        }
+        
+        /* Lists */
+        ul, ol {
+            margin-bottom: 1.2rem;
+            padding-left: 24px;
+        }
+        
+        li {
+            margin-bottom: 0.4rem;
+        }
+        
+        /* Table Styling (Notion Round Corner Table) */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            font-size: 0.95rem;
+            display: block;
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        th, td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background-color: var(--code-bg);
+            font-weight: bold;
+            color: #222222;
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        /* Blockquotes & GitHub Style Alerts */
+        blockquote {
+            background: var(--quote-bg);
+            border-left: 4px solid #c2beb9;
+            padding: 12px 18px;
+            margin: 1.5rem 0;
+            border-radius: 0 6px 6px 0;
+        }
+        
+        blockquote p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .alert {
+            padding: 16px;
+            margin: 1.5rem 0;
+            border-left: 4px solid transparent;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .alert-title {
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .alert-note { background-color: var(--alert-note-bg); border-left-color: var(--alert-note-border); }
+        .alert-note .alert-title { color: var(--alert-note-border); }
+        
+        .alert-important { background-color: var(--alert-important-bg); border-left-color: var(--alert-important-border); }
+        .alert-important .alert-title { color: var(--alert-important-border); }
+        
+        .alert-tip { background-color: var(--alert-tip-bg); border-left-color: var(--alert-tip-border); }
+        .alert-tip .alert-title { color: var(--alert-tip-border); }
+        
+        .alert-warning { background-color: var(--alert-warning-bg); border-left-color: var(--alert-warning-border); }
+        .alert-warning .alert-title { color: var(--alert-warning-border); }
+
+        /* Code & Pre */
+        code {
+            background: var(--code-bg);
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-family: Consolas, Monaco, "Andale Mono", monospace;
+            font-size: 0.9em;
+        }
+        
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+            font-size: 0.95em;
+        }
+        
+        /* Utilities */
+        hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        
+        .nav-back {
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 12px;
+            }
+            h1 { font-size: 1.8rem; }
+            h2 { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-back"><a href="../index.html">🏠 返回首頁</a></div>
+        <article>
+            <h1 id="day-3-prd-文字差異比對器">Day 3 PRD — 文字差異比對器</h1>
+<blockquote>
+<p>交付類型：<strong>A 類</strong>（GitHub Pages／下載
+HTML，純前端執行，唯一例外是需內嵌 jsdiff
+函式庫做差異比對，不上傳任何內容到伺服器）</p>
+</blockquote>
+<hr />
+<h2 id="背景與痛點">1. 背景與痛點</h2>
+<h3
+id="主情境合約公文改版比對銜接-day2-pdf-轉-txtmd">主情境：合約／公文改版比對（銜接
+Day2 PDF 轉 TXT/MD）</h3>
+<p>承辦人員收到廠商／對方寄來的合約、公文修訂版，兩份文件內容相近但改了幾處條款，肉眼逐字比對容易漏看、也容易看錯。若原始檔案是
+PDF，通常會先用 Day2 的工具轉成乾淨的純文字或
+Markdown，再貼進本工具比對兩版差異，兩篇文章的情境前後呼應。</p>
+<h3 id="延伸情境一般文件版本比對">延伸情境：一般文件版本比對</h3>
+<p>規章、公告、SOP
+等文件每次修訂後，承辦人員需要跟前一版比對「到底改了哪幾句」，才能在會議或簽核時說明修訂重點，手動比對耗時且容易遺漏。</p>
+<h2 id="目標使用者">2. 目標使用者</h2>
+<ul>
+<li>主要：一般辦公室行政人員、承辦人員，不具備程式背景</li>
+<li>次要：需要比對文件版本差異的一般使用者（規章、SOP、公告）</li>
+</ul>
+<h2 id="使用情境user-story">3. 使用情境（User Story）</h2>
+<ol type="1">
+<li>身為要比對合約修訂版的承辦人員，我把舊版與新版文字分別貼進左右兩欄（或直接拖曳
+Day2 轉出的 .txt/.md
+檔），就能立刻看到哪些句子被刪除、新增或修改，不用逐字對照。</li>
+<li>身為要跟主管報告修訂重點的承辦人員，我想先看到「未變動的段落自動收合」的畫面，只聚焦在真正改動的地方，減少閱讀干擾。</li>
+</ol>
+<h2 id="功能需求mvp本次必須完成">4. 功能需求（MVP，本次必須完成）</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>#</th>
+<th>功能</th>
+<th>說明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F1</td>
+<td>雙欄文字輸入</td>
+<td>左欄「舊版」、右欄「新版」，皆可直接貼上文字</td>
+</tr>
+<tr>
+<td>F2</td>
+<td>拖曳 .txt/.md 檔案</td>
+<td>左右兩欄各自支援拖曳單一 .txt 或 .md 檔案，自動讀取內容帶入該欄</td>
+</tr>
+<tr>
+<td>F3</td>
+<td>逐句斷句</td>
+<td>依段落（換行）分塊，段落內再依中文句尾標點（。！？；）分句作為比對最小單位；無標點的整段視為一句</td>
+</tr>
+<tr>
+<td>F4</td>
+<td>差異比對</td>
+<td>用內嵌 jsdiff
+函式庫對兩份句子陣列做差異比對，標出新增、刪除、修改（視為刪除＋新增的配對）</td>
+</tr>
+<tr>
+<td>F5</td>
+<td>並排左右對照顯示</td>
+<td>左欄舊版、右欄新版逐句對齊顯示；新增句底色標示、刪除句底色標示、修改句雙欄皆標示</td>
+</tr>
+<tr>
+<td>F6</td>
+<td>未變動區塊摺疊</td>
+<td>連續 3 句以上未變動的區塊預設摺疊為一行「未變動 N
+句（點擊展開）」，可個別展開或一鍵全部展開</td>
+</tr>
+<tr>
+<td>F7</td>
+<td>差異統計摘要</td>
+<td>顯示「新增 X 句／刪除 X 句／修改 X 句／未變動 X 句」</td>
+</tr>
+<tr>
+<td>F8</td>
+<td>複製與下載</td>
+<td>一鍵複製差異摘要文字；一鍵下載 Markdown 格式的差異報告</td>
+</tr>
+</tbody>
+</table>
+<h2 id="非必要可延伸功能nice-to-have非-day3-範圍">5.
+非必要／可延伸功能（Nice to have，非 Day3 範圍）</h2>
+<ul>
+<li>句內字元級差異標色（目前僅整句標色，不標出句子內部確切改了幾個字）</li>
+<li>移動段落偵測（同一句子搬到別的位置，本次一律視為「原位置刪除＋新位置新增」）</li>
+<li>批次多檔案比對</li>
+<li>差異結果的版本歷史或雲端同步</li>
+</ul>
+<blockquote>
+<p>上述功能明確排除於 Day3
+MVP，避免範圍膨脹；若後續有需求再開新任務。</p>
+</blockquote>
+<h2 id="非功能需求">6. 非功能需求</h2>
+<ul>
+<li><strong>隱私</strong>：所有文字比對皆在瀏覽器端完成，內容不上傳、不送出任何網路請求</li>
+<li><strong>零依賴的例外</strong>：本工具需內嵌 jsdiff
+函式庫才能穩定處理各種文字差異邊界情況，是本系列少數不追求「絕對輕量單檔」的例外（沿用
+Day2 對 pdf.js 的相同取捨邏輯），需在 README／文章中說明取捨原因</li>
+<li><strong>相容性</strong>：Chrome／Safari／Edge
+最新版正常運作；<code>file://</code> 協定下雙擊開啟需正常運作</li>
+<li><strong>效能</strong>：單欄 1
+萬字以內的文件比對需在使用者可接受的時間內完成</li>
+</ul>
+<h2 id="uiux-需求">7. UI/UX 需求</h2>
+<ul>
+<li>上方：左右兩欄文字輸入區（含拖曳提示），下方或右上角「開始比對」按鈕</li>
+<li>比對完成後：左右並排顯示差異結果，新增／刪除／修改用不同底色區分（需標示色彩圖例）</li>
+<li>未變動區塊摺疊列，點擊可展開／收合；提供「全部展開」「全部收合」按鈕</li>
+<li>頂部顯示差異統計摘要（新增／刪除／修改／未變動句數）</li>
+<li>提供「複製摘要」「下載差異報告 MD」按鈕</li>
+</ul>
+<h2 id="技術選型">8. 技術選型</h2>
+<ul>
+<li>HTML + CSS + 原生 JavaScript + 內嵌
+jsdiff（<code>diffArrays</code>，以句子陣列為比對單位）</li>
+<li>斷句規則：先依 <code>\n\s*\n</code> 或單一 <code>\n</code>
+分段，段落內再依 <code>。！？；</code> 切句，符號保留在句尾</li>
+</ul>
+<h2 id="驗收標準acceptance-criteria">9. 驗收標準（Acceptance
+Criteria）</h2>
+<ol type="1">
+<li>貼上兩份句子數相同但有 3 處修改的文字，比對結果需正確標出 3
+處修改，其餘句子標示為未變動。</li>
+<li>貼上新版比舊版多出整段文字，多出的句子需標示為「新增」，不得誤判為修改。</li>
+<li>貼上新版比舊版少一段文字，缺少的句子需標示為「刪除」，不得誤判為修改。</li>
+<li>拖曳 .txt 檔案到左欄／右欄，需正確讀取檔案內容並帶入對應欄位。</li>
+<li>連續 3
+句以上未變動的區塊，預設需摺疊顯示，點擊後可展開查看內容。</li>
+<li>點擊「下載差異報告
+MD」需下載檔案，內容與畫面顯示的差異結果一致。</li>
+<li>開發者工具 Network 面板確認比對過程無任何對外請求。</li>
+<li>直接以 <code>file://</code> 方式雙擊開啟 HTML
+檔，貼上文字並比對需正常運作。</li>
+</ol>
+<h2 id="out-of-scope">10. Out of Scope</h2>
+<ul>
+<li>不處理句子搬移位置的偵測（一律視為刪除＋新增）</li>
+<li>不做句子內部逐字元的精確差異標色</li>
+<li>不支援批次多檔案一次比對</li>
+<li>不處理英文縮寫句號（如 e.g.、Mr.）造成的斷句歧義，屬已知限制</li>
+<li>不做雲端同步或版本歷史記錄</li>
+</ul>
+
+        </article>
+    </div>
+</body>
+</html>
