@@ -128,7 +128,7 @@
 
         var loadingTask = pdfjs.getDocument({
           data: uint8,
-          cMapUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/cmaps/',
+          cMapUrl: 'https://unpkg.com/pdfjs-dist@4.10.38/cmaps/',
           cMapPacked: true
         });
 

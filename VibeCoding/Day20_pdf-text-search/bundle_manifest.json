@@ -1,15 +1,15 @@
 {
   "pdfjs": {
     "source": "../../shared/vendor/pdf.min.js",
-    "version": "3.11.174",
+    "version": "4.10.38",
     "license": "Apache-2.0",
-    "sha256": "5b5799e6f8c680663207ac5b42ee14eed2a406fa7af48f50c154f0c0b1566946"
+    "sha256": "10f8fafb7ab341dd354c892e8d62a0ec52ae6b0bb8703f583d0dbc67e3937c1f"
   },
   "pdfjs_worker": {
     "source": "../../shared/vendor/pdf.worker.min.js",
-    "version": "3.11.174",
+    "version": "4.10.38",
     "license": "Apache-2.0",
-    "sha256": "51a1f19443eb332078c0dbb6872109b53cc40cdec4146e500ad2ed274e4ad423"
+    "sha256": "160c887f624b15af8f57ae7f8377303e5e4b9bf6698e80b78aa370d115a0efc9"
   },
   "util-escape": {
     "source": "shared/util-escape.js",
@@ -57,6 +57,6 @@
     "source": "shared/pdf-decode.js",
     "version": "internal",
     "license": "project-internal",
-    "sha256": "3ac973839548de5507fd3fbbbe42ca7db5278c2b1fe90a0590aea728dcf502ad"
+    "sha256": "70980598b8c68b3a00acab95b07fe15de9dae13bf01f64f82bf32e10d3de0a63"
   }
 }
