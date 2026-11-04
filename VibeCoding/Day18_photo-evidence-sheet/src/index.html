@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>工作成果照片附件產生器 — Day18</title>
+  <style>
+/* shared/base.css — 共用樣式基底 */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 { line-height: 1.3; }
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 1rem;
+}
+
+button, .btn {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+button:hover, .btn:hover { background: var(--color-bg); }
+
+button.primary, .btn.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover, .btn.primary:hover { background: var(--color-primary-hover); }
+
+button:disabled, .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #eff6ff;
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover { text-decoration: underline; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show { opacity: 1; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+}
+.form-group input, .form-group select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-family: inherit;
+}
+
+.photo-item-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.photo-thumb {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+.photo-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.caption-input {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+.photo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+}
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+/* A4 Print Layout */
+.a4-preview-wrapper {
+  margin-top: 2rem;
+}
+.a4-page {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 15mm;
+  margin: 0 auto 2rem auto;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  page-break-after: always;
+  break-inside: avoid;
+}
+.a4-header {
+  border-bottom: 2px solid #1f2328;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+.a4-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  text-align: center;
+}
+.a4-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+.a4-grid {
+  flex: 1;
+  display: grid;
+  gap: 12px;
+}
+.grid-2 {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+.grid-4 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+.grid-6 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+}
+.a4-cell {
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  background: #fafafa;
+  overflow: hidden;
+}
+.cell-img-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-height: 0;
+}
+.cell-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.cell-caption {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  text-align: center;
+  font-weight: 500;
+  color: #1f2328;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.cell-num {
+  font-size: 0.8rem;
+  color: #2563eb;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+/* 引用 shared/print.css — 共用列印樣式基底 */
+@page {
+  size: A4 portrait;
+  margin: 10mm;
+}
+
+@media print {
+  body {
+    background: #fff !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-page-break {
+    page-break-after: always;
+    break-inside: avoid;
+  }
+
+  .container > *:not(#a4-preview-section) {
+    display: none !important;
+  }
+  #a4-preview-section {
+    display: block !important;
+  }
+  .a4-preview-wrapper {
+    margin: 0;
+  }
+  .a4-page {
+    box-shadow: none;
+    border: none;
+    margin: 0;
+    padding: 5mm;
+    width: 100%;
+    min-height: 277mm;
+  }
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav-back">
+      <a href="../index.html">← 回首頁</a>
+    </nav>
+
+    <header>
+      <h1>工作成果照片附件產生器</h1>
+      <p class="subtitle" style="color: var(--color-text-muted);">
+        匯入大量工程、活動或驗收照片，自由排序與填寫圖說，一鍵自動排版成標準 A4 成果附件（每頁 2/4/6 張）。
+      </p>
+    </header>
+
+    <div class="card">
+      <h3 style="margin-top: 0; font-size: 1.05rem;">文件中繼資料與版面設定</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="doc-title">附件標題</label>
+          <input type="text" id="doc-title" placeholder="例如：工作成果檢驗照片冊" value="工作成果照片附件">
+        </div>
+        <div class="form-group">
+          <label for="doc-date">活動 / 拍攝日期</label>
+          <input type="text" id="doc-date" placeholder="例如：2026 年 8 月 24 日">
+        </div>
+        <div class="form-group">
+          <label for="doc-location">地點 / 專案名稱</label>
+          <input type="text" id="doc-location" placeholder="例如：台北市信義區專案現場">
+        </div>
+        <div class="form-group">
+          <label for="cfg-page-size">每頁照片張數</label>
+          <select id="cfg-page-size">
+            <option value="2">每頁 2 張 (直式大圖)</option>
+            <option value="4" selected>每頁 4 張 (2x2 標準版)</option>
+            <option value="6">每頁 6 張 (2x3 緊湊版)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="dropzone" id="drop-zone">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">📸</div>
+      <div style="margin-bottom: 0.75rem;">拖放多張照片至此，或點擊選取（支援一次選取 20+ 張）</div>
+      <input type="file" id="file-input" multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" style="display: none;">
+      <button type="button" class="btn secondary" id="btn-select-files">選擇照片檔案</button>
+    </div>
+
+    <div id="photo-list-section" style="display: none; margin-top: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <h3 style="margin: 0;">已匯入照片清單 (<span id="photo-count">0</span> 張)</h3>
+        <div class="btn-group" style="margin: 0;">
+          <button type="button" class="btn primary btn-sm" id="btn-print">🖨️ 列印 / 另存 PDF</button>
+          <button type="button" class="btn secondary btn-sm" id="btn-export-html">📄 匯出列印版 HTML</button>
+          <button type="button" class="btn secondary btn-sm" id="btn-copy-summary">📋 複製摘要</button>
+          <button type="button" class="btn secondary btn-sm" id="btn-clear">清空重置</button>
+        </div>
+      </div>
+      <div id="photos-container"></div>
+    </div>
+
+    <div id="a4-preview-section" style="display: none;">
+      <h3 style="margin: 2rem 0 1rem 0;">A4 排版預覽（共 <span id="page-count">0</span> 頁）</h3>
+      <div class="a4-preview-wrapper" id="a4-pages-container"></div>
+    </div>
+
+    <div class="btn-group" style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+      <button type="button" class="btn secondary" id="btn-download-offline">💾 下載本工具離線版</button>
+    </div>
+
+    <!--{{LICENSES}}-->
+  </div>
+
+  <!--{{SHARED:util-escape}}-->
+  <!--{{SHARED:ui-toast}}-->
+  <!--{{SHARED:ui-debounce}}-->
+  <!--{{SHARED:io-download}}-->
+  <!--{{SHARED:io-clipboard}}-->
+  <!--{{SHARED:io-dropzone}}-->
+  <!--{{SHARED:img-file-size}}-->
+  <!--{{SHARED:img-decode}}-->
+  <!--{{SHARED:img-canvas}}-->
+
+  <script>
+  (function () {
+    var state = {
+      photos: [], // Array<{ id, dataUrl, fileName, caption }>
+      title: '工作成果照片附件',
+      date: '',
+      location: '',
+      pageSize: 4
+    };
+
+    var dropZone = document.getElementById('drop-zone');
+    var fileInput = document.getElementById('file-input');
+    var btnSelectFiles = document.getElementById('btn-select-files');
+    var docTitle = document.getElementById('doc-title');
+    var docDate = document.getElementById('doc-date');
+    var docLocation = document.getElementById('doc-location');
+    var cfgPageSize = document.getElementById('cfg-page-size');
+
+    var photoListSection = document.getElementById('photo-list-section');
+    var photoCount = document.getElementById('photo-count');
+    var photosContainer = document.getElementById('photos-container');
+    var a4PreviewSection = document.getElementById('a4-preview-section');
+    var pageCount = document.getElementById('page-count');
+    var a4PagesContainer = document.getElementById('a4-pages-container');
+
+    var btnPrint = document.getElementById('btn-print');
+    var btnExportHtml = document.getElementById('btn-export-html');
+    var btnCopySummary = document.getElementById('btn-copy-summary');
+    var btnClear = document.getElementById('btn-clear');
+    var btnDownloadOffline = document.getElementById('btn-download-offline');
+
+    // Default today date
+    var today = new Date();
+    var dateStr = today.getFullYear() + ' 年 ' + (today.getMonth() + 1) + ' 月 ' + today.getDate() + ' 日';
+    if (docDate) docDate.value = dateStr;
+    state.date = dateStr;
+
+    function renderPhotoList() {
+      if (photoCount) photoCount.textContent = state.photos.length;
+      if (!photosContainer) return;
+
+      if (state.photos.length === 0) {
+        if (photoListSection) photoListSection.style.display = 'none';
+        if (a4PreviewSection) a4PreviewSection.style.display = 'none';
+        photosContainer.innerHTML = '';
+        if (a4PagesContainer) a4PagesContainer.innerHTML = '';
+        return;
+      }
+
+      if (photoListSection) photoListSection.style.display = 'block';
+      if (a4PreviewSection) a4PreviewSection.style.display = 'block';
+
+      var html = '';
+      state.photos.forEach(function (photo, idx) {
+        html += '<div class="photo-item-card" data-idx="' + idx + '">' +
+          '<span style="font-weight: 700; color: #2563eb; width: 24px;">#' + (idx + 1) + '</span>' +
+          '<img src="' + photo.dataUrl + '" class="photo-thumb" alt="縮圖">' +
+          '<div class="photo-info">' +
+            '<div style="font-size: 0.85rem; font-weight: 600; color: #334155;">' + escapeHtml(photo.fileName) + '</div>' +
+            '<input type="text" class="caption-input" data-idx="' + idx + '" placeholder="請輸入圖說說明..." value="' + escapeHtml(photo.caption || '') + '">' +
+          '</div>' +
+          '<div class="photo-actions">' +
+            '<button type="button" class="btn btn-sm secondary btn-move-up" data-idx="' + idx + '" ' + (idx === 0 ? 'disabled' : '') + '>▲ 上移</button>' +
+            '<button type="button" class="btn btn-sm secondary btn-move-down" data-idx="' + idx + '" ' + (idx === state.photos.length - 1 ? 'disabled' : '') + '>▼ 下移</button>' +
+          '</div>' +
+        '</div>';
+      });
+
+      photosContainer.innerHTML = html;
+      renderA4Preview();
+    }
+
+    function renderA4Preview() {
+      if (!a4PagesContainer) return;
+
+      var pageSize = Number(state.pageSize) || 4;
+      var totalPhotos = state.photos.length;
+      var pages = [];
+
+      for (var i = 0; i < totalPhotos; i += pageSize) {
+        pages.push(state.photos.slice(i, i + pageSize));
+      }
+
+      if (pageCount) pageCount.textContent = pages.length;
+
+      var gridCls = 'grid-4';
+      if (pageSize === 2) gridCls = 'grid-2';
+      else if (pageSize === 6) gridCls = 'grid-6';
+
+      var html = '';
+      var globalIdx = 1;
+
+      pages.forEach(function (pagePhotos, pIdx) {
+        var metaLocation = state.location ? ('地點 / 專案：' + escapeHtml(state.location)) : '';
+        var metaDate = state.date ? ('日期：' + escapeHtml(state.date)) : '';
+
+        html += '<div class="a4-page">' +
+          '<div class="a4-header">' +
+            '<div class="a4-title">' + escapeHtml(state.title || '工作成果照片附件') + '</div>' +
+            '<div class="a4-meta">' +
+              '<span>' + metaDate + '</span>' +
+              '<span>' + metaLocation + '</span>' +
+              '<span>頁次：' + (pIdx + 1) + ' / ' + pages.length + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="a4-grid ' + gridCls + '">';
+
+        pagePhotos.forEach(function (photo) {
+          var captionText = photo.caption ? escapeHtml(photo.caption) : '';
+          html += '<div class="a4-cell">' +
+            '<div class="cell-img-wrap">' +
+              '<img src="' + photo.dataUrl + '" class="cell-img" alt="成果照片">' +
+            '</div>' +
+            '<div class="cell-caption">' +
+              '<span class="cell-num">圖 ' + globalIdx + '.</span>' + captionText +
+            '</div>' +
+          '</div>';
+          globalIdx++;
+        });
+
+        html += '</div></div>';
+      });
+
+      a4PagesContainer.innerHTML = html;
+    }
+
+    function guessImageMimeType(fileName) {
+      var lower = fileName.toLowerCase();
+      if (lower.lastIndexOf('.png') === lower.length - 4) return 'image/png';
+      if (lower.lastIndexOf('.webp') === lower.length - 5) return 'image/webp';
+      return 'image/jpeg';
+    }
+
+    // 進入逐檔迴圈前，用完整 FileList 一次算出整批總量，交給 checkBatchSize() 判斷。
+    // !ok 時 io-dropzone.js 會整批擋下，完全不進入逐檔迴圈（見 shared/IMG_CONTRACT.md 第 9a-1 節）。
+    function imageBatchGate(files) {
+      var totalBytes = 0;
+      for (var i = 0; i < files.length; i++) {
+        totalBytes += files[i].size;
+      }
+      var batchResult = checkBatchSize(totalBytes, files.length);
+      if (batchResult.ok && batchResult.level === 'warn') showToast(batchResult.message, 2500);
+      return batchResult;
+    }
+
+    function imageFileGate(file) {
+      var singleResult = checkImageFileSize(file.size);
+      if (!singleResult.ok) {
+        return { ok: false, level: singleResult.level, message: file.name + '：' + singleResult.message };
+      }
+      return singleResult;
+    }
+
+    // 同一批（drop 或 change 觸發的）匯入用短延遲聚合：每張圖處理完就丟進 pendingResults，
+    // 一段安靜期沒有新的完成事件才一次 flush，依 meta.index 排序後依原始選取順序加入
+    // state.photos（不依賴非同步讀取完成的先後順序）。
+    var pendingResults = [];
+    var flushTimer = null;
+
+    function flushPendingResults() {
+      flushTimer = null;
+      if (pendingResults.length === 0) return;
+      var batch = pendingResults;
+      pendingResults = [];
+      batch.sort(function (a, b) { return a.index - b.index; });
+      batch.forEach(function (r) {
+        state.photos.push({
+          id: r.id,
+          dataUrl: r.dataUrl,
+          fileName: r.fileName,
+          caption: ''
+        });
+      });
+      renderPhotoList();
+      showToast('已匯入 ' + batch.length + ' 張照片！');
+    }
+
+    function scheduleFlush() {
+      if (flushTimer) clearTimeout(flushTimer);
+      flushTimer = setTimeout(flushPendingResults, 120);
+    }
+
+    function onImageData(arrayBuffer, fileName, meta) {
+      var blob = new Blob([arrayBuffer], { type: guessImageMimeType(fileName) });
+      loadImageFile(blob).then(function (res) {
+        var scaledCanvas = resizeCanvas(res.canvas, { maxLongEdge: 1200, allowUpscale: false });
+        pendingResults.push({
+          index: meta.index,
+          id: 'photo_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+          dataUrl: scaledCanvas.toDataURL('image/jpeg', 0.88),
+          fileName: fileName,
+          caption: ''
+        });
+        scheduleFlush();
+      }).catch(function (err) {
+        showToast(fileName + '：照片處理發生錯誤：' + (err.message || '未知錯誤'), 2500);
+      });
+    }
+
+    if (btnSelectFiles && fileInput) {
+      btnSelectFiles.addEventListener('click', function () {
+        fileInput.click();
+      });
+      setupFilePicker(fileInput, onImageData, {
+        accept: ['.jpg', '.jpeg', '.png', '.webp'],
+        multiple: true,
+        mode: 'bytes',
+        gate: imageFileGate,
+        gateBatch: imageBatchGate,
+        onError: function (msg) { showToast(msg, 2500); }
+      });
+    }
+
+    if (dropZone) {
+      setupDropZone(dropZone, onImageData, {
+        accept: ['.jpg', '.jpeg', '.png', '.webp'],
+        multiple: true,
+        mode: 'bytes',
+        gate: imageFileGate,
+        gateBatch: imageBatchGate,
+        onError: function (msg) { showToast(msg, 2500); }
+      });
+    }
+
+    // Live update metadata
+    if (docTitle) {
+      docTitle.addEventListener('input', function () {
+        state.title = docTitle.value;
+        renderA4Preview();
+      });
+    }
+    if (docDate) {
+      docDate.addEventListener('input', function () {
+        state.date = docDate.value;
+        renderA4Preview();
+      });
+    }
+    if (docLocation) {
+      docLocation.addEventListener('input', function () {
+        state.location = docLocation.value;
+        renderA4Preview();
+      });
+    }
+    if (cfgPageSize) {
+      cfgPageSize.addEventListener('change', function () {
+        state.pageSize = Number(cfgPageSize.value) || 4;
+        renderA4Preview();
+      });
+    }
+
+    // Photo list event delegation (caption live input & move up/down)
+    if (photosContainer) {
+      photosContainer.addEventListener('input', function (e) {
+        var target = e.target;
+        if (target && target.classList.contains('caption-input')) {
+          var idx = Number(target.getAttribute('data-idx'));
+          if (state.photos[idx]) {
+            state.photos[idx].caption = target.value;
+            renderA4Preview();
+          }
+        }
+      });
+
+      photosContainer.addEventListener('click', function (e) {
+        var target = e.target;
+        if (target && target.classList.contains('btn-move-up')) {
+          var idx = Number(target.getAttribute('data-idx'));
+          if (idx > 0) {
+            var item = state.photos.splice(idx, 1)[0];
+            state.photos.splice(idx - 1, 0, item);
+            renderPhotoList();
+          }
+        } else if (target && target.classList.contains('btn-move-down')) {
+          var idxDown = Number(target.getAttribute('data-idx'));
+          if (idxDown < state.photos.length - 1) {
+            var itemDown = state.photos.splice(idxDown, 1)[0];
+            state.photos.splice(idxDown + 1, 0, itemDown);
+            renderPhotoList();
+          }
+        }
+      });
+    }
+
+    if (btnPrint) {
+      btnPrint.addEventListener('click', function () {
+        window.print();
+      });
+    }
+
+    function buildStandaloneReportHtml() {
+      var previewHtml = a4PagesContainer ? a4PagesContainer.innerHTML : '';
+      return '<!DOCTYPE html>\n' +
+        '<html lang="zh-TW">\n<head>\n' +
+        '<meta charset="UTF-8">\n' +
+        '<title>' + escapeHtml(state.title || '工作成果照片附件') + '</title>\n' +
+        '<style>\n' +
+        '* { box-sizing: border-box; }\n' +
+        'body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif; background: #f1f5f9; }\n' +
+        '.a4-page { width: 210mm; min-height: 297mm; padding: 15mm; margin: 20px auto; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; flex-direction: column; page-break-after: always; break-inside: avoid; }\n' +
+        '.a4-header { border-bottom: 2px solid #1f2328; padding-bottom: 8px; margin-bottom: 12px; }\n' +
+        '.a4-title { font-size: 1.3rem; font-weight: 700; margin: 0 0 4px 0; text-align: center; }\n' +
+        '.a4-meta { display: flex; justify-content: space-between; font-size: 0.85rem; color: #4b5563; }\n' +
+        '.a4-grid { flex: 1; display: grid; gap: 12px; }\n' +
+        '.grid-2 { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }\n' +
+        '.grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }\n' +
+        '.grid-6 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; }\n' +
+        '.a4-cell { border: 1px solid #e2e8f0; border-radius: 4px; padding: 8px; display: flex; flex-direction: column; background: #fafafa; overflow: hidden; }\n' +
+        '.cell-img-wrap { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 0; }\n' +
+        '.cell-img { max-width: 100%; max-height: 100%; object-fit: contain; }\n' +
+        '.cell-caption { margin-top: 6px; font-size: 0.85rem; text-align: center; font-weight: 500; color: #1f2328; white-space: pre-wrap; word-break: break-word; }\n' +
+        '.cell-num { font-size: 0.8rem; color: #2563eb; font-weight: 700; margin-right: 4px; }\n' +
+        '@page { size: A4 portrait; margin: 10mm; }\n' +
+        '@media print { body { background: #fff !important; margin: 0; padding: 0; } .no-print { display: none !important; } .print-page-break { page-break-after: always; break-inside: avoid; } .a4-page { box-shadow: none; border: none; margin: 0; padding: 5mm; width: 100%; min-height: 277mm; } }\n' +
+        '</style>\n</head>\n<body>\n' +
+        previewHtml +
+        '\n</body>\n</html>';
+    }
+
+    if (btnExportHtml) {
+      btnExportHtml.addEventListener('click', function () {
+        var htmlContent = buildStandaloneReportHtml();
+        downloadFile('photo_evidence_sheet.html', htmlContent, 'text/html;charset=utf-8');
+        showToast('已匯出列印版 HTML 附件');
+      });
+    }
+
+    if (btnCopySummary) {
+      btnCopySummary.addEventListener('click', function () {
+        var text = '【工作成果照片附件摘要】\n' +
+                   '標題：' + state.title + '\n' +
+                   '日期：' + state.date + '\n' +
+                   '地點：' + state.location + '\n' +
+                   '照片總數：' + state.photos.length + ' 張\n' +
+                   '排版配置：每頁 ' + state.pageSize + ' 張，共 ' + Math.ceil(state.photos.length / state.pageSize) + ' 頁\n';
+        copyToClipboard(text).then(function () {
+          showToast('已複製成果摘要');
+        });
+      });
+    }
+
+    if (btnClear) {
+      btnClear.addEventListener('click', function () {
+        state.photos = [];
+        renderPhotoList();
+        showToast('已清空所有照片');
+      });
+    }
+
+    function buildCleanHtmlCopy() {
+      var doc = document.documentElement.cloneNode(true);
+
+      var toast = doc.querySelector('#__shared_toast');
+      if (toast) toast.remove();
+
+      var navBack = doc.querySelector('.nav-back');
+      if (navBack) navBack.remove();
+
+      var offlineBtn = doc.querySelector('#btn-download-offline');
+      if (offlineBtn) offlineBtn.remove();
+
+      var listSec = doc.querySelector('#photo-list-section');
+      if (listSec) listSec.style.display = 'none';
+
+      var pContainer = doc.querySelector('#photos-container');
+      if (pContainer) pContainer.innerHTML = '';
+
+      var a4Sec = doc.querySelector('#a4-preview-section');
+      if (a4Sec) a4Sec.style.display = 'none';
+
+      var a4Container = doc.querySelector('#a4-pages-container');
+      if (a4Container) a4Container.innerHTML = '';
+
+      var pCount = doc.querySelector('#photo-count');
+      if (pCount) pCount.textContent = '0';
+
+      var pgCount = doc.querySelector('#page-count');
+      if (pgCount) pgCount.textContent = '0';
+
+      var inTitle = doc.querySelector('#doc-title');
+      if (inTitle) inTitle.value = '工作成果照片附件';
+
+      var inDate = doc.querySelector('#doc-date');
+      if (inDate) inDate.value = '';
+
+      var inLoc = doc.querySelector('#doc-location');
+      if (inLoc) inLoc.value = '';
+
+      return '<!DOCTYPE html>\n' + doc.outerHTML;
+    }
+
+    window.buildCleanHtmlCopy = buildCleanHtmlCopy;
+
+    if (btnDownloadOffline) {
+      btnDownloadOffline.addEventListener('click', function () {
+        var cleanHtml = buildCleanHtmlCopy();
+        downloadFile('photo-evidence-sheet-offline.html', cleanHtml, 'text/html;charset=utf-8');
+        showToast('已下載離線版工具');
+      });
+    }
+  })();
+  </script>
+</body>
+</html>

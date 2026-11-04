@@ -1,0 +1,10 @@
+{
+  "assets": {
+    "papaparse": {
+      "path": "../../shared/vendor/papaparse-5.6.0.min.js",
+      "version": "5.6.0",
+      "license": "MIT",
+      "escape_mode": "raw_js"
+    }
+  }
+}

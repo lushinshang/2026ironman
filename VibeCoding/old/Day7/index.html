@@ -1,0 +1,2902 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文字差異比對器</title>
+<style>
+  :root{
+    --bg:#f9f7f4;
+    --text:#1a1a1a;
+    --muted:#6b6459;
+    --accent:#9a5b3c;
+    --card:#ffffff;
+    --border:#e6e1d8;
+    --danger:#c0392b;
+    --warn-bg:#fdf3e7;
+    --warn-border:#e8c99a;
+    --add-bg:#eaf5e6;
+    --add-border:#b7dba9;
+    --del-bg:#fbe9e7;
+    --del-border:#e6b3ac;
+    --mod-bg:#fdf3e0;
+    --mod-border:#e8c99a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    font-size:16px;
+    line-height:1.6;
+  }
+  header{
+    max-width:1120px;
+    margin:0 auto;
+    padding:32px 24px 8px;
+  }
+  h1{
+    font-size:clamp(1.5rem,3.2vw,2rem);
+    margin:0 0 4px;
+  }
+  header p{
+    color:var(--muted);
+    font-size:14px;
+    margin:0;
+  }
+  main{
+    max-width:1120px;
+    margin:0 auto;
+    padding:16px 24px 60px;
+    display:grid;
+    grid-template-columns:1fr;
+    gap:24px;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:16px;
+  }
+  .nav-back{
+    max-width:1120px;
+    margin:0 auto;
+    padding:16px 24px 0;
+    font-size:14px;
+  }
+  .nav-back a{
+    color:var(--accent);
+    text-decoration:none;
+  }
+  .nav-back a:hover{text-decoration:underline;}
+  .hidden{display:none !important;}
+  .input-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:24px;
+  }
+  @media (max-width:720px){
+    .input-grid{grid-template-columns:1fr;}
+  }
+  .input-col h2{
+    font-size:15px;
+    margin:0 0 10px;
+    color:var(--text);
+  }
+  .input-col.dragover{
+    border-color:var(--accent);
+    background:#fbf3ec;
+  }
+  textarea.input-area{
+    width:100%;
+    min-height:280px;
+    resize:vertical;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:14px;
+    font-size:14px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    line-height:1.7;
+    color:var(--text);
+    background:#fffdfa;
+  }
+  .file-hint{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:6px;
+  }
+  .file-name{
+    font-size:13px;
+    color:var(--accent);
+    margin-top:4px;
+    min-height:18px;
+  }
+  .btn-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:4px;
+  }
+  button{
+    font-family:inherit;
+    font-size:14px;
+    padding:10px 16px;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:#fff;
+    color:var(--text);
+    cursor:pointer;
+  }
+  button:hover:not(:disabled){border-color:var(--accent); color:var(--accent);}
+  button:disabled{opacity:.5; cursor:not-allowed;}
+  button.primary{
+    background:var(--accent);
+    color:#fff;
+    border-color:var(--accent);
+  }
+  button.primary:hover:not(:disabled){opacity:.9; color:#fff;}
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:16px;
+    font-size:13px;
+    color:var(--muted);
+  }
+  .stats{
+    display:flex;
+    flex-wrap:wrap;
+    gap:20px;
+    margin-bottom:12px;
+    font-size:14px;
+  }
+  .stats .stat-item b{font-size:16px;}
+  .stats .stat-item.added b{color:#3d7a2a;}
+  .stats .stat-item.removed b{color:var(--danger);}
+  .stats .stat-item.modified b{color:#a06a1e;}
+  .stats .stat-item.unchanged b{color:var(--muted);}
+  .legend-item{display:flex; align-items:center; gap:6px;}
+  .legend-swatch{
+    width:14px;
+    height:14px;
+    border-radius:4px;
+    border:1px solid var(--border);
+    display:inline-block;
+  }
+  .legend-swatch.added{background:var(--add-bg); border-color:var(--add-border);}
+  .legend-swatch.removed{background:var(--del-bg); border-color:var(--del-border);}
+  .legend-swatch.modified{background:var(--mod-bg); border-color:var(--mod-border);}
+  .diff-rows{
+    border:1px solid var(--border);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  .diff-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+  #diff-rows > * + *{border-top:1px solid var(--border);}
+  .fold-detail > .diff-row + .diff-row{border-top:1px solid var(--border);}
+  .fold-summary{
+    display:block;
+    width:100%;
+    text-align:left;
+    padding:8px 14px;
+    font-size:13px;
+    color:var(--muted);
+    background:#f3efe8;
+    border:none;
+    border-radius:0;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .fold-summary:hover{color:var(--accent);}
+  .diff-cell{
+    padding:8px 14px;
+    font-size:14px;
+    line-height:1.7;
+    word-break:break-word;
+  }
+  .diff-cell.old{border-right:1px solid var(--border);}
+  .diff-cell.empty{color:var(--muted);}
+  .diff-row.type-added .diff-cell.new{background:var(--add-bg);}
+  .diff-row.type-removed .diff-cell.old{background:var(--del-bg);}
+  .diff-row.type-modified .diff-cell.old{background:var(--mod-bg);}
+  .diff-row.type-modified .diff-cell.new{background:var(--mod-bg);}
+  .diff-cell .char-del{background:var(--del-border); text-decoration:line-through; text-decoration-color:var(--danger);}
+  .diff-cell .char-add{background:var(--add-border); font-weight:600;}
+  .toast{
+    position:fixed;
+    bottom:24px;
+    left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:#1a1a1a;
+    color:#fff;
+    padding:10px 18px;
+    border-radius:8px;
+    font-size:14px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s ease, transform .2s ease;
+  }
+  .toast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<div class="nav-back"><a href="../index.html">← 返回 Vibe Coding 100 題清單</a></div>
+
+<header>
+  <h1>文字差異比對器</h1>
+  <p>貼上或拖曳新舊兩版文字，逐句比對差異，方便比對合約改版或公文修訂內容。所有比對都在瀏覽器本機完成，不上傳任何內容。</p>
+</header>
+
+<main>
+  <section class="input-grid">
+    <div class="card input-col" id="col-old">
+      <h2>舊版</h2>
+      <textarea class="input-area" id="text-old" placeholder="貼上舊版文字，或把 .txt/.md 檔案拖曳到這裡"></textarea>
+      <div class="file-hint">支援直接拖曳單一 .txt 或 .md 檔案自動帶入內容</div>
+      <div class="file-name" id="file-name-old"></div>
+    </div>
+    <div class="card input-col" id="col-new">
+      <h2>新版</h2>
+      <textarea class="input-area" id="text-new" placeholder="貼上新版文字，或把 .txt/.md 檔案拖曳到這裡"></textarea>
+      <div class="file-hint">支援直接拖曳單一 .txt 或 .md 檔案自動帶入內容</div>
+      <div class="file-name" id="file-name-new"></div>
+    </div>
+  </section>
+
+  <section class="btn-row">
+    <button type="button" id="btn-compare" class="primary">開始比對</button>
+    <button type="button" id="btn-download-tool">下載本工具（離線使用）</button>
+  </section>
+
+  <section class="card hidden" id="result-section">
+    <div class="stats" id="diff-stats"></div>
+    <div class="legend">
+      <span class="legend-item"><span class="legend-swatch added"></span>新增</span>
+      <span class="legend-item"><span class="legend-swatch removed"></span>刪除</span>
+      <span class="legend-item"><span class="legend-swatch modified"></span>修改</span>
+    </div>
+    <div class="btn-row" style="margin-top:8px;">
+      <button type="button" id="btn-expand-all">全部展開</button>
+      <button type="button" id="btn-collapse-all">全部收合</button>
+    </div>
+    <div class="diff-rows" id="diff-rows" style="margin-top:12px;"></div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button type="button" id="btn-copy-summary">複製摘要</button>
+      <button type="button" id="btn-download-report" class="primary">下載差異報告 MD</button>
+      <button type="button" id="btn-download-html" class="primary">下載差異報告 HTML</button>
+      <button type="button" id="btn-download-csv" class="primary">下載差異報告 CSV</button>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script id="jsdiff-src">
+(function (global, factory) {
+  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+  typeof define === 'function' && define.amd ? define(['exports'], factory) :
+  (global = global || self, factory(global.Diff = {}));
+}(this, (function (exports) { 'use strict';
+
+  function Diff() {}
+  Diff.prototype = {
+    diff: function diff(oldString, newString) {
+      var _options$timeout;
+
+      var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+      var callback = options.callback;
+
+      if (typeof options === 'function') {
+        callback = options;
+        options = {};
+      }
+
+      this.options = options;
+      var self = this;
+
+      function done(value) {
+        if (callback) {
+          setTimeout(function () {
+            callback(undefined, value);
+          }, 0);
+          return true;
+        } else {
+          return value;
+        }
+      } // Allow subclasses to massage the input prior to running
+
+
+      oldString = this.castInput(oldString);
+      newString = this.castInput(newString);
+      oldString = this.removeEmpty(this.tokenize(oldString));
+      newString = this.removeEmpty(this.tokenize(newString));
+      var newLen = newString.length,
+          oldLen = oldString.length;
+      var editLength = 1;
+      var maxEditLength = newLen + oldLen;
+
+      if (options.maxEditLength) {
+        maxEditLength = Math.min(maxEditLength, options.maxEditLength);
+      }
+
+      var maxExecutionTime = (_options$timeout = options.timeout) !== null && _options$timeout !== void 0 ? _options$timeout : Infinity;
+      var abortAfterTimestamp = Date.now() + maxExecutionTime;
+      var bestPath = [{
+        oldPos: -1,
+        lastComponent: undefined
+      }]; // Seed editLength = 0, i.e. the content starts with the same values
+
+      var newPos = this.extractCommon(bestPath[0], newString, oldString, 0);
+
+      if (bestPath[0].oldPos + 1 >= oldLen && newPos + 1 >= newLen) {
+        // Identity per the equality and tokenizer
+        return done([{
+          value: this.join(newString),
+          count: newString.length
+        }]);
+      } // Once we hit the right edge of the edit graph on some diagonal k, we can
+      // definitely reach the end of the edit graph in no more than k edits, so
+      // there's no point in considering any moves to diagonal k+1 any more (from
+      // which we're guaranteed to need at least k+1 more edits).
+      // Similarly, once we've reached the bottom of the edit graph, there's no
+      // point considering moves to lower diagonals.
+      // We record this fact by setting minDiagonalToConsider and
+      // maxDiagonalToConsider to some finite value once we've hit the edge of
+      // the edit graph.
+      // This optimization is not faithful to the original algorithm presented in
+      // Myers's paper, which instead pointlessly extends D-paths off the end of
+      // the edit graph - see page 7 of Myers's paper which notes this point
+      // explicitly and illustrates it with a diagram. This has major performance
+      // implications for some common scenarios. For instance, to compute a diff
+      // where the new text simply appends d characters on the end of the
+      // original text of length n, the true Myers algorithm will take O(n+d^2)
+      // time while this optimization needs only O(n+d) time.
+
+
+      var minDiagonalToConsider = -Infinity,
+          maxDiagonalToConsider = Infinity; // Main worker method. checks all permutations of a given edit length for acceptance.
+
+      function execEditLength() {
+        for (var diagonalPath = Math.max(minDiagonalToConsider, -editLength); diagonalPath <= Math.min(maxDiagonalToConsider, editLength); diagonalPath += 2) {
+          var basePath = void 0;
+          var removePath = bestPath[diagonalPath - 1],
+              addPath = bestPath[diagonalPath + 1];
+
+          if (removePath) {
+            // No one else is going to attempt to use this value, clear it
+            bestPath[diagonalPath - 1] = undefined;
+          }
+
+          var canAdd = false;
+
+          if (addPath) {
+            // what newPos will be after we do an insertion:
+            var addPathNewPos = addPath.oldPos - diagonalPath;
+            canAdd = addPath && 0 <= addPathNewPos && addPathNewPos < newLen;
+          }
+
+          var canRemove = removePath && removePath.oldPos + 1 < oldLen;
+
+          if (!canAdd && !canRemove) {
+            // If this path is a terminal then prune
+            bestPath[diagonalPath] = undefined;
+            continue;
+          } // Select the diagonal that we want to branch from. We select the prior
+          // path whose position in the old string is the farthest from the origin
+          // and does not pass the bounds of the diff graph
+          // TODO: Remove the `+ 1` here to make behavior match Myers algorithm
+          //       and prefer to order removals before insertions.
+
+
+          if (!canRemove || canAdd && removePath.oldPos + 1 < addPath.oldPos) {
+            basePath = self.addToPath(addPath, true, undefined, 0);
+          } else {
+            basePath = self.addToPath(removePath, undefined, true, 1);
+          }
+
+          newPos = self.extractCommon(basePath, newString, oldString, diagonalPath);
+
+          if (basePath.oldPos + 1 >= oldLen && newPos + 1 >= newLen) {
+            // If we have hit the end of both strings, then we are done
+            return done(buildValues(self, basePath.lastComponent, newString, oldString, self.useLongestToken));
+          } else {
+            bestPath[diagonalPath] = basePath;
+
+            if (basePath.oldPos + 1 >= oldLen) {
+              maxDiagonalToConsider = Math.min(maxDiagonalToConsider, diagonalPath - 1);
+            }
+
+            if (newPos + 1 >= newLen) {
+              minDiagonalToConsider = Math.max(minDiagonalToConsider, diagonalPath + 1);
+            }
+          }
+        }
+
+        editLength++;
+      } // Performs the length of edit iteration. Is a bit fugly as this has to support the
+      // sync and async mode which is never fun. Loops over execEditLength until a value
+      // is produced, or until the edit length exceeds options.maxEditLength (if given),
+      // in which case it will return undefined.
+
+
+      if (callback) {
+        (function exec() {
+          setTimeout(function () {
+            if (editLength > maxEditLength || Date.now() > abortAfterTimestamp) {
+              return callback();
+            }
+
+            if (!execEditLength()) {
+              exec();
+            }
+          }, 0);
+        })();
+      } else {
+        while (editLength <= maxEditLength && Date.now() <= abortAfterTimestamp) {
+          var ret = execEditLength();
+
+          if (ret) {
+            return ret;
+          }
+        }
+      }
+    },
+    addToPath: function addToPath(path, added, removed, oldPosInc) {
+      var last = path.lastComponent;
+
+      if (last && last.added === added && last.removed === removed) {
+        return {
+          oldPos: path.oldPos + oldPosInc,
+          lastComponent: {
+            count: last.count + 1,
+            added: added,
+            removed: removed,
+            previousComponent: last.previousComponent
+          }
+        };
+      } else {
+        return {
+          oldPos: path.oldPos + oldPosInc,
+          lastComponent: {
+            count: 1,
+            added: added,
+            removed: removed,
+            previousComponent: last
+          }
+        };
+      }
+    },
+    extractCommon: function extractCommon(basePath, newString, oldString, diagonalPath) {
+      var newLen = newString.length,
+          oldLen = oldString.length,
+          oldPos = basePath.oldPos,
+          newPos = oldPos - diagonalPath,
+          commonCount = 0;
+
+      while (newPos + 1 < newLen && oldPos + 1 < oldLen && this.equals(newString[newPos + 1], oldString[oldPos + 1])) {
+        newPos++;
+        oldPos++;
+        commonCount++;
+      }
+
+      if (commonCount) {
+        basePath.lastComponent = {
+          count: commonCount,
+          previousComponent: basePath.lastComponent
+        };
+      }
+
+      basePath.oldPos = oldPos;
+      return newPos;
+    },
+    equals: function equals(left, right) {
+      if (this.options.comparator) {
+        return this.options.comparator(left, right);
+      } else {
+        return left === right || this.options.ignoreCase && left.toLowerCase() === right.toLowerCase();
+      }
+    },
+    removeEmpty: function removeEmpty(array) {
+      var ret = [];
+
+      for (var i = 0; i < array.length; i++) {
+        if (array[i]) {
+          ret.push(array[i]);
+        }
+      }
+
+      return ret;
+    },
+    castInput: function castInput(value) {
+      return value;
+    },
+    tokenize: function tokenize(value) {
+      return value.split('');
+    },
+    join: function join(chars) {
+      return chars.join('');
+    }
+  };
+
+  function buildValues(diff, lastComponent, newString, oldString, useLongestToken) {
+    // First we convert our linked list of components in reverse order to an
+    // array in the right order:
+    var components = [];
+    var nextComponent;
+
+    while (lastComponent) {
+      components.push(lastComponent);
+      nextComponent = lastComponent.previousComponent;
+      delete lastComponent.previousComponent;
+      lastComponent = nextComponent;
+    }
+
+    components.reverse();
+    var componentPos = 0,
+        componentLen = components.length,
+        newPos = 0,
+        oldPos = 0;
+
+    for (; componentPos < componentLen; componentPos++) {
+      var component = components[componentPos];
+
+      if (!component.removed) {
+        if (!component.added && useLongestToken) {
+          var value = newString.slice(newPos, newPos + component.count);
+          value = value.map(function (value, i) {
+            var oldValue = oldString[oldPos + i];
+            return oldValue.length > value.length ? oldValue : value;
+          });
+          component.value = diff.join(value);
+        } else {
+          component.value = diff.join(newString.slice(newPos, newPos + component.count));
+        }
+
+        newPos += component.count; // Common case
+
+        if (!component.added) {
+          oldPos += component.count;
+        }
+      } else {
+        component.value = diff.join(oldString.slice(oldPos, oldPos + component.count));
+        oldPos += component.count; // Reverse add and remove so removes are output first to match common convention
+        // The diffing algorithm is tied to add then remove output and this is the simplest
+        // route to get the desired output with minimal overhead.
+
+        if (componentPos && components[componentPos - 1].added) {
+          var tmp = components[componentPos - 1];
+          components[componentPos - 1] = components[componentPos];
+          components[componentPos] = tmp;
+        }
+      }
+    } // Special case handle for when one terminal is ignored (i.e. whitespace).
+    // For this case we merge the terminal into the prior string and drop the change.
+    // This is only available for string mode.
+
+
+    var finalComponent = components[componentLen - 1];
+
+    if (componentLen > 1 && typeof finalComponent.value === 'string' && (finalComponent.added || finalComponent.removed) && diff.equals('', finalComponent.value)) {
+      components[componentLen - 2].value += finalComponent.value;
+      components.pop();
+    }
+
+    return components;
+  }
+
+  var characterDiff = new Diff();
+  function diffChars(oldStr, newStr, options) {
+    return characterDiff.diff(oldStr, newStr, options);
+  }
+
+  function generateOptions(options, defaults) {
+    if (typeof options === 'function') {
+      defaults.callback = options;
+    } else if (options) {
+      for (var name in options) {
+        /* istanbul ignore else */
+        if (options.hasOwnProperty(name)) {
+          defaults[name] = options[name];
+        }
+      }
+    }
+
+    return defaults;
+  }
+
+  //
+  // Ranges and exceptions:
+  // Latin-1 Supplement, 0080–00FF
+  //  - U+00D7  × Multiplication sign
+  //  - U+00F7  ÷ Division sign
+  // Latin Extended-A, 0100–017F
+  // Latin Extended-B, 0180–024F
+  // IPA Extensions, 0250–02AF
+  // Spacing Modifier Letters, 02B0–02FF
+  //  - U+02C7  ˇ &#711;  Caron
+  //  - U+02D8  ˘ &#728;  Breve
+  //  - U+02D9  ˙ &#729;  Dot Above
+  //  - U+02DA  ˚ &#730;  Ring Above
+  //  - U+02DB  ˛ &#731;  Ogonek
+  //  - U+02DC  ˜ &#732;  Small Tilde
+  //  - U+02DD  ˝ &#733;  Double Acute Accent
+  // Latin Extended Additional, 1E00–1EFF
+
+  var extendedWordChars = /^[A-Za-z\xC0-\u02C6\u02C8-\u02D7\u02DE-\u02FF\u1E00-\u1EFF]+$/;
+  var reWhitespace = /\S/;
+  var wordDiff = new Diff();
+
+  wordDiff.equals = function (left, right) {
+    if (this.options.ignoreCase) {
+      left = left.toLowerCase();
+      right = right.toLowerCase();
+    }
+
+    return left === right || this.options.ignoreWhitespace && !reWhitespace.test(left) && !reWhitespace.test(right);
+  };
+
+  wordDiff.tokenize = function (value) {
+    // All whitespace symbols except newline group into one token, each newline - in separate token
+    var tokens = value.split(/([^\S\r\n]+|[()[\]{}'"\r\n]|\b)/); // Join the boundary splits that we do not consider to be boundaries. This is primarily the extended Latin character set.
+
+    for (var i = 0; i < tokens.length - 1; i++) {
+      // If we have an empty string in the next field and we have only word chars before and after, merge
+      if (!tokens[i + 1] && tokens[i + 2] && extendedWordChars.test(tokens[i]) && extendedWordChars.test(tokens[i + 2])) {
+        tokens[i] += tokens[i + 2];
+        tokens.splice(i + 1, 2);
+        i--;
+      }
+    }
+
+    return tokens;
+  };
+
+  function diffWords(oldStr, newStr, options) {
+    options = generateOptions(options, {
+      ignoreWhitespace: true
+    });
+    return wordDiff.diff(oldStr, newStr, options);
+  }
+  function diffWordsWithSpace(oldStr, newStr, options) {
+    return wordDiff.diff(oldStr, newStr, options);
+  }
+
+  var lineDiff = new Diff();
+
+  lineDiff.tokenize = function (value) {
+    if (this.options.stripTrailingCr) {
+      // remove one \r before \n to match GNU diff's --strip-trailing-cr behavior
+      value = value.replace(/\r\n/g, '\n');
+    }
+
+    var retLines = [],
+        linesAndNewlines = value.split(/(\n|\r\n)/); // Ignore the final empty token that occurs if the string ends with a new line
+
+    if (!linesAndNewlines[linesAndNewlines.length - 1]) {
+      linesAndNewlines.pop();
+    } // Merge the content and line separators into single tokens
+
+
+    for (var i = 0; i < linesAndNewlines.length; i++) {
+      var line = linesAndNewlines[i];
+
+      if (i % 2 && !this.options.newlineIsToken) {
+        retLines[retLines.length - 1] += line;
+      } else {
+        if (this.options.ignoreWhitespace) {
+          line = line.trim();
+        }
+
+        retLines.push(line);
+      }
+    }
+
+    return retLines;
+  };
+
+  function diffLines(oldStr, newStr, callback) {
+    return lineDiff.diff(oldStr, newStr, callback);
+  }
+  function diffTrimmedLines(oldStr, newStr, callback) {
+    var options = generateOptions(callback, {
+      ignoreWhitespace: true
+    });
+    return lineDiff.diff(oldStr, newStr, options);
+  }
+
+  var sentenceDiff = new Diff();
+
+  sentenceDiff.tokenize = function (value) {
+    return value.split(/(\S.+?[.!?])(?=\s+|$)/);
+  };
+
+  function diffSentences(oldStr, newStr, callback) {
+    return sentenceDiff.diff(oldStr, newStr, callback);
+  }
+
+  var cssDiff = new Diff();
+
+  cssDiff.tokenize = function (value) {
+    return value.split(/([{}:;,]|\s+)/);
+  };
+
+  function diffCss(oldStr, newStr, callback) {
+    return cssDiff.diff(oldStr, newStr, callback);
+  }
+
+  function _typeof(obj) {
+    "@babel/helpers - typeof";
+
+    if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") {
+      _typeof = function (obj) {
+        return typeof obj;
+      };
+    } else {
+      _typeof = function (obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+      };
+    }
+
+    return _typeof(obj);
+  }
+
+  function _defineProperty(obj, key, value) {
+    if (key in obj) {
+      Object.defineProperty(obj, key, {
+        value: value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    } else {
+      obj[key] = value;
+    }
+
+    return obj;
+  }
+
+  function ownKeys(object, enumerableOnly) {
+    var keys = Object.keys(object);
+
+    if (Object.getOwnPropertySymbols) {
+      var symbols = Object.getOwnPropertySymbols(object);
+      if (enumerableOnly) symbols = symbols.filter(function (sym) {
+        return Object.getOwnPropertyDescriptor(object, sym).enumerable;
+      });
+      keys.push.apply(keys, symbols);
+    }
+
+    return keys;
+  }
+
+  function _objectSpread2(target) {
+    for (var i = 1; i < arguments.length; i++) {
+      var source = arguments[i] != null ? arguments[i] : {};
+
+      if (i % 2) {
+        ownKeys(Object(source), true).forEach(function (key) {
+          _defineProperty(target, key, source[key]);
+        });
+      } else if (Object.getOwnPropertyDescriptors) {
+        Object.defineProperties(target, Object.getOwnPropertyDescriptors(source));
+      } else {
+        ownKeys(Object(source)).forEach(function (key) {
+          Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key));
+        });
+      }
+    }
+
+    return target;
+  }
+
+  function _toConsumableArray(arr) {
+    return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread();
+  }
+
+  function _arrayWithoutHoles(arr) {
+    if (Array.isArray(arr)) return _arrayLikeToArray(arr);
+  }
+
+  function _iterableToArray(iter) {
+    if (typeof Symbol !== "undefined" && Symbol.iterator in Object(iter)) return Array.from(iter);
+  }
+
+  function _unsupportedIterableToArray(o, minLen) {
+    if (!o) return;
+    if (typeof o === "string") return _arrayLikeToArray(o, minLen);
+    var n = Object.prototype.toString.call(o).slice(8, -1);
+    if (n === "Object" && o.constructor) n = o.constructor.name;
+    if (n === "Map" || n === "Set") return Array.from(o);
+    if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen);
+  }
+
+  function _arrayLikeToArray(arr, len) {
+    if (len == null || len > arr.length) len = arr.length;
+
+    for (var i = 0, arr2 = new Array(len); i < len; i++) arr2[i] = arr[i];
+
+    return arr2;
+  }
+
+  function _nonIterableSpread() {
+    throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+  }
+
+  var objectPrototypeToString = Object.prototype.toString;
+  var jsonDiff = new Diff(); // Discriminate between two lines of pretty-printed, serialized JSON where one of them has a
+  // dangling comma and the other doesn't. Turns out including the dangling comma yields the nicest output:
+
+  jsonDiff.useLongestToken = true;
+  jsonDiff.tokenize = lineDiff.tokenize;
+
+  jsonDiff.castInput = function (value) {
+    var _this$options = this.options,
+        undefinedReplacement = _this$options.undefinedReplacement,
+        _this$options$stringi = _this$options.stringifyReplacer,
+        stringifyReplacer = _this$options$stringi === void 0 ? function (k, v) {
+      return typeof v === 'undefined' ? undefinedReplacement : v;
+    } : _this$options$stringi;
+    return typeof value === 'string' ? value : JSON.stringify(canonicalize(value, null, null, stringifyReplacer), stringifyReplacer, '  ');
+  };
+
+  jsonDiff.equals = function (left, right) {
+    return Diff.prototype.equals.call(jsonDiff, left.replace(/,([\r\n])/g, '$1'), right.replace(/,([\r\n])/g, '$1'));
+  };
+
+  function diffJson(oldObj, newObj, options) {
+    return jsonDiff.diff(oldObj, newObj, options);
+  } // This function handles the presence of circular references by bailing out when encountering an
+  // object that is already on the "stack" of items being processed. Accepts an optional replacer
+
+  function canonicalize(obj, stack, replacementStack, replacer, key) {
+    stack = stack || [];
+    replacementStack = replacementStack || [];
+
+    if (replacer) {
+      obj = replacer(key, obj);
+    }
+
+    var i;
+
+    for (i = 0; i < stack.length; i += 1) {
+      if (stack[i] === obj) {
+        return replacementStack[i];
+      }
+    }
+
+    var canonicalizedObj;
+
+    if ('[object Array]' === objectPrototypeToString.call(obj)) {
+      stack.push(obj);
+      canonicalizedObj = new Array(obj.length);
+      replacementStack.push(canonicalizedObj);
+
+      for (i = 0; i < obj.length; i += 1) {
+        canonicalizedObj[i] = canonicalize(obj[i], stack, replacementStack, replacer, key);
+      }
+
+      stack.pop();
+      replacementStack.pop();
+      return canonicalizedObj;
+    }
+
+    if (obj && obj.toJSON) {
+      obj = obj.toJSON();
+    }
+
+    if (_typeof(obj) === 'object' && obj !== null) {
+      stack.push(obj);
+      canonicalizedObj = {};
+      replacementStack.push(canonicalizedObj);
+
+      var sortedKeys = [],
+          _key;
+
+      for (_key in obj) {
+        /* istanbul ignore else */
+        if (obj.hasOwnProperty(_key)) {
+          sortedKeys.push(_key);
+        }
+      }
+
+      sortedKeys.sort();
+
+      for (i = 0; i < sortedKeys.length; i += 1) {
+        _key = sortedKeys[i];
+        canonicalizedObj[_key] = canonicalize(obj[_key], stack, replacementStack, replacer, _key);
+      }
+
+      stack.pop();
+      replacementStack.pop();
+    } else {
+      canonicalizedObj = obj;
+    }
+
+    return canonicalizedObj;
+  }
+
+  var arrayDiff = new Diff();
+
+  arrayDiff.tokenize = function (value) {
+    return value.slice();
+  };
+
+  arrayDiff.join = arrayDiff.removeEmpty = function (value) {
+    return value;
+  };
+
+  function diffArrays(oldArr, newArr, callback) {
+    return arrayDiff.diff(oldArr, newArr, callback);
+  }
+
+  function parsePatch(uniDiff) {
+    var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+    var diffstr = uniDiff.split(/\r\n|[\n\v\f\r\x85]/),
+        delimiters = uniDiff.match(/\r\n|[\n\v\f\r\x85]/g) || [],
+        list = [],
+        i = 0;
+
+    function parseIndex() {
+      var index = {};
+      list.push(index); // Parse diff metadata
+
+      while (i < diffstr.length) {
+        var line = diffstr[i]; // File header found, end parsing diff metadata
+
+        if (/^(\-\-\-|\+\+\+|@@)\s/.test(line)) {
+          break;
+        } // Diff index
+
+
+        var headerMatch = /^(?:Index:|diff(?: -r \w+)+)\s+/.exec(line);
+
+        if (headerMatch) {
+          index.index = line.substring(headerMatch[0].length).trim();
+        }
+
+        i++;
+      } // Parse file headers if they are defined. Unified diff requires them, but
+      // there's no technical issues to have an isolated hunk without file header
+
+
+      parseFileHeader(index);
+      parseFileHeader(index); // Parse hunks
+
+      index.hunks = [];
+
+      while (i < diffstr.length) {
+        var _line = diffstr[i];
+
+        if (/^(Index:|diff|\-\-\-|\+\+\+)\s/.test(_line)) {
+          break;
+        } else if (/^@@/.test(_line)) {
+          index.hunks.push(parseHunk());
+        } else if (_line && options.strict) {
+          // Ignore unexpected content unless in strict mode
+          throw new Error('Unknown line ' + (i + 1) + ' ' + JSON.stringify(_line));
+        } else {
+          i++;
+        }
+      }
+    } // Parses the --- and +++ headers, if none are found, no lines
+    // are consumed.
+
+
+    function parseFileHeader(index) {
+      var fileHeaderMatch = /^(---|\+\+\+)\s+/.exec(diffstr[i]);
+
+      if (fileHeaderMatch) {
+        var keyPrefix = fileHeaderMatch[1] === '---' ? 'old' : 'new';
+        var data = diffstr[i].substring(3).trim().split('\t', 2);
+        var fileName = data[0].replace(/\\\\/g, '\\');
+
+        if (fileName.startsWith('"') && fileName.endsWith('"')) {
+          fileName = fileName.substr(1, fileName.length - 2);
+        }
+
+        index[keyPrefix + 'FileName'] = fileName;
+        index[keyPrefix + 'Header'] = (data[1] || '').trim();
+        i++;
+      }
+    } // Parses a hunk
+    // This assumes that we are at the start of a hunk.
+
+
+    function parseHunk() {
+      var chunkHeaderIndex = i,
+          chunkHeaderLine = diffstr[i++],
+          chunkHeader = chunkHeaderLine.split(/@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/);
+      var hunk = {
+        oldStart: +chunkHeader[1],
+        oldLines: typeof chunkHeader[2] === 'undefined' ? 1 : +chunkHeader[2],
+        newStart: +chunkHeader[3],
+        newLines: typeof chunkHeader[4] === 'undefined' ? 1 : +chunkHeader[4],
+        lines: [],
+        linedelimiters: []
+      }; // Unified Diff Format quirk: If the chunk size is 0,
+      // the first number is one lower than one would expect.
+      // https://www.artima.com/weblogs/viewpost.jsp?thread=164293
+
+      if (hunk.oldLines === 0) {
+        hunk.oldStart += 1;
+      }
+
+      if (hunk.newLines === 0) {
+        hunk.newStart += 1;
+      }
+
+      var addCount = 0,
+          removeCount = 0;
+
+      for (; i < diffstr.length; i++) {
+        // Lines starting with '---' could be mistaken for the "remove line" operation
+        // But they could be the header for the next file. Therefore prune such cases out.
+        if (diffstr[i].indexOf('--- ') === 0 && i + 2 < diffstr.length && diffstr[i + 1].indexOf('+++ ') === 0 && diffstr[i + 2].indexOf('@@') === 0) {
+          break;
+        }
+
+        var operation = diffstr[i].length == 0 && i != diffstr.length - 1 ? ' ' : diffstr[i][0];
+
+        if (operation === '+' || operation === '-' || operation === ' ' || operation === '\\') {
+          hunk.lines.push(diffstr[i]);
+          hunk.linedelimiters.push(delimiters[i] || '\n');
+
+          if (operation === '+') {
+            addCount++;
+          } else if (operation === '-') {
+            removeCount++;
+          } else if (operation === ' ') {
+            addCount++;
+            removeCount++;
+          }
+        } else {
+          break;
+        }
+      } // Handle the empty block count case
+
+
+      if (!addCount && hunk.newLines === 1) {
+        hunk.newLines = 0;
+      }
+
+      if (!removeCount && hunk.oldLines === 1) {
+        hunk.oldLines = 0;
+      } // Perform optional sanity checking
+
+
+      if (options.strict) {
+        if (addCount !== hunk.newLines) {
+          throw new Error('Added line count did not match for hunk at line ' + (chunkHeaderIndex + 1));
+        }
+
+        if (removeCount !== hunk.oldLines) {
+          throw new Error('Removed line count did not match for hunk at line ' + (chunkHeaderIndex + 1));
+        }
+      }
+
+      return hunk;
+    }
+
+    while (i < diffstr.length) {
+      parseIndex();
+    }
+
+    return list;
+  }
+
+  // Iterator that traverses in the range of [min, max], stepping
+  // by distance from a given start position. I.e. for [0, 4], with
+  // start of 2, this will iterate 2, 3, 1, 4, 0.
+  function distanceIterator (start, minLine, maxLine) {
+    var wantForward = true,
+        backwardExhausted = false,
+        forwardExhausted = false,
+        localOffset = 1;
+    return function iterator() {
+      if (wantForward && !forwardExhausted) {
+        if (backwardExhausted) {
+          localOffset++;
+        } else {
+          wantForward = false;
+        } // Check if trying to fit beyond text length, and if not, check it fits
+        // after offset location (or desired location on first iteration)
+
+
+        if (start + localOffset <= maxLine) {
+          return localOffset;
+        }
+
+        forwardExhausted = true;
+      }
+
+      if (!backwardExhausted) {
+        if (!forwardExhausted) {
+          wantForward = true;
+        } // Check if trying to fit before text beginning, and if not, check it fits
+        // before offset location
+
+
+        if (minLine <= start - localOffset) {
+          return -localOffset++;
+        }
+
+        backwardExhausted = true;
+        return iterator();
+      } // We tried to fit hunk before text beginning and beyond text length, then
+      // hunk can't fit on the text. Return undefined
+
+    };
+  }
+
+  function applyPatch(source, uniDiff) {
+    var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+
+    if (typeof uniDiff === 'string') {
+      uniDiff = parsePatch(uniDiff);
+    }
+
+    if (Array.isArray(uniDiff)) {
+      if (uniDiff.length > 1) {
+        throw new Error('applyPatch only works with a single input.');
+      }
+
+      uniDiff = uniDiff[0];
+    } // Apply the diff to the input
+
+
+    var lines = source.split(/\r\n|[\n\v\f\r\x85]/),
+        delimiters = source.match(/\r\n|[\n\v\f\r\x85]/g) || [],
+        hunks = uniDiff.hunks,
+        compareLine = options.compareLine || function (lineNumber, line, operation, patchContent) {
+      return line === patchContent;
+    },
+        errorCount = 0,
+        fuzzFactor = options.fuzzFactor || 0,
+        minLine = 0,
+        offset = 0,
+        removeEOFNL,
+        addEOFNL;
+    /**
+     * Checks if the hunk exactly fits on the provided location
+     */
+
+
+    function hunkFits(hunk, toPos) {
+      for (var j = 0; j < hunk.lines.length; j++) {
+        var line = hunk.lines[j],
+            operation = line.length > 0 ? line[0] : ' ',
+            content = line.length > 0 ? line.substr(1) : line;
+
+        if (operation === ' ' || operation === '-') {
+          // Context sanity check
+          if (!compareLine(toPos + 1, lines[toPos], operation, content)) {
+            errorCount++;
+
+            if (errorCount > fuzzFactor) {
+              return false;
+            }
+          }
+
+          toPos++;
+        }
+      }
+
+      return true;
+    } // Search best fit offsets for each hunk based on the previous ones
+
+
+    for (var i = 0; i < hunks.length; i++) {
+      var hunk = hunks[i],
+          maxLine = lines.length - hunk.oldLines,
+          localOffset = 0,
+          toPos = offset + hunk.oldStart - 1;
+      var iterator = distanceIterator(toPos, minLine, maxLine);
+
+      for (; localOffset !== undefined; localOffset = iterator()) {
+        if (hunkFits(hunk, toPos + localOffset)) {
+          hunk.offset = offset += localOffset;
+          break;
+        }
+      }
+
+      if (localOffset === undefined) {
+        return false;
+      } // Set lower text limit to end of the current hunk, so next ones don't try
+      // to fit over already patched text
+
+
+      minLine = hunk.offset + hunk.oldStart + hunk.oldLines;
+    } // Apply patch hunks
+
+
+    var diffOffset = 0;
+
+    for (var _i = 0; _i < hunks.length; _i++) {
+      var _hunk = hunks[_i],
+          _toPos = _hunk.oldStart + _hunk.offset + diffOffset - 1;
+
+      diffOffset += _hunk.newLines - _hunk.oldLines;
+
+      for (var j = 0; j < _hunk.lines.length; j++) {
+        var line = _hunk.lines[j],
+            operation = line.length > 0 ? line[0] : ' ',
+            content = line.length > 0 ? line.substr(1) : line,
+            delimiter = _hunk.linedelimiters && _hunk.linedelimiters[j] || '\n';
+
+        if (operation === ' ') {
+          _toPos++;
+        } else if (operation === '-') {
+          lines.splice(_toPos, 1);
+          delimiters.splice(_toPos, 1);
+          /* istanbul ignore else */
+        } else if (operation === '+') {
+          lines.splice(_toPos, 0, content);
+          delimiters.splice(_toPos, 0, delimiter);
+          _toPos++;
+        } else if (operation === '\\') {
+          var previousOperation = _hunk.lines[j - 1] ? _hunk.lines[j - 1][0] : null;
+
+          if (previousOperation === '+') {
+            removeEOFNL = true;
+          } else if (previousOperation === '-') {
+            addEOFNL = true;
+          }
+        }
+      }
+    } // Handle EOFNL insertion/removal
+
+
+    if (removeEOFNL) {
+      while (!lines[lines.length - 1]) {
+        lines.pop();
+        delimiters.pop();
+      }
+    } else if (addEOFNL) {
+      lines.push('');
+      delimiters.push('\n');
+    }
+
+    for (var _k = 0; _k < lines.length - 1; _k++) {
+      lines[_k] = lines[_k] + delimiters[_k];
+    }
+
+    return lines.join('');
+  } // Wrapper that supports multiple file patches via callbacks.
+
+  function applyPatches(uniDiff, options) {
+    if (typeof uniDiff === 'string') {
+      uniDiff = parsePatch(uniDiff);
+    }
+
+    var currentIndex = 0;
+
+    function processIndex() {
+      var index = uniDiff[currentIndex++];
+
+      if (!index) {
+        return options.complete();
+      }
+
+      options.loadFile(index, function (err, data) {
+        if (err) {
+          return options.complete(err);
+        }
+
+        var updatedContent = applyPatch(data, index, options);
+        options.patched(index, updatedContent, function (err) {
+          if (err) {
+            return options.complete(err);
+          }
+
+          processIndex();
+        });
+      });
+    }
+
+    processIndex();
+  }
+
+  function structuredPatch(oldFileName, newFileName, oldStr, newStr, oldHeader, newHeader, options) {
+    if (!options) {
+      options = {};
+    }
+
+    if (typeof options.context === 'undefined') {
+      options.context = 4;
+    }
+
+    var diff = diffLines(oldStr, newStr, options);
+
+    if (!diff) {
+      return;
+    }
+
+    diff.push({
+      value: '',
+      lines: []
+    }); // Append an empty value to make cleanup easier
+
+    function contextLines(lines) {
+      return lines.map(function (entry) {
+        return ' ' + entry;
+      });
+    }
+
+    var hunks = [];
+    var oldRangeStart = 0,
+        newRangeStart = 0,
+        curRange = [],
+        oldLine = 1,
+        newLine = 1;
+
+    var _loop = function _loop(i) {
+      var current = diff[i],
+          lines = current.lines || current.value.replace(/\n$/, '').split('\n');
+      current.lines = lines;
+
+      if (current.added || current.removed) {
+        var _curRange;
+
+        // If we have previous context, start with that
+        if (!oldRangeStart) {
+          var prev = diff[i - 1];
+          oldRangeStart = oldLine;
+          newRangeStart = newLine;
+
+          if (prev) {
+            curRange = options.context > 0 ? contextLines(prev.lines.slice(-options.context)) : [];
+            oldRangeStart -= curRange.length;
+            newRangeStart -= curRange.length;
+          }
+        } // Output our changes
+
+
+        (_curRange = curRange).push.apply(_curRange, _toConsumableArray(lines.map(function (entry) {
+          return (current.added ? '+' : '-') + entry;
+        }))); // Track the updated file position
+
+
+        if (current.added) {
+          newLine += lines.length;
+        } else {
+          oldLine += lines.length;
+        }
+      } else {
+        // Identical context lines. Track line changes
+        if (oldRangeStart) {
+          // Close out any changes that have been output (or join overlapping)
+          if (lines.length <= options.context * 2 && i < diff.length - 2) {
+            var _curRange2;
+
+            // Overlapping
+            (_curRange2 = curRange).push.apply(_curRange2, _toConsumableArray(contextLines(lines)));
+          } else {
+            var _curRange3;
+
+            // end the range and output
+            var contextSize = Math.min(lines.length, options.context);
+
+            (_curRange3 = curRange).push.apply(_curRange3, _toConsumableArray(contextLines(lines.slice(0, contextSize))));
+
+            var hunk = {
+              oldStart: oldRangeStart,
+              oldLines: oldLine - oldRangeStart + contextSize,
+              newStart: newRangeStart,
+              newLines: newLine - newRangeStart + contextSize,
+              lines: curRange
+            };
+
+            if (i >= diff.length - 2 && lines.length <= options.context) {
+              // EOF is inside this hunk
+              var oldEOFNewline = /\n$/.test(oldStr);
+              var newEOFNewline = /\n$/.test(newStr);
+              var noNlBeforeAdds = lines.length == 0 && curRange.length > hunk.oldLines;
+
+              if (!oldEOFNewline && noNlBeforeAdds && oldStr.length > 0) {
+                // special case: old has no eol and no trailing context; no-nl can end up before adds
+                // however, if the old file is empty, do not output the no-nl line
+                curRange.splice(hunk.oldLines, 0, '\\ No newline at end of file');
+              }
+
+              if (!oldEOFNewline && !noNlBeforeAdds || !newEOFNewline) {
+                curRange.push('\\ No newline at end of file');
+              }
+            }
+
+            hunks.push(hunk);
+            oldRangeStart = 0;
+            newRangeStart = 0;
+            curRange = [];
+          }
+        }
+
+        oldLine += lines.length;
+        newLine += lines.length;
+      }
+    };
+
+    for (var i = 0; i < diff.length; i++) {
+      _loop(i);
+    }
+
+    return {
+      oldFileName: oldFileName,
+      newFileName: newFileName,
+      oldHeader: oldHeader,
+      newHeader: newHeader,
+      hunks: hunks
+    };
+  }
+  function formatPatch(diff) {
+    if (Array.isArray(diff)) {
+      return diff.map(formatPatch).join('\n');
+    }
+
+    var ret = [];
+
+    if (diff.oldFileName == diff.newFileName) {
+      ret.push('Index: ' + diff.oldFileName);
+    }
+
+    ret.push('===================================================================');
+    ret.push('--- ' + diff.oldFileName + (typeof diff.oldHeader === 'undefined' ? '' : '\t' + diff.oldHeader));
+    ret.push('+++ ' + diff.newFileName + (typeof diff.newHeader === 'undefined' ? '' : '\t' + diff.newHeader));
+
+    for (var i = 0; i < diff.hunks.length; i++) {
+      var hunk = diff.hunks[i]; // Unified Diff Format quirk: If the chunk size is 0,
+      // the first number is one lower than one would expect.
+      // https://www.artima.com/weblogs/viewpost.jsp?thread=164293
+
+      if (hunk.oldLines === 0) {
+        hunk.oldStart -= 1;
+      }
+
+      if (hunk.newLines === 0) {
+        hunk.newStart -= 1;
+      }
+
+      ret.push('@@ -' + hunk.oldStart + ',' + hunk.oldLines + ' +' + hunk.newStart + ',' + hunk.newLines + ' @@');
+      ret.push.apply(ret, hunk.lines);
+    }
+
+    return ret.join('\n') + '\n';
+  }
+  function createTwoFilesPatch(oldFileName, newFileName, oldStr, newStr, oldHeader, newHeader, options) {
+    return formatPatch(structuredPatch(oldFileName, newFileName, oldStr, newStr, oldHeader, newHeader, options));
+  }
+  function createPatch(fileName, oldStr, newStr, oldHeader, newHeader, options) {
+    return createTwoFilesPatch(fileName, fileName, oldStr, newStr, oldHeader, newHeader, options);
+  }
+
+  function arrayEqual(a, b) {
+    if (a.length !== b.length) {
+      return false;
+    }
+
+    return arrayStartsWith(a, b);
+  }
+  function arrayStartsWith(array, start) {
+    if (start.length > array.length) {
+      return false;
+    }
+
+    for (var i = 0; i < start.length; i++) {
+      if (start[i] !== array[i]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  function calcLineCount(hunk) {
+    var _calcOldNewLineCount = calcOldNewLineCount(hunk.lines),
+        oldLines = _calcOldNewLineCount.oldLines,
+        newLines = _calcOldNewLineCount.newLines;
+
+    if (oldLines !== undefined) {
+      hunk.oldLines = oldLines;
+    } else {
+      delete hunk.oldLines;
+    }
+
+    if (newLines !== undefined) {
+      hunk.newLines = newLines;
+    } else {
+      delete hunk.newLines;
+    }
+  }
+  function merge(mine, theirs, base) {
+    mine = loadPatch(mine, base);
+    theirs = loadPatch(theirs, base);
+    var ret = {}; // For index we just let it pass through as it doesn't have any necessary meaning.
+    // Leaving sanity checks on this to the API consumer that may know more about the
+    // meaning in their own context.
+
+    if (mine.index || theirs.index) {
+      ret.index = mine.index || theirs.index;
+    }
+
+    if (mine.newFileName || theirs.newFileName) {
+      if (!fileNameChanged(mine)) {
+        // No header or no change in ours, use theirs (and ours if theirs does not exist)
+        ret.oldFileName = theirs.oldFileName || mine.oldFileName;
+        ret.newFileName = theirs.newFileName || mine.newFileName;
+        ret.oldHeader = theirs.oldHeader || mine.oldHeader;
+        ret.newHeader = theirs.newHeader || mine.newHeader;
+      } else if (!fileNameChanged(theirs)) {
+        // No header or no change in theirs, use ours
+        ret.oldFileName = mine.oldFileName;
+        ret.newFileName = mine.newFileName;
+        ret.oldHeader = mine.oldHeader;
+        ret.newHeader = mine.newHeader;
+      } else {
+        // Both changed... figure it out
+        ret.oldFileName = selectField(ret, mine.oldFileName, theirs.oldFileName);
+        ret.newFileName = selectField(ret, mine.newFileName, theirs.newFileName);
+        ret.oldHeader = selectField(ret, mine.oldHeader, theirs.oldHeader);
+        ret.newHeader = selectField(ret, mine.newHeader, theirs.newHeader);
+      }
+    }
+
+    ret.hunks = [];
+    var mineIndex = 0,
+        theirsIndex = 0,
+        mineOffset = 0,
+        theirsOffset = 0;
+
+    while (mineIndex < mine.hunks.length || theirsIndex < theirs.hunks.length) {
+      var mineCurrent = mine.hunks[mineIndex] || {
+        oldStart: Infinity
+      },
+          theirsCurrent = theirs.hunks[theirsIndex] || {
+        oldStart: Infinity
+      };
+
+      if (hunkBefore(mineCurrent, theirsCurrent)) {
+        // This patch does not overlap with any of the others, yay.
+        ret.hunks.push(cloneHunk(mineCurrent, mineOffset));
+        mineIndex++;
+        theirsOffset += mineCurrent.newLines - mineCurrent.oldLines;
+      } else if (hunkBefore(theirsCurrent, mineCurrent)) {
+        // This patch does not overlap with any of the others, yay.
+        ret.hunks.push(cloneHunk(theirsCurrent, theirsOffset));
+        theirsIndex++;
+        mineOffset += theirsCurrent.newLines - theirsCurrent.oldLines;
+      } else {
+        // Overlap, merge as best we can
+        var mergedHunk = {
+          oldStart: Math.min(mineCurrent.oldStart, theirsCurrent.oldStart),
+          oldLines: 0,
+          newStart: Math.min(mineCurrent.newStart + mineOffset, theirsCurrent.oldStart + theirsOffset),
+          newLines: 0,
+          lines: []
+        };
+        mergeLines(mergedHunk, mineCurrent.oldStart, mineCurrent.lines, theirsCurrent.oldStart, theirsCurrent.lines);
+        theirsIndex++;
+        mineIndex++;
+        ret.hunks.push(mergedHunk);
+      }
+    }
+
+    return ret;
+  }
+
+  function loadPatch(param, base) {
+    if (typeof param === 'string') {
+      if (/^@@/m.test(param) || /^Index:/m.test(param)) {
+        return parsePatch(param)[0];
+      }
+
+      if (!base) {
+        throw new Error('Must provide a base reference or pass in a patch');
+      }
+
+      return structuredPatch(undefined, undefined, base, param);
+    }
+
+    return param;
+  }
+
+  function fileNameChanged(patch) {
+    return patch.newFileName && patch.newFileName !== patch.oldFileName;
+  }
+
+  function selectField(index, mine, theirs) {
+    if (mine === theirs) {
+      return mine;
+    } else {
+      index.conflict = true;
+      return {
+        mine: mine,
+        theirs: theirs
+      };
+    }
+  }
+
+  function hunkBefore(test, check) {
+    return test.oldStart < check.oldStart && test.oldStart + test.oldLines < check.oldStart;
+  }
+
+  function cloneHunk(hunk, offset) {
+    return {
+      oldStart: hunk.oldStart,
+      oldLines: hunk.oldLines,
+      newStart: hunk.newStart + offset,
+      newLines: hunk.newLines,
+      lines: hunk.lines
+    };
+  }
+
+  function mergeLines(hunk, mineOffset, mineLines, theirOffset, theirLines) {
+    // This will generally result in a conflicted hunk, but there are cases where the context
+    // is the only overlap where we can successfully merge the content here.
+    var mine = {
+      offset: mineOffset,
+      lines: mineLines,
+      index: 0
+    },
+        their = {
+      offset: theirOffset,
+      lines: theirLines,
+      index: 0
+    }; // Handle any leading content
+
+    insertLeading(hunk, mine, their);
+    insertLeading(hunk, their, mine); // Now in the overlap content. Scan through and select the best changes from each.
+
+    while (mine.index < mine.lines.length && their.index < their.lines.length) {
+      var mineCurrent = mine.lines[mine.index],
+          theirCurrent = their.lines[their.index];
+
+      if ((mineCurrent[0] === '-' || mineCurrent[0] === '+') && (theirCurrent[0] === '-' || theirCurrent[0] === '+')) {
+        // Both modified ...
+        mutualChange(hunk, mine, their);
+      } else if (mineCurrent[0] === '+' && theirCurrent[0] === ' ') {
+        var _hunk$lines;
+
+        // Mine inserted
+        (_hunk$lines = hunk.lines).push.apply(_hunk$lines, _toConsumableArray(collectChange(mine)));
+      } else if (theirCurrent[0] === '+' && mineCurrent[0] === ' ') {
+        var _hunk$lines2;
+
+        // Theirs inserted
+        (_hunk$lines2 = hunk.lines).push.apply(_hunk$lines2, _toConsumableArray(collectChange(their)));
+      } else if (mineCurrent[0] === '-' && theirCurrent[0] === ' ') {
+        // Mine removed or edited
+        removal(hunk, mine, their);
+      } else if (theirCurrent[0] === '-' && mineCurrent[0] === ' ') {
+        // Their removed or edited
+        removal(hunk, their, mine, true);
+      } else if (mineCurrent === theirCurrent) {
+        // Context identity
+        hunk.lines.push(mineCurrent);
+        mine.index++;
+        their.index++;
+      } else {
+        // Context mismatch
+        conflict(hunk, collectChange(mine), collectChange(their));
+      }
+    } // Now push anything that may be remaining
+
+
+    insertTrailing(hunk, mine);
+    insertTrailing(hunk, their);
+    calcLineCount(hunk);
+  }
+
+  function mutualChange(hunk, mine, their) {
+    var myChanges = collectChange(mine),
+        theirChanges = collectChange(their);
+
+    if (allRemoves(myChanges) && allRemoves(theirChanges)) {
+      // Special case for remove changes that are supersets of one another
+      if (arrayStartsWith(myChanges, theirChanges) && skipRemoveSuperset(their, myChanges, myChanges.length - theirChanges.length)) {
+        var _hunk$lines3;
+
+        (_hunk$lines3 = hunk.lines).push.apply(_hunk$lines3, _toConsumableArray(myChanges));
+
+        return;
+      } else if (arrayStartsWith(theirChanges, myChanges) && skipRemoveSuperset(mine, theirChanges, theirChanges.length - myChanges.length)) {
+        var _hunk$lines4;
+
+        (_hunk$lines4 = hunk.lines).push.apply(_hunk$lines4, _toConsumableArray(theirChanges));
+
+        return;
+      }
+    } else if (arrayEqual(myChanges, theirChanges)) {
+      var _hunk$lines5;
+
+      (_hunk$lines5 = hunk.lines).push.apply(_hunk$lines5, _toConsumableArray(myChanges));
+
+      return;
+    }
+
+    conflict(hunk, myChanges, theirChanges);
+  }
+
+  function removal(hunk, mine, their, swap) {
+    var myChanges = collectChange(mine),
+        theirChanges = collectContext(their, myChanges);
+
+    if (theirChanges.merged) {
+      var _hunk$lines6;
+
+      (_hunk$lines6 = hunk.lines).push.apply(_hunk$lines6, _toConsumableArray(theirChanges.merged));
+    } else {
+      conflict(hunk, swap ? theirChanges : myChanges, swap ? myChanges : theirChanges);
+    }
+  }
+
+  function conflict(hunk, mine, their) {
+    hunk.conflict = true;
+    hunk.lines.push({
+      conflict: true,
+      mine: mine,
+      theirs: their
+    });
+  }
+
+  function insertLeading(hunk, insert, their) {
+    while (insert.offset < their.offset && insert.index < insert.lines.length) {
+      var line = insert.lines[insert.index++];
+      hunk.lines.push(line);
+      insert.offset++;
+    }
+  }
+
+  function insertTrailing(hunk, insert) {
+    while (insert.index < insert.lines.length) {
+      var line = insert.lines[insert.index++];
+      hunk.lines.push(line);
+    }
+  }
+
+  function collectChange(state) {
+    var ret = [],
+        operation = state.lines[state.index][0];
+
+    while (state.index < state.lines.length) {
+      var line = state.lines[state.index]; // Group additions that are immediately after subtractions and treat them as one "atomic" modify change.
+
+      if (operation === '-' && line[0] === '+') {
+        operation = '+';
+      }
+
+      if (operation === line[0]) {
+        ret.push(line);
+        state.index++;
+      } else {
+        break;
+      }
+    }
+
+    return ret;
+  }
+
+  function collectContext(state, matchChanges) {
+    var changes = [],
+        merged = [],
+        matchIndex = 0,
+        contextChanges = false,
+        conflicted = false;
+
+    while (matchIndex < matchChanges.length && state.index < state.lines.length) {
+      var change = state.lines[state.index],
+          match = matchChanges[matchIndex]; // Once we've hit our add, then we are done
+
+      if (match[0] === '+') {
+        break;
+      }
+
+      contextChanges = contextChanges || change[0] !== ' ';
+      merged.push(match);
+      matchIndex++; // Consume any additions in the other block as a conflict to attempt
+      // to pull in the remaining context after this
+
+      if (change[0] === '+') {
+        conflicted = true;
+
+        while (change[0] === '+') {
+          changes.push(change);
+          change = state.lines[++state.index];
+        }
+      }
+
+      if (match.substr(1) === change.substr(1)) {
+        changes.push(change);
+        state.index++;
+      } else {
+        conflicted = true;
+      }
+    }
+
+    if ((matchChanges[matchIndex] || '')[0] === '+' && contextChanges) {
+      conflicted = true;
+    }
+
+    if (conflicted) {
+      return changes;
+    }
+
+    while (matchIndex < matchChanges.length) {
+      merged.push(matchChanges[matchIndex++]);
+    }
+
+    return {
+      merged: merged,
+      changes: changes
+    };
+  }
+
+  function allRemoves(changes) {
+    return changes.reduce(function (prev, change) {
+      return prev && change[0] === '-';
+    }, true);
+  }
+
+  function skipRemoveSuperset(state, removeChanges, delta) {
+    for (var i = 0; i < delta; i++) {
+      var changeContent = removeChanges[removeChanges.length - delta + i].substr(1);
+
+      if (state.lines[state.index + i] !== ' ' + changeContent) {
+        return false;
+      }
+    }
+
+    state.index += delta;
+    return true;
+  }
+
+  function calcOldNewLineCount(lines) {
+    var oldLines = 0;
+    var newLines = 0;
+    lines.forEach(function (line) {
+      if (typeof line !== 'string') {
+        var myCount = calcOldNewLineCount(line.mine);
+        var theirCount = calcOldNewLineCount(line.theirs);
+
+        if (oldLines !== undefined) {
+          if (myCount.oldLines === theirCount.oldLines) {
+            oldLines += myCount.oldLines;
+          } else {
+            oldLines = undefined;
+          }
+        }
+
+        if (newLines !== undefined) {
+          if (myCount.newLines === theirCount.newLines) {
+            newLines += myCount.newLines;
+          } else {
+            newLines = undefined;
+          }
+        }
+      } else {
+        if (newLines !== undefined && (line[0] === '+' || line[0] === ' ')) {
+          newLines++;
+        }
+
+        if (oldLines !== undefined && (line[0] === '-' || line[0] === ' ')) {
+          oldLines++;
+        }
+      }
+    });
+    return {
+      oldLines: oldLines,
+      newLines: newLines
+    };
+  }
+
+  function reversePatch(structuredPatch) {
+    if (Array.isArray(structuredPatch)) {
+      return structuredPatch.map(reversePatch).reverse();
+    }
+
+    return _objectSpread2(_objectSpread2({}, structuredPatch), {}, {
+      oldFileName: structuredPatch.newFileName,
+      oldHeader: structuredPatch.newHeader,
+      newFileName: structuredPatch.oldFileName,
+      newHeader: structuredPatch.oldHeader,
+      hunks: structuredPatch.hunks.map(function (hunk) {
+        return {
+          oldLines: hunk.newLines,
+          oldStart: hunk.newStart,
+          newLines: hunk.oldLines,
+          newStart: hunk.oldStart,
+          linedelimiters: hunk.linedelimiters,
+          lines: hunk.lines.map(function (l) {
+            if (l.startsWith('-')) {
+              return "+".concat(l.slice(1));
+            }
+
+            if (l.startsWith('+')) {
+              return "-".concat(l.slice(1));
+            }
+
+            return l;
+          })
+        };
+      })
+    });
+  }
+
+  // See: http://code.google.com/p/google-diff-match-patch/wiki/API
+  function convertChangesToDMP(changes) {
+    var ret = [],
+        change,
+        operation;
+
+    for (var i = 0; i < changes.length; i++) {
+      change = changes[i];
+
+      if (change.added) {
+        operation = 1;
+      } else if (change.removed) {
+        operation = -1;
+      } else {
+        operation = 0;
+      }
+
+      ret.push([operation, change.value]);
+    }
+
+    return ret;
+  }
+
+  function convertChangesToXML(changes) {
+    var ret = [];
+
+    for (var i = 0; i < changes.length; i++) {
+      var change = changes[i];
+
+      if (change.added) {
+        ret.push('<ins>');
+      } else if (change.removed) {
+        ret.push('<del>');
+      }
+
+      ret.push(escapeHTML(change.value));
+
+      if (change.added) {
+        ret.push('</ins>');
+      } else if (change.removed) {
+        ret.push('</del>');
+      }
+    }
+
+    return ret.join('');
+  }
+
+  function escapeHTML(s) {
+    var n = s;
+    n = n.replace(/&/g, '&amp;');
+    n = n.replace(/</g, '&lt;');
+    n = n.replace(/>/g, '&gt;');
+    n = n.replace(/"/g, '&quot;');
+    return n;
+  }
+
+  exports.Diff = Diff;
+  exports.applyPatch = applyPatch;
+  exports.applyPatches = applyPatches;
+  exports.canonicalize = canonicalize;
+  exports.convertChangesToDMP = convertChangesToDMP;
+  exports.convertChangesToXML = convertChangesToXML;
+  exports.createPatch = createPatch;
+  exports.createTwoFilesPatch = createTwoFilesPatch;
+  exports.diffArrays = diffArrays;
+  exports.diffChars = diffChars;
+  exports.diffCss = diffCss;
+  exports.diffJson = diffJson;
+  exports.diffLines = diffLines;
+  exports.diffSentences = diffSentences;
+  exports.diffTrimmedLines = diffTrimmedLines;
+  exports.diffWords = diffWords;
+  exports.diffWordsWithSpace = diffWordsWithSpace;
+  exports.formatPatch = formatPatch;
+  exports.merge = merge;
+  exports.parsePatch = parsePatch;
+  exports.reversePatch = reversePatch;
+  exports.structuredPatch = structuredPatch;
+
+  Object.defineProperty(exports, '__esModule', { value: true });
+
+})));
+
+</script>
+<script>
+(function(){
+  'use strict';
+
+  var SENTENCE_TERMINATORS = ['。', '！', '？', '；'];
+
+  // 段落內硬換行合併的行數上限：真實散文因 PDF 頁寬被硬換行拆開，通常
+  // 2～3 行內就會遇到句尾標點；連續超過此門檻仍無標點，多半是表格或
+  // 清單被逐行抽取的結果，強制切出以避免合併成單一超長句子（Type D）。
+  var HARD_WRAP_MERGE_LIMIT = 4;
+
+  // 分頁標記：Day2 轉檔工具自行插入的 --- 第 N 頁 --- 分隔線、PDF 原生頁尾
+  // Page X of Y、以及附件常見的「第 N 頁 共 M 頁」，皆為排版產物而非文件內容，
+  // 換版時絕對頁碼容易位移，若不先濾除會在序列比對中造成大量假差異。
+  var PAGE_MARKER_LINE = [
+    /^-{2,}\s*第\s*\d+\s*頁\s*-{2,}$/,
+    /^Page\s+\d+\s+of\s+\d+$/i,
+    /^第\s*\d+\s*頁\s*[,，、]?\s*共\s*\d+\s*頁$/
+  ];
+  var PAGE_MARKER_INLINE = [
+    /-{2,}\s*第\s*\d+\s*頁\s*-{2,}/g,
+    /Page\s+\d+\s+of\s+\d+/gi,
+    /第\s*\d+\s*頁\s*[,，、]?\s*共\s*\d+\s*頁/g
+  ];
+
+  function stripPageMarkers(lines){
+    return lines
+      .filter(function(l){
+        return !PAGE_MARKER_LINE.some(function(re){ return re.test(l); });
+      })
+      .map(function(l){
+        PAGE_MARKER_INLINE.forEach(function(re){ l = l.replace(re, ''); });
+        return l.trim();
+      })
+      .filter(Boolean);
+  }
+
+  // 比對用正規化：只用於判斷兩句是否「內容相同」，不影響畫面顯示的原始文字。
+  // 處理 PDF 抽字常見的全形/半形不一致、中文字間插入的多餘空白、標點前後空白。
+  function normalizeForCompare(s){
+    return String(s)
+      .normalize('NFKC')
+      .replace(/([一-鿿])\s+/g, '$1')
+      .replace(/\s+(?=[一-鿿])/g, '')
+      .replace(/\s*([()（）,，:：;；。、！？])\s*/g, '$1')
+      .replace(/[　\s]+/g, ' ')
+      .trim();
+  }
+
+  function hasMeaningfulContent(s){
+    return /[一-鿿A-Za-z0-9]/.test(s);
+  }
+
+  function bigramMap(str){
+    var m = {};
+    for (var i = 0; i < str.length - 1; i++){
+      var bg = str.substr(i, 2);
+      m[bg] = (m[bg] || 0) + 1;
+    }
+    return m;
+  }
+
+  // 以字元 bigram 的 Dice 係數估計兩句相似度，用來判斷 removed/added 是否
+  // 值得配對成「修改」；避免序列比對把毫不相關的兩句硬湊成一組修改。
+  function sentenceSimilarity(a, b){
+    var na = normalizeForCompare(a);
+    var nb = normalizeForCompare(b);
+    if (na === nb) return 1;
+    if (na.length < 2 || nb.length < 2) return 0;
+    var A = bigramMap(na), B = bigramMap(nb);
+    var inter = 0;
+    Object.keys(A).forEach(function(k){
+      if (B[k]) inter += Math.min(A[k], B[k]);
+    });
+    var total = (na.length - 1) + (nb.length - 1);
+    return total ? (2 * inter / total) : 0;
+  }
+
+  var SIMILARITY_THRESHOLD = 0.35;
+
+  function splitLineIntoSentences(line){
+    var sentences = [];
+    var buf = '';
+    for (var i = 0; i < line.length; i++){
+      var ch = line[i];
+      buf += ch;
+      if (SENTENCE_TERMINATORS.indexOf(ch) !== -1){
+        sentences.push(buf);
+        buf = '';
+      }
+    }
+    if (buf.length) sentences.push(buf);
+    return sentences;
+  }
+
+  function splitIntoSentences(text){
+    if (!text) return [];
+    var normalized = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    // 段落邊界：只有空白行（連續換行）才算段落分隔。
+    // 段落內的單一換行，若該行未以句尾標點結尾，視為 PDF 抽取常見的
+    // 固定寬度硬換行（同一句被拆成多行），合併後再切句；
+    // 若該行本身已以句尾標點結尾，則視為段落內的獨立清單項目，不合併。
+    var paragraphs = normalized.split(/\n\s*\n/);
+    var result = [];
+    paragraphs.forEach(function(para){
+      var lines = para.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+      lines = stripPageMarkers(lines);
+      var mergedLines = [];
+      var buf = '';
+      var bufLineCount = 0;
+      lines.forEach(function(line){
+        buf += line;
+        bufLineCount++;
+        var lastChar = line.charAt(line.length - 1);
+        if (SENTENCE_TERMINATORS.indexOf(lastChar) !== -1){
+          mergedLines.push(buf);
+          buf = '';
+          bufLineCount = 0;
+        } else if (bufLineCount >= HARD_WRAP_MERGE_LIMIT){
+          mergedLines.push(buf);
+          buf = '';
+          bufLineCount = 0;
+        }
+      });
+      if (buf) mergedLines.push(buf);
+      mergedLines.forEach(function(mergedLine){
+        splitLineIntoSentences(mergedLine).forEach(function(s){
+          if (s.trim()) result.push(s);
+        });
+      });
+    });
+    // 孤立標點（例如單獨一行的「；」）不構成有意義的句子，併回前一句，
+    // 避免斷句層級的雜訊自成一個比對單位。
+    var cleaned = [];
+    result.forEach(function(s){
+      if (!hasMeaningfulContent(s) && cleaned.length){
+        cleaned[cleaned.length - 1] += s;
+      } else {
+        cleaned.push(s);
+      }
+    });
+    return cleaned;
+  }
+
+  function pairRemovedAdded(removedArr, addedArr){
+    var pairRows = [];
+    var matchedCount = 0;
+    var unchangedCount = 0;
+    var pairLen = Math.min(removedArr.length, addedArr.length);
+    for (var j = 0; j < pairLen; j++){
+      // 逐一配對前先檢查相似度，避免把毫不相關的兩句硬湊成「修改」，
+      // 不夠像的話拆回純刪除＋純新增，不損失任何資訊。
+      if (sentenceSimilarity(removedArr[j], addedArr[j]) >= SIMILARITY_THRESHOLD){
+        var isSame = normalizeForCompare(removedArr[j]) === normalizeForCompare(addedArr[j]);
+        pairRows.push({ type: isSame ? 'unchanged' : 'modified', oldSentence: removedArr[j], newSentence: addedArr[j] });
+        matchedCount++;
+        if (isSame) unchangedCount++;
+      } else {
+        pairRows.push({ type: 'removed', oldSentence: removedArr[j], newSentence: null });
+        pairRows.push({ type: 'added', oldSentence: null, newSentence: addedArr[j] });
+      }
+    }
+    for (var jr = pairLen; jr < removedArr.length; jr++){
+      pairRows.push({ type: 'removed', oldSentence: removedArr[jr], newSentence: null });
+    }
+    for (var ja = pairLen; ja < addedArr.length; ja++){
+      pairRows.push({ type: 'added', oldSentence: null, newSentence: addedArr[ja] });
+    }
+    return { rows: pairRows, matchedCount: matchedCount, unchangedCount: unchangedCount };
+  }
+
+  // 對重新斷句後的兩個陣列做真正的序列對齊（LCS），取代單純按位置索引
+  // 逐一配對。位置索引配對的問題是：只要區塊裡任何地方多了/少了一個
+  // 不相關的元素（例如頁首殘留、被插入的另一條文），後面所有位置都會
+  // 跟著錯位，即使某個元素在兩側內容完全相同，也會因為位置對不上而配
+  // 錯，白白漏掉「內容其實沒變」的黃金訊號。改用 Diff.diffArrays（跟
+  // computeDiff 最上層同一招）先找出真正完全相同（正規化後相等）的元素
+  // 直接判為 unchanged，不管它們在區塊裡的相對位置變成怎樣；剩下真正
+  // 不同的部分再交給 pairRemovedAdded 做相似度配對，問題範圍縮小到只剩
+  // 真正需要比對的內容，配對品質自然更好。
+  function alignResplitArrays(remArr, addArr){
+    var normCache = {};
+    function normKey(s){
+      if (!Object.prototype.hasOwnProperty.call(normCache, s)) normCache[s] = normalizeForCompare(s);
+      return normCache[s];
+    }
+    var parts = Diff.diffArrays(remArr, addArr, {
+      comparator: function(a, b){ return normKey(a) === normKey(b); }
+    });
+    var alignRows = [];
+    var matchedCount = 0;
+    var unchangedCount = 0;
+    var remPtr = 0, addPtr = 0;
+    for (var i = 0; i < parts.length; i++){
+      var part = parts[i];
+      if (!part.added && !part.removed){
+        part.value.forEach(function(){
+          alignRows.push({ type: 'unchanged', oldSentence: remArr[remPtr], newSentence: addArr[addPtr] });
+          matchedCount++;
+          unchangedCount++;
+          remPtr++; addPtr++;
+        });
+        continue;
+      }
+      if (part.removed){
+        var nextPart = parts[i + 1];
+        if (nextPart && nextPart.added){
+          var sub = pairRemovedAdded(part.value, nextPart.value);
+          sub.rows.forEach(function(r){ alignRows.push(r); });
+          matchedCount += sub.matchedCount;
+          unchangedCount += sub.unchangedCount;
+          remPtr += part.value.length;
+          addPtr += nextPart.value.length;
+          i++;
+        } else {
+          part.value.forEach(function(s){
+            alignRows.push({ type: 'removed', oldSentence: s, newSentence: null });
+            remPtr++;
+          });
+        }
+        continue;
+      }
+      if (part.added){
+        part.value.forEach(function(s){
+          alignRows.push({ type: 'added', oldSentence: null, newSentence: s });
+          addPtr++;
+        });
+      }
+    }
+    return { rows: alignRows, matchedCount: matchedCount, unchangedCount: unchangedCount };
+  }
+
+  var ANCHOR_MIN_LEN = 8;
+  var ANCHOR_MAX_BLOCK_LEN = 4000;
+
+  // 差異區塊階層式細分（第三層 fallback）：只在 original/resplit 兩層句子
+  // 級配對都完全失敗（matchedCount===0）時才呼叫。對整個區塊的原始文字做
+  // 字元級 Diff.diffChars，把長度達門檻且有意義的「共同」片段當作 anchor
+  // （切分錨點），anchor 之間的內容組成 removed/added/modified 列、anchor
+  // 本身組成 unchanged 列——用來救回「區塊內一部分完全相同、一部分真的有
+  // 修改」但被句子級配對整段誤判成無關刪除+新增的情況。找不到任何合格
+  // anchor，或區塊過長（避免昂貴的字元級 diff 拖垮效能）時回傳 null，
+  // 呼叫端維持既有結果不變。
+  var LINE_WRAP_WHITESPACE = /[ \t　]/;
+  var CHINESE_CHAR = /[一-鿿]/;
+
+  // 去除「緊鄰中文字」的空白字元（半形／全形／tab），同時記錄每個保留字元
+  // 對應回原字串的 index，讓比對完的邊界可以映射回原始文字（含空白）以
+  // 正確顯示——換行位置常因排版寬度不同，讓同樣內容在舊版/新版多出或少
+  // 掉一個空白，字元級比對前先去掉這層雜訊，能讓本來該連成一段的共同
+  // 片段不被單一空白切斷。只在緊鄰中文字時才去除（比照 normalizeForCompare
+  // 既有規則），避免破壞英文單字或數字之間有意義的空格（例如把「1 2 3」
+  // 跟「123」誤判成相同）。
+  function stripLineWrapWhitespace(s){
+    var chars = [];
+    var origIndex = [];
+    for (var i = 0; i < s.length; i++){
+      var ch = s[i];
+      if (LINE_WRAP_WHITESPACE.test(ch)){
+        var prevChar = s.charAt(i - 1);
+        var nextChar = s.charAt(i + 1);
+        if (CHINESE_CHAR.test(prevChar) || CHINESE_CHAR.test(nextChar)) continue;
+      }
+      chars.push(ch);
+      origIndex.push(i);
+    }
+    return { stripped: chars.join(''), origIndex: origIndex };
+  }
+
+  function anchorBasedResplit(rawOld, rawNew){
+    if (rawOld.length + rawNew.length > ANCHOR_MAX_BLOCK_LEN) return null;
+    var oldStrip = stripLineWrapWhitespace(rawOld);
+    var newStrip = stripLineWrapWhitespace(rawNew);
+    var charParts = Diff.diffChars(oldStrip.stripped, newStrip.stripped);
+    var hasAnchor = charParts.some(function(p){
+      return !p.added && !p.removed && p.value.length >= ANCHOR_MIN_LEN && hasMeaningfulContent(p.value);
+    });
+    if (!hasAnchor) return null;
+
+    // 依無空白版本 diff 出的每個 part，取回原始文字（含空白）的對應片段：
+    // part 在無空白字串裡是連續 [pos, pos+len) 的一段。結束邊界刻意取到
+    // 「下一個保留字元的原始 index」（而不是這個 part 最後一個保留字元後面
+    // 一格），這樣夾在這個 part 跟下一個 part 之間、被濾掉的空白會完整
+    // 歸給這個 part，不會在兩個 part 交界處憑空消失（曾經因為只切到最後
+    // 一個保留字元就結束，漏掉交界空白，導致英文單字黏在一起）；沒有下一
+    // 個保留字元（這是最後一個 part）就取到字串結尾。
+    function origSlice(rawStr, origIndex, pos, len){
+      if (len <= 0) return '';
+      var end = (pos + len < origIndex.length) ? origIndex[pos + len] : rawStr.length;
+      return rawStr.slice(origIndex[pos], end);
+    }
+
+    var anchorRows = [];
+    var bufOld = '', bufNew = '';
+    // bufOldDiff/bufNewDiff 只累積「真的不同」的片段（來自 removed/added），
+    // 不含短於 anchor 門檻、兩側都有的共同片段——那些片段本來就同時存在於
+    // 新舊版，若也算進相似度計算，會把「骨架相同、內容全異」的表格列（例如
+    // 都有「規格內容：」「數量單位：」這類欄位標籤，但實際品項完全不同）
+    // 灌水成虛高的相似度，誤判成修改。相似度只看真正有差異的部分，畫面
+    // 顯示仍用完整的 bufOld/bufNew（含共同片段），不影響可讀性。
+    var bufOldDiff = '', bufNewDiff = '';
+    function flushBuf(){
+      if (!bufOld && !bufNew) return;
+      if (!bufOld) anchorRows.push({ type: 'added', oldSentence: null, newSentence: bufNew });
+      else if (!bufNew) anchorRows.push({ type: 'removed', oldSentence: bufOld, newSentence: null });
+      else if (bufOld === bufNew){
+        anchorRows.push({ type: 'unchanged', oldSentence: bufOld, newSentence: bufNew });
+      } else if (sentenceSimilarity(bufOldDiff, bufNewDiff) >= SIMILARITY_THRESHOLD){
+        // 兩側都有累積內容時，必須先檢查真正有差異的部分像不像，不能無條件
+        // 湊成「修改」。anchor 之間夾的內容有可能剛好是兩段完全不相關的
+        // 內容（例如不同段落的邊界剛好各自被切在同一個 run 裡），沒有這道
+        // 檢查會把毫不相關的大段落硬湊成一則修改，比原本的純刪除+純新增
+        // 更誤導。
+        anchorRows.push({ type: 'modified', oldSentence: bufOld, newSentence: bufNew });
+      } else {
+        anchorRows.push({ type: 'removed', oldSentence: bufOld, newSentence: null });
+        anchorRows.push({ type: 'added', oldSentence: null, newSentence: bufNew });
+      }
+      bufOld = ''; bufNew = ''; bufOldDiff = ''; bufNewDiff = '';
+    }
+
+    var oldPos = 0, newPos = 0; // 目前在「無空白字串」裡的游標位置
+    charParts.forEach(function(p){
+      var len = p.value.length;
+      if (!p.added && !p.removed){
+        var origOld = origSlice(rawOld, oldStrip.origIndex, oldPos, len);
+        var origNew = origSlice(rawNew, newStrip.origIndex, newPos, len);
+        if (len >= ANCHOR_MIN_LEN && hasMeaningfulContent(p.value)){
+          flushBuf();
+          anchorRows.push({ type: 'unchanged', oldSentence: origOld, newSentence: origNew });
+        } else {
+          // 共同片段但長度未達 anchor 門檻：不當作切分點，只併入畫面顯示用
+          // 的 buf，不算進相似度計算，避免灌水。
+          bufOld += origOld;
+          bufNew += origNew;
+        }
+        oldPos += len; newPos += len;
+      } else if (p.removed){
+        var origOldR = origSlice(rawOld, oldStrip.origIndex, oldPos, len);
+        bufOld += origOldR;
+        bufOldDiff += origOldR;
+        oldPos += len;
+      } else if (p.added){
+        var origNewA = origSlice(rawNew, newStrip.origIndex, newPos, len);
+        bufNew += origNewA;
+        bufNewDiff += origNewA;
+        newPos += len;
+      }
+    });
+    flushBuf();
+    return anchorRows;
+  }
+
+  function computeDiff(oldText, newText){
+    var oldSentences = splitIntoSentences(oldText);
+    var newSentences = splitIntoSentences(newText);
+    var normCache = {};
+    function normKey(s){
+      if (!Object.prototype.hasOwnProperty.call(normCache, s)) normCache[s] = normalizeForCompare(s);
+      return normCache[s];
+    }
+    var parts = Diff.diffArrays(oldSentences, newSentences, {
+      comparator: function(a, b){ return normKey(a) === normKey(b); }
+    });
+    var rows = [];
+    // jsdiff 對「相同」（common）片段只回傳 newString 那一側的字串（比對用的
+    // comparator 判定相等，不代表原始字串逐字元相同，例如純空白差異）。
+    // 用 oldPtr/newPtr 追蹤兩側陣列位置，讓 unchanged 列各自顯示真正的原始
+    // 文字，而不是把新版文字誤植到舊版欄位。
+    var oldPtr = 0, newPtr = 0;
+
+    for (var i = 0; i < parts.length; i++){
+      var part = parts[i];
+
+      if (!part.added && !part.removed){
+        part.value.forEach(function(){
+          rows.push({ type: 'unchanged', oldSentence: oldSentences[oldPtr], newSentence: newSentences[newPtr] });
+          oldPtr++; newPtr++;
+        });
+        continue;
+      }
+
+      if (part.removed){
+        var nextPart = parts[i + 1];
+        if (nextPart && nextPart.added){
+          var removedArr = part.value;
+          var addedArr = nextPart.value;
+
+          // 差異區塊局部重新斷句：removedArr/addedArr 是第一階段行數上限
+          // 硬切出來的結果，舊版/新版排版寬度不同時切點常常對不上，導致
+          // 明明內容幾乎沒變的一句話被拆成不相關的純刪除+純新增。這裡把
+          // 這個區塊的原始文字重建回來（join('') 無損還原，因為合併行時
+          // 就是直接字串相接、沒有分隔符），跳脫行數上限，改用真正的句尾
+          // 標點重新斷句再配對一次；只有在能救回更多配對時才採用，救不回
+          // 就維持原本結果，避免對真的無關的內容做無意義的二次處理。
+          var original = pairRemovedAdded(removedArr, addedArr);
+          var resplitRemoved = splitLineIntoSentences(removedArr.join(''));
+          var resplitAdded = splitLineIntoSentences(addedArr.join(''));
+          // 安全網：重新斷句找不到足夠的句尾標點時，會把大部分內容黏成一個
+          // 過長的字串，這正是 Round 2 要防止的失敗模式（表格/清單被整塊誤判
+          // 成一則修改）。判斷依據是「最後一段有沒有正確以句尾標點結尾」——
+          // splitLineIntoSentences 保證除了最後一段以外都一定會在標點處收尾，
+          // 所以只要看最後一段：結尾是標點，代表這是重組出一個完整句子（例如
+          // 同一句話因硬換行上限被攔腰切開，resplit 後正確接回去），應該信任；
+          // 結尾不是標點，代表沒有標點可切、是硬湊出來的殘留內容（像表格），
+          // 不能信任。純看「元素數量」或「單一元素長度」都無法分辨這兩種情況
+          // （曾經因為這樣誤擋過一句合法的完整句子，也曾經因為這樣漏放過一份
+          // 表格），改用結尾標點判斷才能正確區分。
+          var VERY_LONG_SENTENCE_SAFEGUARD = 1000;
+          function isUntrustedResplit(arr){
+            if (!arr.length) return true;
+            var last = arr[arr.length - 1];
+            var lastChar = last.charAt(last.length - 1);
+            if (SENTENCE_TERMINATORS.indexOf(lastChar) === -1) return true;
+            if (last.length > VERY_LONG_SENTENCE_SAFEGUARD) return true;
+            return false;
+          }
+          var resplitCollapsed =
+            (removedArr.length > 1 && isUntrustedResplit(resplitRemoved)) ||
+            (addedArr.length > 1 && isUntrustedResplit(resplitAdded));
+          var resplit = resplitCollapsed ? null : alignResplitArrays(resplitRemoved, resplitAdded);
+          // 選策略優先比「完全相同（unchanged）的數量」，數量相同才比較
+          // 總配對數（matchedCount，含 modified）。原因：位置索引配對可能
+          // 因為「巧合排在同一個位置」而配出一堆 modified，數量看起來多，
+          // 但都只是相似度矇混過關，不代表配對品質好；而 unchanged 是正規
+          // 化後逐字元相等，是唯一不會誤判的黃金訊號，理當優先信任找到更
+          // 多 unchanged 的那個策略，即使它的 matchedCount 總數比較少。
+          var chosen = original;
+          if (resplit){
+            if (resplit.unchangedCount > original.unchangedCount) chosen = resplit;
+            else if (resplit.unchangedCount === original.unchangedCount && resplit.matchedCount >= original.matchedCount) chosen = resplit;
+          }
+          var chosenRows = chosen.rows;
+          // 第三層 fallback：句子級的兩種策略都完全沒配對成功時，才嘗試
+          // 區塊內字元級細分（見 anchorBasedResplit）；只要有一種策略已經
+          // 找到配對，代表句子級邊界還算可信，不需要動用更昂貴、風險也
+          // 更高的字元級比對。
+          if (original.matchedCount === 0 && (!resplit || resplit.matchedCount === 0)){
+            var anchorRows = anchorBasedResplit(removedArr.join(''), addedArr.join(''));
+            if (anchorRows) chosenRows = anchorRows;
+          }
+          chosenRows.forEach(function(r){ rows.push(r); });
+
+          oldPtr += removedArr.length;
+          newPtr += addedArr.length;
+          i++; // 已消耗下一個 added part
+        } else {
+          part.value.forEach(function(s){
+            rows.push({ type: 'removed', oldSentence: s, newSentence: null });
+            oldPtr++;
+          });
+        }
+        continue;
+      }
+
+      if (part.added){
+        part.value.forEach(function(s){
+          rows.push({ type: 'added', oldSentence: null, newSentence: s });
+          newPtr++;
+        });
+      }
+    }
+
+    return rows;
+  }
+
+  var FOLD_THRESHOLD = 3;
+  var currentFolds = [];
+
+  function makeCell(cls, text){
+    var cell = document.createElement('div');
+    cell.className = 'diff-cell ' + cls;
+    if (text === null || text === undefined){
+      cell.classList.add('empty');
+      cell.textContent = '';
+    } else {
+      cell.textContent = text;
+    }
+    return cell;
+  }
+
+  // 「修改」列的儲存格額外標示字元級差異，讓使用者一眼分辨這句是只差
+  // 標點/空白，還是真的改了實質內容（例如金額、日期）。
+  function makeModifiedCell(cls, side, oldText, newText){
+    var cell = document.createElement('div');
+    cell.className = 'diff-cell ' + cls;
+    var charParts = Diff.diffChars(oldText, newText);
+    charParts.forEach(function(part){
+      if (side === 'old' && part.added) return;
+      if (side === 'new' && part.removed) return;
+      if (part.added || part.removed){
+        var span = document.createElement('span');
+        span.className = part.added ? 'char-add' : 'char-del';
+        span.textContent = part.value;
+        cell.appendChild(span);
+      } else {
+        cell.appendChild(document.createTextNode(part.value));
+      }
+    });
+    return cell;
+  }
+
+  function buildRowEl(row){
+    var rowEl = document.createElement('div');
+    rowEl.className = 'diff-row type-' + row.type;
+    if (row.type === 'modified'){
+      rowEl.appendChild(makeModifiedCell('old', 'old', row.oldSentence, row.newSentence));
+      rowEl.appendChild(makeModifiedCell('new', 'new', row.oldSentence, row.newSentence));
+    } else {
+      rowEl.appendChild(makeCell('old', row.oldSentence));
+      rowEl.appendChild(makeCell('new', row.newSentence));
+    }
+    return rowEl;
+  }
+
+  function groupRowsForFolding(rows){
+    var blocks = [];
+    var i = 0;
+    while (i < rows.length){
+      if (rows[i].type === 'unchanged'){
+        var j = i;
+        while (j < rows.length && rows[j].type === 'unchanged') j++;
+        var run = rows.slice(i, j);
+        blocks.push(run.length >= FOLD_THRESHOLD
+          ? { type: 'fold', rows: run }
+          : { type: 'plain', rows: run });
+        i = j;
+      } else {
+        blocks.push({ type: 'plain', rows: [rows[i]] });
+        i++;
+      }
+    }
+    return blocks;
+  }
+
+  function foldLabel(count, expanded){
+    return '未變動 ' + count + ' 句（點擊' + (expanded ? '收合' : '展開') + '）';
+  }
+
+  function renderDiff(rows, container){
+    container.textContent = '';
+    currentFolds = [];
+
+    groupRowsForFolding(rows).forEach(function(block){
+      if (block.type === 'plain'){
+        block.rows.forEach(function(row){
+          container.appendChild(buildRowEl(row));
+        });
+        return;
+      }
+
+      var wrap = document.createElement('div');
+      wrap.className = 'fold-block';
+
+      var summary = document.createElement('button');
+      summary.type = 'button';
+      summary.className = 'fold-summary';
+      summary.textContent = foldLabel(block.rows.length, false);
+
+      var detail = document.createElement('div');
+      detail.className = 'fold-detail hidden';
+      block.rows.forEach(function(row){
+        detail.appendChild(buildRowEl(row));
+      });
+
+      var foldState = { summary: summary, detail: detail, count: block.rows.length, expanded: false };
+      summary.addEventListener('click', function(){
+        foldState.expanded = !foldState.expanded;
+        detail.classList.toggle('hidden', !foldState.expanded);
+        summary.textContent = foldLabel(foldState.count, foldState.expanded);
+      });
+      currentFolds.push(foldState);
+
+      wrap.appendChild(summary);
+      wrap.appendChild(detail);
+      container.appendChild(wrap);
+    });
+  }
+
+  function renderStats(rows, container){
+    var counts = { added: 0, removed: 0, modified: 0, unchanged: 0 };
+    rows.forEach(function(row){
+      if (counts.hasOwnProperty(row.type)) counts[row.type]++;
+    });
+    container.textContent = '';
+    var labels = [
+      { key: 'added', label: '新增' },
+      { key: 'removed', label: '刪除' },
+      { key: 'modified', label: '修改' },
+      { key: 'unchanged', label: '未變動' }
+    ];
+    labels.forEach(function(item){
+      var span = document.createElement('span');
+      span.className = 'stat-item ' + item.key;
+      var b = document.createElement('b');
+      b.textContent = counts[item.key];
+      span.appendChild(document.createTextNode(item.label + ' '));
+      span.appendChild(b);
+      span.appendChild(document.createTextNode(' 句'));
+      container.appendChild(span);
+    });
+    return counts;
+  }
+
+  function buildMarkdownReport(rows, counts){
+    var lines = [];
+    lines.push('# 文字差異比對報告');
+    lines.push('');
+    lines.push('- 新增：' + counts.added + ' 句');
+    lines.push('- 刪除：' + counts.removed + ' 句');
+    lines.push('- 修改：' + counts.modified + ' 句');
+    lines.push('- 未變動：' + counts.unchanged + ' 句');
+    lines.push('');
+    lines.push('## 差異內容');
+    lines.push('');
+    rows.forEach(function(row){
+      if (row.type === 'modified'){
+        lines.push('- **修改**：`' + row.oldSentence + '` → `' + row.newSentence + '`');
+      } else if (row.type === 'added'){
+        lines.push('- **新增**：`' + row.newSentence + '`');
+      } else if (row.type === 'removed'){
+        lines.push('- **刪除**：`' + row.oldSentence + '`');
+      }
+    });
+    if (counts.added === 0 && counts.removed === 0 && counts.modified === 0){
+      lines.push('（兩份文字內容完全相同，無差異）');
+    }
+    return lines.join('\n');
+  }
+
+  function escapeHtml(str){
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function escapeCsvField(field){
+    var str = String(field);
+    if (/[",\n\r]/.test(str)){
+      return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+  }
+
+  function buildHtmlReport(rows, counts){
+    var rowsHtml = [];
+    rows.forEach(function(row){
+      if (row.type === 'unchanged'){
+        rowsHtml.push('<tr class="row-unchanged"><td>未變動</td><td>' + escapeHtml(row.oldSentence) + '</td><td>' + escapeHtml(row.newSentence) + '</td></tr>');
+      } else if (row.type === 'modified'){
+        rowsHtml.push('<tr class="row-modified"><td>修改</td><td>' + escapeHtml(row.oldSentence) + '</td><td>' + escapeHtml(row.newSentence) + '</td></tr>');
+      } else if (row.type === 'added'){
+        rowsHtml.push('<tr class="row-added"><td>新增</td><td></td><td>' + escapeHtml(row.newSentence) + '</td></tr>');
+      } else if (row.type === 'removed'){
+        rowsHtml.push('<tr class="row-removed"><td>刪除</td><td>' + escapeHtml(row.oldSentence) + '</td><td></td></tr>');
+      }
+    });
+    var bodyRows = rowsHtml.length ? rowsHtml.join('\n') : '<tr><td colspan="3">（兩份文字內容完全相同，無差異）</td></tr>';
+    return '<!DOCTYPE html>\n<html lang="zh-Hant">\n<head>\n<meta charset="UTF-8">\n<title>文字差異比對報告</title>\n<style>\n' +
+      'body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;margin:24px;color:#2a2a2a;}\n' +
+      'table{border-collapse:collapse;width:100%;}\n' +
+      'th,td{border:1px solid #ddd;padding:6px 10px;text-align:left;vertical-align:top;font-size:14px;}\n' +
+      'th{background:#f5f5f5;}\n' +
+      '.row-added td{background:#eaf5e6;}\n' +
+      '.row-removed td{background:#fbe9e7;}\n' +
+      '.row-modified td{background:#fdf3e0;}\n' +
+      '</style>\n</head>\n<body>\n' +
+      '<h1>文字差異比對報告</h1>\n' +
+      '<p>新增：' + counts.added + ' 句｜刪除：' + counts.removed + ' 句｜修改：' + counts.modified + ' 句｜未變動：' + counts.unchanged + ' 句</p>\n' +
+      '<table>\n<thead><tr><th>類型</th><th>舊版內容</th><th>新版內容</th></tr></thead>\n<tbody>\n' +
+      bodyRows + '\n</tbody>\n</table>\n</body>\n</html>';
+  }
+
+  function buildCsvReport(rows, counts){
+    var lines = [];
+    lines.push(['類型', '舊版內容', '新版內容'].map(escapeCsvField).join(','));
+    rows.forEach(function(row){
+      var typeLabel = row.type === 'unchanged' ? '未變動' : row.type === 'modified' ? '修改' : row.type === 'added' ? '新增' : '刪除';
+      var oldVal = row.type === 'added' ? '' : (row.oldSentence || '');
+      var newVal = row.type === 'removed' ? '' : (row.newSentence || '');
+      lines.push([typeLabel, oldVal, newVal].map(escapeCsvField).join(','));
+    });
+    return '﻿' + lines.join('\r\n');
+  }
+
+  function setAllFolds(expanded){
+    currentFolds.forEach(function(f){
+      f.expanded = expanded;
+      f.detail.classList.toggle('hidden', !expanded);
+      f.summary.textContent = foldLabel(f.count, expanded);
+    });
+  }
+
+  window.Day3App = window.Day3App || {};
+  window.Day3App.splitIntoSentences = splitIntoSentences;
+  window.Day3App.computeDiff = computeDiff;
+  window.Day3App.renderDiff = renderDiff;
+  window.Day3App.setAllFolds = setAllFolds;
+  window.Day3App.renderStats = renderStats;
+  window.Day3App.buildMarkdownReport = buildMarkdownReport;
+  window.Day3App.buildHtmlReport = buildHtmlReport;
+  window.Day3App.buildCsvReport = buildCsvReport;
+
+  function setupDropColumn(colId, textareaId, fileNameId){
+    var col = document.getElementById(colId);
+    var textarea = document.getElementById(textareaId);
+    var fileNameEl = document.getElementById(fileNameId);
+
+    col.addEventListener('dragover', function(e){
+      e.preventDefault();
+      col.classList.add('dragover');
+    });
+    col.addEventListener('dragleave', function(){
+      col.classList.remove('dragover');
+    });
+    col.addEventListener('drop', function(e){
+      e.preventDefault();
+      col.classList.remove('dragover');
+      var files = e.dataTransfer && e.dataTransfer.files;
+      if (!files || !files.length) return;
+      var file = files[0];
+      var lowerName = file.name.toLowerCase();
+      if (!(lowerName.endsWith('.txt') || lowerName.endsWith('.md'))) {
+        fileNameEl.textContent = '僅支援 .txt 或 .md 檔案：' + file.name;
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function(evt){
+        textarea.value = evt.target.result;
+        fileNameEl.textContent = '已載入：' + file.name;
+      };
+      reader.onerror = function(){
+        fileNameEl.textContent = '讀取失敗：' + file.name;
+      };
+      reader.readAsText(file, 'utf-8');
+    });
+  }
+
+  setupDropColumn('col-old', 'text-old', 'file-name-old');
+  setupDropColumn('col-new', 'text-new', 'file-name-new');
+
+  var compareBtn = document.getElementById('btn-compare');
+  var resultSection = document.getElementById('result-section');
+  var diffRowsEl = document.getElementById('diff-rows');
+  var statsEl = document.getElementById('diff-stats');
+
+  compareBtn.addEventListener('click', function(){
+    var oldText = document.getElementById('text-old').value;
+    var newText = document.getElementById('text-new').value;
+    var rows = computeDiff(oldText, newText);
+    var counts = renderStats(rows, statsEl);
+    renderDiff(rows, diffRowsEl);
+    resultSection.classList.remove('hidden');
+    window.Day3App.lastRows = rows;
+    window.Day3App.lastCounts = counts;
+  });
+
+  document.getElementById('btn-expand-all').addEventListener('click', function(){
+    setAllFolds(true);
+  });
+  document.getElementById('btn-collapse-all').addEventListener('click', function(){
+    setAllFolds(false);
+  });
+
+  var toastEl = document.getElementById('toast');
+  var toastTimer = null;
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove('show'); }, 2200);
+  }
+
+  document.getElementById('btn-copy-summary').addEventListener('click', function(){
+    if (!window.Day3App.lastRows){ showToast('請先執行比對'); return; }
+    var report = buildMarkdownReport(window.Day3App.lastRows, window.Day3App.lastCounts);
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(report).then(function(){
+        showToast('已複製差異摘要');
+      }).catch(function(){
+        showToast('複製失敗，請手動選取');
+      });
+    } else {
+      showToast('此瀏覽器不支援自動複製，請手動選取');
+    }
+  });
+
+  document.getElementById('btn-download-report').addEventListener('click', function(){
+    if (!window.Day3App.lastRows){ showToast('請先執行比對'); return; }
+    var report = buildMarkdownReport(window.Day3App.lastRows, window.Day3App.lastCounts);
+    var blob = new Blob([report], { type: 'text/markdown;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '差異比對報告.md';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('btn-download-html').addEventListener('click', function(){
+    if (!window.Day3App.lastRows){ showToast('請先執行比對'); return; }
+    var report = buildHtmlReport(window.Day3App.lastRows, window.Day3App.lastCounts);
+    var blob = new Blob([report], { type: 'text/html;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '差異比對報告.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('btn-download-csv').addEventListener('click', function(){
+    if (!window.Day3App.lastRows){ showToast('請先執行比對'); return; }
+    var report = buildCsvReport(window.Day3App.lastRows, window.Day3App.lastCounts);
+    var blob = new Blob([report], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '差異比對報告.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  function buildCleanHtmlCopy(){
+    var clone = document.documentElement.cloneNode(true);
+
+    var cloneNavBack = clone.querySelector('.nav-back');
+    if (cloneNavBack) cloneNavBack.remove();
+
+    var cloneDownloadTool = clone.querySelector('#btn-download-tool');
+    if (cloneDownloadTool) cloneDownloadTool.remove();
+
+    ['text-old', 'text-new'].forEach(function(id){
+      var el = clone.querySelector('#' + id);
+      if (el){ el.textContent = ''; el.value = ''; }
+    });
+
+    ['file-name-old', 'file-name-new'].forEach(function(id){
+      var el = clone.querySelector('#' + id);
+      if (el) el.textContent = '';
+    });
+
+    var cloneStats = clone.querySelector('#diff-stats');
+    if (cloneStats) cloneStats.textContent = '';
+
+    var cloneRows = clone.querySelector('#diff-rows');
+    if (cloneRows) cloneRows.textContent = '';
+
+    var cloneResultSection = clone.querySelector('#result-section');
+    if (cloneResultSection) cloneResultSection.classList.add('hidden');
+
+    var cloneToast = clone.querySelector('#toast');
+    if (cloneToast){
+      cloneToast.textContent = '';
+      cloneToast.classList.remove('show');
+    }
+
+    return '<!doctype html>\n' + clone.outerHTML;
+  }
+
+  var btnDownloadTool = document.getElementById('btn-download-tool');
+  if (btnDownloadTool){
+    btnDownloadTool.addEventListener('click', function(){
+      var html = buildCleanHtmlCopy();
+      var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = '文字差異比對器.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('已下載，可離線使用');
+    });
+  }
+})();
+</script>
+</body>
+</html>

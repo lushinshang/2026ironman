@@ -1,0 +1,2037 @@
+<!-- BUNDLED: fflate@0.8.3 (MIT) sha256:462ef8041fc970e3 built 2026-09-12 -->
+<!-- BUNDLED: util-escape@internal (project-internal) sha256:75d81be0a09695ce built 2026-09-12 -->
+<!-- BUNDLED: ui-toast@internal (project-internal) sha256:ae3a7ec34ac21b9d built 2026-09-12 -->
+<!-- BUNDLED: io-download@internal (project-internal) sha256:3da6c61784b1dd4b built 2026-09-12 -->
+<!-- BUNDLED: io-clipboard@internal (project-internal) sha256:afa2866517ff6f41 built 2026-09-12 -->
+<!-- BUNDLED: io-zip@internal (project-internal) sha256:a92c672818937411 built 2026-09-12 -->
+<!-- BUNDLED: docx-meta@internal (project-internal) sha256:ff0cabcd1b2f8cb3 built 2026-09-12 -->
+<!-- BUNDLED: xlsx-meta@internal (project-internal) sha256:2a69ba27f0ea9c68 built 2026-09-12 -->
+<!-- BUNDLED: pptx-meta@internal (project-internal) sha256:2165ea1560185af9 built 2026-09-12 -->
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Office 文件隱私 Metadata 清除工具 — Day30</title>
+  <style>
+/* shared/base.css — 共用樣式基底 */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 { line-height: 1.3; }
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 1rem;
+}
+
+button, .btn {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+button:hover, .btn:hover { background: var(--color-bg); }
+
+button.primary, .btn.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover, .btn.primary:hover { background: var(--color-primary-hover); }
+
+button:disabled, .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #eff6ff;
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover { text-decoration: underline; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show { opacity: 1; }
+
+.risk-badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.risk-high { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.risk-med { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+.risk-low { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+.risk-none { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+.doc-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+}
+.doc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.doc-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: #eff6ff;
+  color: var(--color-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+.doc-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  background: #f8fafc;
+  padding: 0.75rem;
+  border-radius: 6px;
+}
+.warn-box {
+  font-size: 0.82rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+}
+.diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+}
+.diff-table th, .diff-table td {
+  padding: 0.6rem;
+  border: 1px solid var(--color-border);
+  text-align: left;
+}
+.diff-table th { background: #f1f5f9; }
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav-back">
+      <a href="../index.html">← 回首頁</a>
+    </nav>
+
+    <header>
+      <h1>Office 文件隱私 Metadata 清除工具</h1>
+      <p class="subtitle" style="color: var(--color-text-muted);">
+        分析 Word／Excel／PowerPoint 文件內藏的作者、公司、註解、內嵌縮圖、樞紐分析表快取、
+        未裁切原圖、講者備忘稿、本機路徑超連結等敏感資訊，一鍵清除。追蹤修訂、隱藏工作表／
+        投影片等會改變文件內容的項目只偵測提示，不會自動修改。
+      </p>
+    </header>
+
+    <div class="dropzone" id="drop-zone">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">📄</div>
+      <div style="margin-bottom: 0.75rem;">拖放多個 .docx／.xlsx／.pptx 檔案至此，或點擊選取檔案</div>
+      <input type="file" id="file-input" multiple accept=".docx,.xlsx,.pptx" style="display: none;">
+      <button type="button" class="btn secondary" id="btn-select-files">選擇 DOCX／XLSX／PPTX 檔案</button>
+    </div>
+
+    <div class="card" id="clean-options-card" style="display: none; margin-top: 1.5rem;">
+      <h3 style="margin-top: 0; font-size: 1.1rem;">清除確認清單</h3>
+      <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 0.75rem;">
+        清除時會處理以下項目，不影響文件的實際內文與版面：
+      </p>
+      <div style="display: flex; flex-wrap: wrap; gap: 1.25rem; font-size: 0.9rem;">
+        <label><input type="checkbox" checked disabled> 作者／公司／描述等 docProps 欄位</label>
+        <label><input type="checkbox" checked disabled> 自訂屬性（custom.xml）</label>
+        <label><input type="checkbox" checked disabled> 內嵌縮圖（thumbnail）</label>
+        <label><input type="checkbox" checked disabled> DOCX：註解（comments）</label>
+        <label><input type="checkbox" checked disabled> DOCX：本機路徑超連結</label>
+        <label><input type="checkbox" checked disabled> XLSX：樞紐分析表快取（pivotCache）</label>
+        <label><input type="checkbox" checked disabled> XLSX：外部連結（本機路徑）</label>
+        <label><input type="checkbox" checked disabled> PPTX：裁切圖片（燒進像素移除原圖，規格不明確時只警示）</label>
+        <label><input type="checkbox" checked disabled> PPTX：講者備忘稿</label>
+      </div>
+      <p class="warn-box" style="margin-top: 0.75rem;">
+        ⚠️ DOCX 追蹤修訂（新增/刪除的文字內容）、XLSX/PPTX 隱藏工作表/投影片、超連結顯示文字裡
+        的路徑字串，只會提示風險、<strong>不會自動修改</strong>——這些屬於文件實際內容，不是
+        metadata。清除 XLSX 樞紐分析表快取會讓檔案內原有的樞紐分析表<strong>直接失效</strong>，
+        請留意。
+      </p>
+      <div style="margin-top: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+        <span id="plan-stats-text" style="font-size: 0.9rem; font-weight: 600;">即將清除：0 份，保留原樣：0 份</span>
+        <div class="btn-group" style="margin: 0;">
+          <button type="button" class="btn primary" id="btn-start-clean">開始清除 Metadata</button>
+          <button type="button" class="btn secondary" id="btn-clear">清空佇列</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="results-section" style="display: none; margin-top: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">文件清單與風險檢視 (<span id="doc-count">0</span>)</h3>
+        <div class="btn-group" id="download-actions" style="display: none; margin: 0;">
+          <button type="button" class="btn primary btn-sm" id="btn-download-zip">📦 打包下載已清除 ZIP</button>
+          <button type="button" class="btn secondary btn-sm" id="btn-copy-summary">📋 複製風險摘要</button>
+        </div>
+      </div>
+      <div id="docs-container"></div>
+    </div>
+
+    <div class="btn-group" style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+      <button type="button" class="btn secondary" id="btn-download-offline">💾 下載本工具離線版</button>
+    </div>
+
+    <div class="bundled-licenses"><p>內嵌資源與授權：</p><ul><li>fflate 0.8.3 — MIT</li><li>docx-meta internal — project-internal</li><li>xlsx-meta internal — project-internal</li><li>pptx-meta internal — project-internal</li></ul></div>
+  </div>
+
+  <script>
+!function(f){typeof module!='undefined'&&typeof exports=='object'?module.exports=f():typeof define!='undefined'&&define.amd?define(f):(typeof self!='undefined'?self:this).fflate=f()}(function(){var _e={};"use strict";_e.deflate=zt,_e.deflateSync=kt,_e.inflate=At,_e.inflateSync=Tt,_e.gzip=It,_e.compress=It,_e.gzipSync=Ut,_e.compressSync=Ut,_e.gunzip=Zt,_e.gunzipSync=qt,_e.zlib=Lt,_e.zlibSync=Bt,_e.unzlib=Nt,_e.unzlibSync=Pt,_e.gzip=It,_e.compress=It,_e.decompress=Jt,_e.decompressSync=Kt,_e.strToU8=nn,_e.strFromU8=rn,_e.zip=dn,_e.zipSync=gn,_e.unzip=zn,_e.unzipSync=kn;var t=(typeof module!='undefined'&&typeof exports=='object'?function(_f){"use strict";var e,r,t,n=";var __w=require('worker_threads');__w.parentPort.on('message',function(m){onmessage({data:m})}),postMessage=function(m,t){__w.parentPort.postMessage(m,t)},close=process.exit;self=global";try{e=require("worker_threads"),r=e.Worker,t=e.isMarkedAsUntransferable}catch(e){}exports.default=r?function(e,o,a,s,u){var i=!1,l=new r(e+n,{eval:!0}).on("error",function(e){return u(e,null)}).on("message",function(e){return u(null,e)}).on("exit",function(e){e&&!i&&u(Error("exited with code "+e),null)});return t&&(s=s.filter(function(e){return!t(e)})),l.postMessage(a,s),l.terminate=function(){return i=!0,r.prototype.terminate.call(l)},l}:function(e,r,t,n,o){setImmediate(function(){return o(Error("async operations unsupported - update to Node 12+ (or Node 10-11 with the --experimental-worker CLI flag)"),null)});var a=function(){};return{terminate:a,postMessage:a}};return _f}:function(_f){"use strict";var e={};_f.default=function(r,t,s,a,n){var o=new Worker(e[t]||(e[t]=URL.createObjectURL(new Blob([r+';addEventListener("error",function(e){e=e.error;postMessage({$e$:[e.message,e.code,e.stack]})})'],{type:"text/javascript"}))));return o.onmessage=function(e){var r=e.data,t=r.$e$;if(t){var s=Error(t[0]);s.code=t[1],s.stack=t[2],n(s,null)}else n(null,r)},o.postMessage(s,a),o};return _f})({}),n=Uint8Array,r=Uint16Array,i=Int32Array,e=new n([0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0,0,0,0]),o=new n([0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13,0,0]),s=new n([16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15]),a=function(t,n){for(var e=new r(31),o=0;o<31;++o)e[o]=n+=1<<t[o-1];var s=new i(e[30]);for(o=1;o<30;++o)for(var a=e[o];a<e[o+1];++a)s[a]=a-e[o]<<5|o;return{b:e,r:s}},u=a(e,2),h=u.b,f=u.r;h[28]=258,f[258]=28;for(var c=a(o,0),l=c.b,p=c.r,v=new r(32768),d=0;d<32768;++d){var g=(43690&d)>>1|(21845&d)<<1;v[d]=((65280&(g=(61680&(g=(52428&g)>>2|(13107&g)<<2))>>4|(3855&g)<<4))>>8|(255&g)<<8)>>1}var y=function(t,n,i){for(var e=t.length,o=0,s=new r(n);o<e;++o)t[o]&&++s[t[o]-1];var a,u=new r(n);for(o=1;o<n;++o)u[o]=u[o-1]+s[o-1]<<1;if(i){a=new r(1<<n);var h=15-n;for(o=0;o<e;++o)if(t[o])for(var f=o<<4|t[o],c=n-t[o],l=u[t[o]-1]++<<c,p=l|(1<<c)-1;l<=p;++l)a[v[l]>>h]=f}else for(a=new r(e),o=0;o<e;++o)t[o]&&(a[o]=v[u[t[o]-1]++]>>15-t[o]);return a},m=new n(288);for(d=0;d<144;++d)m[d]=8;for(d=144;d<256;++d)m[d]=9;for(d=256;d<280;++d)m[d]=7;for(d=280;d<288;++d)m[d]=8;var b=new n(32);for(d=0;d<32;++d)b[d]=5;var w=y(m,9,0),x=y(m,9,1),z=y(b,5,0),k=y(b,5,1),M=function(t){for(var n=t[0],r=1;r<t.length;++r)t[r]>n&&(n=t[r]);return n},S=function(t,n,r){var i=n/8|0;return(t[i]|t[i+1]<<8)>>(7&n)&r},A=function(t,n){var r=n/8|0;return(t[r]|t[r+1]<<8|t[r+2]<<16)>>(7&n)},T=function(t){return(t+7)/8|0},D=function(t,r,i){return(null==r||r<0)&&(r=0),(null==i||i>t.length)&&(i=t.length),new n(t.subarray(r,i))};_e.FlateErrorCode={UnexpectedEOF:0,InvalidBlockType:1,InvalidLengthLiteral:2,InvalidDistance:3,StreamFinished:4,NoStreamHandler:5,InvalidHeader:6,NoCallback:7,InvalidUTF8:8,ExtraFieldTooLong:9,InvalidDate:10,FilenameTooLong:11,StreamFinishing:12,InvalidZipData:13,UnknownCompressionMethod:14};var C=["unexpected EOF","invalid block type","invalid length/literal","invalid distance","stream finished","no stream handler",,"no callback","invalid UTF-8 data","extra field too long","date not in range 1980-2099","filename too long","stream finishing","invalid zip data"],I=function(t,n,r){var i=Error(n||C[t]);if(i.code=t,Error.captureStackTrace&&Error.captureStackTrace(i,I),!r)throw i;return i},U=function(t,r,i,a){var u=t.length,f=a?a.length:0;if(!u||r.f&&!r.l)return i||new n(0);var c=!i,p=c||2!=r.i,v=r.i;c&&(i=new n(3*u));var d=function(t){var r=i.length;if(t>r){var e=new n(Math.max(2*r,t));e.set(i),i=e}},g=r.f||0,m=r.p||0,b=r.b||0,w=r.l,z=r.d,C=r.m,U=r.n,F=8*u;do{if(!w){g=S(t,m,1);var E=S(t,m+1,3);if(m+=3,!E){var Z=t[(Y=T(m)+4)-4]|t[Y-3]<<8,q=Y+Z;if(q>u){v&&I(0);break}p&&d(b+Z),i.set(t.subarray(Y,q),b),r.b=b+=Z,r.p=m=8*q,r.f=g;continue}if(1==E)w=x,z=k,C=9,U=5;else if(2==E){var O=S(t,m,31)+257,G=S(t,m+10,15)+4,L=O+S(t,m+5,31)+1;m+=14;for(var B=new n(L),H=new n(19),j=0;j<G;++j)H[s[j]]=S(t,m+3*j,7);m+=3*G;var N=M(H),P=(1<<N)-1,V=y(H,N,1);for(j=0;j<L;){var Y,J=V[S(t,m,P)];if(m+=15&J,(Y=J>>4)<16)B[j++]=Y;else{var K=0,Q=0;for(16==Y?(Q=3+S(t,m,3),m+=2,K=B[j-1]):17==Y?(Q=3+S(t,m,7),m+=3):18==Y&&(Q=11+S(t,m,127),m+=7);Q--;)B[j++]=K}}var R=B.subarray(0,O),W=B.subarray(O);C=M(R),U=M(W),w=y(R,C,1),z=y(W,U,1)}else I(1);if(m>F){v&&I(0);break}}p&&d(b+131072);for(var X=(1<<C)-1,$=(1<<U)-1,_=m;;_=m){var tt=(K=w[A(t,m)&X])>>4;if((m+=15&K)>F){v&&I(0);break}if(K||I(2),tt<256)i[b++]=tt;else{if(256==tt){_=m,w=null;break}var nt=tt-254;tt>264&&(nt=S(t,m,(1<<(et=e[j=tt-257]))-1)+h[j],m+=et);var rt=z[A(t,m)&$],it=rt>>4;if(rt||I(3),m+=15&rt,W=l[it],it>3){var et=o[it];W+=A(t,m)&(1<<et)-1,m+=et}if(m>F){v&&I(0);break}p&&d(b+131072);var ot=b+nt;if(b<W){var st=f-W,at=Math.min(W,ot);for(st+b<0&&I(3);b<at;++b)i[b]=a[st+b]}for(;b<ot;++b)i[b]=i[b-W]}}r.l=w,r.p=_,r.b=b,r.f=g,w&&(g=1,r.m=C,r.d=z,r.n=U)}while(!g);return b!=i.length&&c?D(i,0,b):i.subarray(0,b)},F=function(t,n,r){var i=n/8|0;t[i]|=r<<=7&n,t[i+1]|=r>>8},E=function(t,n,r){var i=n/8|0;t[i]|=r<<=7&n,t[i+1]|=r>>8,t[i+2]|=r>>16},Z=function(t,i){for(var e=[],o=0;o<t.length;++o)t[o]&&e.push({s:o,f:t[o]});var s=e.length,a=e.slice();if(!s)return{t:j,l:0};if(1==s){var u=new n(e[0].s+1);return u[e[0].s]=1,{t:u,l:1}}e.sort(function(t,n){return t.f-n.f}),e.push({s:-1,f:25001});var h=e[0],f=e[1],c=0,l=1,p=2;for(e[0]={s:-1,f:h.f+f.f,l:h,r:f};l!=s-1;)h=e[e[c].f<e[p].f?c++:p++],f=e[c!=l&&e[c].f<e[p].f?c++:p++],e[l++]={s:-1,f:h.f+f.f,l:h,r:f};var v=a[0].s;for(o=1;o<s;++o)a[o].s>v&&(v=a[o].s);var d=new r(v+1),g=q(e[l-1],d,0);if(g>i){o=0;var y=0,m=g-i,b=1<<m;for(a.sort(function(t,n){return d[n.s]-d[t.s]||t.f-n.f});o<s;++o){var w=a[o].s;if(!(d[w]>i))break;y+=b-(1<<g-d[w]),d[w]=i}for(y>>=m;y>0;){var x=a[o].s;d[x]<i?y-=1<<i-d[x]++-1:++o}for(;o>=0&&y;--o){var z=a[o].s;d[z]==i&&(--d[z],++y)}g=i}return{t:new n(d),l:g}},q=function(t,n,r){return-1==t.s?Math.max(q(t.l,n,r+1),q(t.r,n,r+1)):n[t.s]=r},O=function(t){for(var n=t.length;n&&!t[--n];);for(var i=new r(++n),e=0,o=t[0],s=1,a=function(t){i[e++]=t},u=1;u<=n;++u)if(t[u]==o&&u!=n)++s;else{if(!o&&s>2){for(;s>138;s-=138)a(32754);s>2&&(a(s>10?s-11<<5|28690:s-3<<5|12305),s=0)}else if(s>3){for(a(o),--s;s>6;s-=6)a(8304);s>2&&(a(s-3<<5|8208),s=0)}for(;s--;)a(o);s=1,o=t[u]}return{c:i.subarray(0,e),n:n}},G=function(t,n){for(var r=0,i=0;i<n.length;++i)r+=t[i]*n[i];return r},L=function(t,n,r){var i=r.length,e=T(n+2);t[e]=255&i,t[e+1]=i>>8,t[e+2]=255^t[e],t[e+3]=255^t[e+1];for(var o=0;o<i;++o)t[e+o+4]=r[o];return 8*(e+4+i)},B=function(t,n,i,a,u,h,f,c,l,p,v){F(n,v++,i),++u[256];for(var d=Z(u,15),g=d.t,x=d.l,k=Z(h,15),M=k.t,S=k.l,A=O(g),T=A.c,D=A.n,C=O(M),I=C.c,U=C.n,q=new r(19),B=0;B<T.length;++B)++q[31&T[B]];for(B=0;B<I.length;++B)++q[31&I[B]];for(var H=Z(q,7),j=H.t,N=H.l,P=19;P>4&&!j[s[P-1]];--P);var V,Y,J,K,Q=p+5<<3,R=G(u,m)+G(h,b)+f,W=G(u,g)+G(h,M)+f+14+3*P+G(q,j)+2*q[16]+3*q[17]+7*q[18];if(l>=0&&Q<=R&&Q<=W)return L(n,v,t.subarray(l,l+p));if(F(n,v,1+(W<R)),v+=2,W<R){V=y(g,x,0),Y=g,J=y(M,S,0),K=M;var X=y(j,N,0);for(F(n,v,D-257),F(n,v+5,U-1),F(n,v+10,P-4),v+=14,B=0;B<P;++B)F(n,v+3*B,j[s[B]]);v+=3*P;for(var $=[T,I],_=0;_<2;++_){var tt=$[_];for(B=0;B<tt.length;++B)F(n,v,X[rt=31&tt[B]]),v+=j[rt],rt>15&&(F(n,v,tt[B]>>5&127),v+=tt[B]>>12)}}else V=w,Y=m,J=z,K=b;for(B=0;B<c;++B){var nt=a[B];if(nt>255){var rt;E(n,v,V[257+(rt=nt>>18&31)]),v+=Y[rt+257],rt>7&&(F(n,v,nt>>23&31),v+=e[rt]);var it=31&nt;E(n,v,J[it]),v+=K[it],it>3&&(E(n,v,nt>>5&8191),v+=o[it])}else E(n,v,V[nt]),v+=Y[nt]}return E(n,v,V[256]),v+Y[256]},H=new i([65540,131080,131088,131104,262176,1048704,1048832,2114560,2117632]),j=new n(0),N=function(t,s,a,u,h,c){var l=c.z||t.length,v=new n(u+l+5*(1+Math.ceil(l/7e3))+h),d=v.subarray(u,v.length-h),g=c.l,y=7&(c.r||0);if(s){y&&(d[0]=c.r>>3);for(var m=H[s-1],b=m>>13,w=8191&m,x=(1<<a)-1,z=c.p||new r(32768),k=c.h||new r(x+1),M=Math.ceil(a/3),S=2*M,A=function(n){return(t[n]^t[n+1]<<M^t[n+2]<<S)&x},C=new i(25e3),I=new r(288),U=new r(32),F=0,E=0,Z=c.i||0,q=0,O=c.w||0,G=0;Z+2<l;++Z){var j=A(Z),N=32767&Z,P=k[j];if(z[N]=P,k[j]=N,O<=Z){var V=l-Z;if((F>7e3||q>24576)&&(V>423||!g)){y=B(t,d,0,C,I,U,E,q,G,Z-G,y),q=F=E=0,G=Z;for(var Y=0;Y<286;++Y)I[Y]=0;for(Y=0;Y<30;++Y)U[Y]=0}var J=2,K=0,Q=w,R=N-P&32767;if(V>2&&j==A(Z-R))for(var W=Math.min(b,V)-1,X=Math.min(32767,Z),$=Math.min(258,V);R<=X&&--Q&&N!=P;){if(t[Z+J]==t[Z+J-R]){for(var _=0;_<$&&t[Z+_]==t[Z+_-R];++_);if(_>J){if(J=_,K=R,_>W)break;var tt=Math.min(R,_-2),nt=0;for(Y=0;Y<tt;++Y){var rt=Z-R+Y&32767,it=rt-z[rt]&32767;it>nt&&(nt=it,P=rt)}}}R+=(N=P)-(P=z[N])&32767}if(K){C[q++]=268435456|f[J]<<18|p[K];var et=31&f[J],ot=31&p[K];E+=e[et]+o[ot],++I[257+et],++U[ot],O=Z+J,++F}else C[q++]=t[Z],++I[t[Z]]}}for(Z=Math.max(Z,O);Z<l;++Z)C[q++]=t[Z],++I[t[Z]];y=B(t,d,g,C,I,U,E,q,G,Z-G,y),g||(c.r=7&y|d[y/8|0]<<3,y-=7,c.h=k,c.p=z,c.i=Z,c.w=O)}else{for(Z=c.w||0;Z<l+g;Z+=65535){var st=Z+65535;st>=l&&(d[y/8|0]=g,st=l),y=L(d,y+1,t.subarray(Z,st))}c.i=l}return D(v,0,u+T(y)+h)},P=function(){for(var t=new Int32Array(256),n=0;n<256;++n){for(var r=n,i=9;--i;)r=(1&r&&-306674912)^r>>>1;t[n]=r}return t}(),V=function(){var t=-1;return{p:function(n){for(var r=t,i=0;i<n.length;++i)r=P[255&r^n[i]]^r>>>8;t=r},d:function(){return~t}}},Y=function(){var t=1,n=0;return{p:function(r){for(var i=t,e=n,o=0|r.length,s=0;s!=o;){for(var a=Math.min(s+2655,o);s<a;++s)e+=i+=r[s];i=(65535&i)+15*(i>>16),e=(65535&e)+15*(e>>16)}t=i,n=e},d:function(){return(255&(t%=65521))<<24|(65280&t)<<8|(255&(n%=65521))<<8|n>>8}}},J=function(t,r,i,e,o){if(!o&&(o={l:1},r.dictionary)){var s=r.dictionary.subarray(-32768),a=new n(s.length+t.length);a.set(s),a.set(t,s.length),t=a,o.w=s.length}return N(t,null==r.level?6:r.level,null==r.mem?o.l?Math.ceil(1.5*Math.max(8,Math.min(13,Math.log(t.length)))):20:12+r.mem,i,e,o)},K=function(t,n){var r={};for(var i in t)r[i]=t[i];for(var i in n)r[i]=n[i];return r},Q=function(t,n,r){for(var i=t(),e=""+t,o=e.slice(e.indexOf("[")+1,e.lastIndexOf("]")).replace(/\s+/g,"").split(","),s=0;s<i.length;++s){var a=i[s],u=o[s];if("function"==typeof a){n+=";"+u+"=";var h=""+a;if(a.prototype)if(-1!=h.indexOf("[native code]")){var f=h.indexOf(" ",8)+1;n+=h.slice(f,h.indexOf("(",f))}else for(var c in n+=h,a.prototype)n+=";"+u+".prototype."+c+"="+a.prototype[c];else n+=h}else r[u]=a}return n},R=[],W=function(t){var n=[];for(var r in t)t[r].buffer&&n.push((t[r]=new t[r].constructor(t[r])).buffer);return n},X=function(n,r,i,e){if(!R[i]){for(var o="",s={},a=n.length-1,u=0;u<a;++u)o=Q(n[u],o,s);R[i]={c:Q(n[a],o,s),e:s}}var h=K({},R[i].e);return(0,t.default)(R[i].c+";onmessage=function(e){for(var k in e.data)self[k]=e.data[k];onmessage="+r+"}",i,h,W(h),e)},$=function(){return[n,r,i,e,o,s,h,l,x,k,v,C,y,M,S,A,T,D,I,U,Tt,et,ot]},_=function(){return[n,r,i,e,o,s,f,p,w,m,z,b,v,H,j,y,F,E,Z,q,O,G,L,B,T,D,N,J,kt,et]},tt=function(){return[pt,gt,lt,V,P]},nt=function(){return[vt,dt]},rt=function(){return[yt,lt,Y]},it=function(){return[mt]},et=function(t){return postMessage(t,[t.buffer])},ot=function(t){return t&&{out:t.size&&new n(t.size),dictionary:t.dictionary}},st=function(t,n,r,i,e,o){var s=X(r,i,e,function(t,n){s.terminate(),o(t,n)});return s.postMessage([t,n],n.consume?[t.buffer]:[]),function(){s.terminate()}},at=function(t){return t.ondata=function(t,n){return postMessage([t,n],[t.buffer])},function(n){n.data[0]?(t.push(n.data[0],n.data[1]),postMessage([n.data[0].length])):t.flush(n.data[1])}},ut=function(t,n,r,i,e,o,s){var a,u=X(t,i,e,function(t,r){t?(u.terminate(),n.ondata.call(n,t)):Array.isArray(r)?1==r.length?(n.queuedSize-=r[0],n.ondrain&&n.ondrain(r[0])):(r[1]&&u.terminate(),n.ondata.call(n,t,r[0],r[1])):s(r)});u.postMessage(r),n.queuedSize=0,n.push=function(t,r){n.ondata||I(5),a&&n.ondata(I(4,0,1),null,!!r),n.queuedSize+=t.length,u.postMessage([t,a=r],t.buffer instanceof ArrayBuffer?[t.buffer]:[])},n.terminate=function(){u.terminate()},o&&(n.flush=function(t){u.postMessage([0,t])})},ht=function(t,n){return t[n]|t[n+1]<<8},ft=function(t,n){return(t[n]|t[n+1]<<8|t[n+2]<<16|t[n+3]<<24)>>>0},ct=function(t,n){return ft(t,n)+4294967296*ft(t,n+4)},lt=function(t,n,r){for(;r;++n)t[n]=r,r>>>=8},pt=function(t,n){var r=n.filename;if(t[0]=31,t[1]=139,t[2]=8,t[8]=n.level<2?4:9==n.level?2:0,t[9]=3,0!=n.mtime&&lt(t,4,Math.floor(new Date(n.mtime||Date.now())/1e3)),r){t[3]=8;for(var i=0;i<=r.length;++i)t[i+10]=r.charCodeAt(i)}},vt=function(t){31==t[0]&&139==t[1]&&8==t[2]||I(6,"invalid gzip data");var n=t[3],r=10;4&n&&(r+=2+(t[10]|t[11]<<8));for(var i=(n>>3&1)+(n>>4&1);i>0;i-=!t[r++]);return r+(2&n)},dt=function(t){var n=t.length;return(t[n-4]|t[n-3]<<8|t[n-2]<<16|t[n-1]<<24)>>>0},gt=function(t){return 10+(t.filename?t.filename.length+1:0)},yt=function(t,n){var r=n.level,i=0==r?0:r<6?1:9==r?3:2;if(t[0]=120,t[1]=i<<6|(n.dictionary&&32),t[1]|=31-(t[0]<<8|t[1])%31,n.dictionary){var e=Y();e.p(n.dictionary),lt(t,2,e.d())}},mt=function(t,n){return(8!=(15&t[0])||t[0]>>4>7||(t[0]<<8|t[1])%31)&&I(6,"invalid zlib data"),(t[1]>>5&1)==+!n&&I(6,"invalid zlib data: "+(32&t[1]?"need":"unexpected")+" dictionary"),2+(t[1]>>3&4)};function bt(t,n){return"function"==typeof t&&(n=t,t={}),this.ondata=n,t}var wt=function(){function t(t,r){if("function"==typeof t&&(r=t,t={}),this.ondata=r,this.o=t||{},this.s={l:0,i:32768,w:32768,z:32768},this.b=new n(98304),this.o.dictionary){var i=this.o.dictionary.subarray(-32768);this.b.set(i,32768-i.length),this.s.i=32768-i.length}}return t.prototype.p=function(t,n){this.ondata(J(t,this.o,0,0,this.s),n)},t.prototype.push=function(t,r){this.ondata||I(5),this.s.l&&I(4);var i=t.length+this.s.z;if(i>this.b.length){if(i>2*this.b.length-32768){var e=new n(-32768&i);e.set(this.b.subarray(0,this.s.z)),this.b=e}var o=this.b.length-this.s.z;this.b.set(t.subarray(0,o),this.s.z),this.s.z=this.b.length,this.p(this.b,!1),this.b.set(this.b.subarray(-32768)),this.b.set(t.subarray(o),32768),this.s.z=t.length-o+32768,this.s.i=32766,this.s.w=32768}else this.b.set(t,this.s.z),this.s.z+=t.length;this.s.l=1&r,(this.s.z>this.s.w+8191||r)&&(this.p(this.b,r||!1),this.s.w=this.s.i,this.s.i-=2),r&&(this.s=this.o={},this.b=j)},t.prototype.flush=function(t){if(this.ondata||I(5),this.s.l&&I(4),this.p(this.b,!1),this.s.w=this.s.i,this.s.i-=2,t){var r=new n(6);r[0]=this.s.r>>3;var i=L(r,this.s.r,j);this.s.r=0,this.ondata(r.subarray(0,i>>3),!1)}},t}();_e.Deflate=wt;var xt=function(){return function(t,n){ut([_,function(){return[at,wt]}],this,bt.call(this,t,n),function(t){var n=new wt(t.data);onmessage=at(n)},6,1)}}();function zt(t,n,r){return r||(r=n,n={}),"function"!=typeof r&&I(7),st(t,n,[_],function(t){return et(kt(t.data[0],t.data[1]))},0,r)}function kt(t,n){return J(t,n||{},0,0)}_e.AsyncDeflate=xt;var Mt=function(){function t(t,r){"function"==typeof t&&(r=t,t={}),this.ondata=r;var i=t&&t.dictionary&&t.dictionary.subarray(-32768);this.s={i:0,b:i?i.length:0},this.o=new n(32768),this.p=new n(0),i&&this.o.set(i)}return t.prototype.e=function(t){if(this.ondata||I(5),this.d&&I(4),this.p.length){if(t.length){var r=new n(this.p.length+t.length);r.set(this.p),r.set(t,this.p.length),this.p=r}}else this.p=t},t.prototype.c=function(t){this.s.i=+(this.d=t||!1);var n=this.s.b,r=U(this.p,this.s,this.o);this.ondata(D(r,n,this.s.b),this.d),this.o=D(r,this.s.b-32768),this.s.b=this.o.length,this.p=D(this.p,this.s.p/8|0),this.s.p&=7},t.prototype.push=function(t,n){this.e(t),this.c(n)},t}();_e.Inflate=Mt;var St=function(){return function(t,n){ut([$,function(){return[at,Mt]}],this,bt.call(this,t,n),function(t){var n=new Mt(t.data);onmessage=at(n)},7,0)}}();function At(t,n,r){return r||(r=n,n={}),"function"!=typeof r&&I(7),st(t,n,[$],function(t){return et(Tt(t.data[0],ot(t.data[1])))},1,r)}function Tt(t,n){return U(t,{i:2},n&&n.out,n&&n.dictionary)}_e.AsyncInflate=St;var Dt=function(){function t(t,n){this.c=V(),this.l=0,this.v=1,wt.call(this,t,n)}return t.prototype.push=function(t,n){this.c.p(t),this.l+=t.length,wt.prototype.push.call(this,t,n)},t.prototype.p=function(t,n){var r=J(t,this.o,this.v&&gt(this.o),n&&8,this.s);this.v&&(pt(r,this.o),this.v=0),n&&(lt(r,r.length-8,this.c.d()),lt(r,r.length-4,this.l)),this.ondata(r,n)},t.prototype.flush=function(t){wt.prototype.flush.call(this,t)},t}();_e.Gzip=Dt,_e.Compress=Dt;var Ct=function(){return function(t,n){ut([_,tt,function(){return[at,wt,Dt]}],this,bt.call(this,t,n),function(t){var n=new Dt(t.data);onmessage=at(n)},8,1)}}();function It(t,n,r){return r||(r=n,n={}),"function"!=typeof r&&I(7),st(t,n,[_,tt,function(){return[Ut]}],function(t){return et(Ut(t.data[0],t.data[1]))},2,r)}function Ut(t,n){n||(n={});var r=V(),i=t.length;r.p(t);var e=J(t,n,gt(n),8),o=e.length;return pt(e,n),lt(e,o-8,r.d()),lt(e,o-4,i),e}_e.AsyncGzip=Ct,_e.AsyncCompress=Ct;var Ft=function(){function t(t,n){this.v=1,this.r=0,Mt.call(this,t,n)}return t.prototype.push=function(t,r){if(Mt.prototype.e.call(this,t),this.r+=t.length,this.v){var i=this.p.subarray(this.v-1),e=i.length>3?vt(i):4;if(e>i.length){if(!r)return}else this.v>1&&this.onmember&&this.onmember(this.r-i.length);this.p=i.subarray(e),this.v=0}Mt.prototype.c.call(this,0),this.s.f&&!this.s.l?(this.v=T(this.s.p)+9,this.s={i:0},this.o=new n(0),this.push(new n(0),r)):r&&Mt.prototype.c.call(this,r)},t}();_e.Gunzip=Ft;var Et=function(){return function(t,n){var r=this;ut([$,nt,function(){return[at,Mt,Ft]}],this,bt.call(this,t,n),function(t){var n=new Ft(t.data);n.onmember=function(t){return postMessage(t)},onmessage=at(n)},9,0,function(t){return r.onmember&&r.onmember(t)})}}();function Zt(t,n,r){return r||(r=n,n={}),"function"!=typeof r&&I(7),st(t,n,[$,nt,function(){return[qt]}],function(t){return et(qt(t.data[0],t.data[1]))},3,r)}function qt(t,r){var i=vt(t);return i+8>t.length&&I(6,"invalid gzip data"),U(t.subarray(i,-8),{i:2},r&&r.out||new n(dt(t)),r&&r.dictionary)}_e.AsyncGunzip=Et;var Ot=function(){function t(t,n){this.c=Y(),this.v=1,wt.call(this,t,n)}return t.prototype.push=function(t,n){this.c.p(t),wt.prototype.push.call(this,t,n)},t.prototype.p=function(t,n){var r=J(t,this.o,this.v&&(this.o.dictionary?6:2),n&&4,this.s);this.v&&(yt(r,this.o),this.v=0),n&&lt(r,r.length-4,this.c.d()),this.ondata(r,n)},t.prototype.flush=function(t){wt.prototype.flush.call(this,t)},t}();_e.Zlib=Ot;var Gt=function(){return function(t,n){ut([_,rt,function(){return[at,wt,Ot]}],this,bt.call(this,t,n),function(t){var n=new Ot(t.data);onmessage=at(n)},10,1)}}();function Lt(t,n,r){return r||(r=n,n={}),"function"!=typeof r&&I(7),st(t,n,[_,rt,function(){return[Bt]}],function(t){return et(Bt(t.data[0],t.data[1]))},4,r)}function Bt(t,n){n||(n={});var r=Y();r.p(t);var i=J(t,n,n.dictionary?6:2,4);return yt(i,n),lt(i,i.length-4,r.d()),i}_e.AsyncZlib=Gt;var Ht=function(){function t(t,n){Mt.call(this,t,n),this.v=t&&t.dictionary?2:1}return t.prototype.push=function(t,n){if(Mt.prototype.e.call(this,t),this.v){if(this.p.length<6&&!n)return;this.p=this.p.subarray(mt(this.p,this.v-1)),this.v=0}n&&(this.p.length<4&&I(6,"invalid zlib data"),this.p=this.p.subarray(0,-4)),Mt.prototype.c.call(this,n)},t}();_e.Unzlib=Ht;var jt=function(){return function(t,n){ut([$,it,function(){return[at,Mt,Ht]}],this,bt.call(this,t,n),function(t){var n=new Ht(t.data);onmessage=at(n)},11,0)}}();function Nt(t,n,r){return r||(r=n,n={}),"function"!=typeof r&&I(7),st(t,n,[$,it,function(){return[Pt]}],function(t){return et(Pt(t.data[0],ot(t.data[1])))},5,r)}function Pt(t,n){return U(t.subarray(mt(t,n&&n.dictionary),-4),{i:2},n&&n.out,n&&n.dictionary)}_e.AsyncUnzlib=jt;var Vt=function(){function t(t,n){this.o=bt.call(this,t,n)||{},this.G=Ft,this.I=Mt,this.Z=Ht}return t.prototype.i=function(){var t=this;this.s.ondata=function(n,r){t.ondata(n,r)}},t.prototype.push=function(t,r){if(this.ondata||I(5),this.s)this.s.push(t,r);else{if(this.p&&this.p.length){var i=new n(this.p.length+t.length);i.set(this.p),i.set(t,this.p.length)}else this.p=t;this.p.length>2&&(this.s=31==this.p[0]&&139==this.p[1]&&8==this.p[2]?new this.G(this.o):8!=(15&this.p[0])||this.p[0]>>4>7||(this.p[0]<<8|this.p[1])%31?new this.I(this.o):new this.Z(this.o),this.i(),this.s.push(this.p,r),this.p=null)}},t}();_e.Decompress=Vt;var Yt=function(){function t(t,n){Vt.call(this,t,n),this.queuedSize=0,this.G=Et,this.I=St,this.Z=jt}return t.prototype.i=function(){var t=this;this.s.ondata=function(n,r,i){t.ondata(n,r,i)},this.s.ondrain=function(n){t.queuedSize-=n,t.ondrain&&t.ondrain(n)}},t.prototype.push=function(t,n){this.queuedSize+=t.length,Vt.prototype.push.call(this,t,n)},t}();function Jt(t,n,r){return r||(r=n,n={}),"function"!=typeof r&&I(7),31==t[0]&&139==t[1]&&8==t[2]?Zt(t,n,r):8!=(15&t[0])||t[0]>>4>7||(t[0]<<8|t[1])%31?At(t,n,r):Nt(t,n,r)}function Kt(t,n){return 31==t[0]&&139==t[1]&&8==t[2]?qt(t,n):8!=(15&t[0])||t[0]>>4>7||(t[0]<<8|t[1])%31?Tt(t,n):Pt(t,n)}_e.AsyncDecompress=Yt;var Qt=function(t,r,i,e){for(var o in t){var s=t[o],a=r+o,u=e;Array.isArray(s)&&(u=K(e,s[1]),s=s[0]),ArrayBuffer.isView(s)?i[a]=[s,u]:(i[a+="/"]=[new n(0),u],Qt(s,a,i,e))}},Rt="undefined"!=typeof TextEncoder&&new TextEncoder,Wt="undefined"!=typeof TextDecoder&&new TextDecoder,Xt=0;try{Wt.decode(j,{stream:!0}),Xt=1}catch(t){}var $t=function(t){for(var n="",r=0;;){var i=t[r++],e=(i>127)+(i>223)+(i>239);if(r+e>t.length)return{s:n,r:D(t,r-1)};e?3==e?(i=((15&i)<<18|(63&t[r++])<<12|(63&t[r++])<<6|63&t[r++])-65536,n+=String.fromCharCode(55296|i>>10,56320|1023&i)):n+=String.fromCharCode(1&e?(31&i)<<6|63&t[r++]:(15&i)<<12|(63&t[r++])<<6|63&t[r++]):n+=String.fromCharCode(i)}},_t=function(){function t(t){this.ondata=t,Xt?this.t=new TextDecoder:this.p=j}return t.prototype.push=function(t,r){if(this.ondata||I(5),r=!!r,this.t)return this.ondata(this.t.decode(t,{stream:!0}),r),void(r&&(this.t.decode().length&&I(8),this.t=null));this.p||I(4);var i=new n(this.p.length+t.length);i.set(this.p),i.set(t,this.p.length);var e=$t(i),o=e.s,s=e.r;r?(s.length&&I(8),this.p=null):this.p=s,this.ondata(o,r)},t}();_e.DecodeUTF8=_t;var tn=function(){function t(t){this.ondata=t}return t.prototype.push=function(t,n){this.ondata||I(5),this.d&&I(4),this.ondata(nn(t),this.d=n||!1)},t}();function nn(t,r){if(r){for(var i=new n(t.length),e=0;e<t.length;++e)i[e]=t.charCodeAt(e);return i}if(Rt)return Rt.encode(t);var o=t.length,s=new n(t.length+(t.length>>1)),a=0,u=function(t){s[a++]=t};for(e=0;e<o;++e){if(a+5>s.length){var h=new n(a+8+(o-e<<1));h.set(s),s=h}var f=t.charCodeAt(e);f<128||r?u(f):f<2048?(u(192|f>>6),u(128|63&f)):f>55295&&f<57344?(u(240|(f=65536+(1047552&f)|1023&t.charCodeAt(++e))>>18),u(128|f>>12&63),u(128|f>>6&63),u(128|63&f)):(u(224|f>>12),u(128|f>>6&63),u(128|63&f))}return D(s,0,a)}function rn(t,n){if(n){for(var r="",i=0;i<t.length;i+=16384)r+=String.fromCharCode.apply(null,t.subarray(i,i+16384));return r}if(Wt)return Wt.decode(t);var e=$t(t),o=e.s;return(r=e.r).length&&I(8),o}_e.EncodeUTF8=tn;var en=function(t){return 1==t?3:t<6?2:9==t?1:0},on=function(t,n){return n+30+ht(t,n+26)+ht(t,n+28)},sn=function(t,n,r){var i=ht(t,n+28),e=ht(t,n+30),o=rn(t.subarray(n+46,n+46+i),!(2048&ht(t,n+8))),s=n+46+i,a=an(t,s,e,r,ft(t,n+20),ft(t,n+24),ft(t,n+42)),u=a[0],h=a[1],f=a[2];return[ht(t,n+10),u,h,o,s+e+ht(t,n+32),f]},an=function(t,n,r,i,e,o,s){var a=4294967295==e,u=4294967295==o,h=4294967295==s,f=n+r;if(i&&a+u+h){for(;n+4<f;n+=4+ht(t,n+2))if(1==ht(t,n))return[a?ct(t,n+4+8*u):e,u?ct(t,n+4):o,h?ct(t,n+4+8*(u+a)):s,1];i<2&&I(13)}return[e,o,s,0]},un=function(t){var n=0;if(t)for(var r in t){var i=t[r].length;i>65535&&I(9),n+=i+4}return n},hn=function(t,n,r,i,e,o,s,a){var u=i.length,h=r.extra,f=a&&a.length,c=un(h);lt(t,n,null!=s?33639248:67324752),n+=4,null!=s&&(t[n++]=20,t[n++]=r.os),t[n]=20,n+=2,t[n++]=r.flag<<1|(o<0&&8),t[n++]=e&&8,t[n++]=255&r.compression,t[n++]=r.compression>>8;var l=new Date(null==r.mtime?Date.now():r.mtime),p=l.getFullYear()-1980;if((p<0||p>119)&&I(10),lt(t,n,p<<25|l.getMonth()+1<<21|l.getDate()<<16|l.getHours()<<11|l.getMinutes()<<5|l.getSeconds()>>1),n+=4,-1!=o&&(lt(t,n,r.crc),lt(t,n+4,o<0?-o-2:o),lt(t,n+8,r.size)),lt(t,n+12,u),lt(t,n+14,c),n+=16,null!=s&&(lt(t,n,f),lt(t,n+6,r.attrs),lt(t,n+10,s),n+=14),t.set(i,n),n+=u,c)for(var v in h){var d=h[v],g=d.length;lt(t,n,+v),lt(t,n+2,g),t.set(d,n+4),n+=4+g}return f&&(t.set(a,n),n+=f),n},fn=function(t,n,r,i,e){lt(t,n,101010256),lt(t,n+8,r),lt(t,n+10,r),lt(t,n+12,i),lt(t,n+16,e)},cn=function(){function t(t){this.filename=t,this.c=V(),this.size=0,this.compression=0}return t.prototype.process=function(t,n){this.ondata(null,t,n)},t.prototype.push=function(t,n){this.ondata||I(5),this.c.p(t),this.size+=t.length,n&&(this.crc=this.c.d()),this.process(t,n||!1)},t}();_e.ZipPassThrough=cn;var ln=function(){function t(t,n){var r=this;n||(n={}),cn.call(this,t),this.d=new wt(n,function(t,n){r.ondata(null,t,n)}),this.compression=8,this.flag=en(n.level)}return t.prototype.process=function(t,n){try{this.d.push(t,n)}catch(t){this.ondata(t,null,n)}},t.prototype.push=function(t,n){cn.prototype.push.call(this,t,n)},t}();_e.ZipDeflate=ln;var pn=function(){function t(t,n){var r=this;n||(n={}),cn.call(this,t),this.d=new xt(n,function(t,n,i){r.ondata(t,n,i)}),this.compression=8,this.flag=en(n.level),this.terminate=this.d.terminate}return t.prototype.process=function(t,n){this.d.push(t,n)},t.prototype.push=function(t,n){cn.prototype.push.call(this,t,n)},t}();_e.AsyncZipDeflate=pn;var vn=function(){function t(t){this.ondata=t,this.u=[],this.d=1}return t.prototype.add=function(t){var r=this;if(this.ondata||I(5),2&this.d)this.ondata(I(4+8*(1&this.d),0,1),null,!1);else{var i=nn(t.filename),e=i.length,o=t.comment,s=o&&nn(o),a=e!=t.filename.length||s&&o.length!=s.length,u=e+un(t.extra)+30;e>65535&&this.ondata(I(11,0,1),null,!1);var h=new n(u);hn(h,0,t,i,a,-1);var f=[h],c=function(){for(var t=0,n=f;t<n.length;t++)r.ondata(null,n[t],!1);f=[]},l=this.d;this.d=0;var p=this.u.length,v=K(t,{f:i,u:a,o:s,t:function(){t.terminate&&t.terminate()},r:function(){if(c(),l){var t=r.u[p+1];t?t.r():r.d=1}l=1}}),d=0;t.ondata=function(i,e,o){if(i)r.ondata(i,e,o),r.terminate();else if(d+=e.length,f.push(e),o){var s=new n(16);lt(s,0,134695760),lt(s,4,t.crc),lt(s,8,d),lt(s,12,t.size),f.push(s),v.c=d,v.b=u+d+16,v.crc=t.crc,v.size=t.size,l&&v.r(),l=1}else l&&c()},this.u.push(v)}},t.prototype.end=function(){var t=this;2&this.d?this.ondata(I(4+8*(1&this.d),0,1),null,!0):(this.d?this.e():this.u.push({r:function(){1&t.d&&(t.u.splice(-1,1),t.e())},t:function(){}}),this.d=3)},t.prototype.e=function(){for(var t=0,r=0,i=0,e=0,o=this.u;e<o.length;e++)i+=46+(h=o[e]).f.length+un(h.extra)+(h.o?h.o.length:0);for(var s=new n(i+22),a=0,u=this.u;a<u.length;a++){var h;hn(s,t,h=u[a],h.f,h.u,-h.c-2,r,h.o),t+=46+h.f.length+un(h.extra)+(h.o?h.o.length:0),r+=h.b}fn(s,t,this.u.length,i,r),this.ondata(null,s,!0),this.d=2},t.prototype.terminate=function(){for(var t=0,n=this.u;t<n.length;t++)n[t].t();this.d=2},t}();function dn(t,r,i){i||(i=r,r={}),"function"!=typeof i&&I(7);var e={};Qt(t,"",e,r);var o=Object.keys(e),s=o.length,a=0,u=0,h=s,f=Array(s),c=[],l=function(){for(var t=0;t<c.length;++t)c[t]()},p=function(t,n){xn(function(){i(t,n)})};xn(function(){p=i});var v=function(){var t=new n(u+22),r=a,i=u-a;u=0;for(var e=0;e<h;++e){var o=f[e];try{var s=o.c.length;hn(t,u,o,o.f,o.u,s);var c=30+o.f.length+un(o.extra),l=u+c;t.set(o.c,l),hn(t,a,o,o.f,o.u,s,u,o.m),a+=16+c+(o.m?o.m.length:0),u=l+s}catch(t){return p(t,null)}}fn(t,a,f.length,i,r),p(null,t)};s||v();for(var d=function(t){var n=o[t],r=e[n],i=r[0],h=r[1],d=V(),g=i.length;d.p(i);var y=nn(n),m=y.length,b=h.comment,w=b&&nn(b),x=w&&w.length,z=un(h.extra),k=0==h.level?0:8,M=function(r,i){if(r)l(),p(r,null);else{var e=i.length;f[t]=K(h,{size:g,crc:d.d(),c:i,f:y,m:w,u:m!=n.length||w&&b.length!=x,compression:k}),a+=30+m+z+e,u+=76+2*(m+z)+(x||0)+e,--s||v()}};if(m>65535&&M(I(11,0,1),null),k)if(g<16e4)try{M(null,kt(i,h))}catch(t){M(t,null)}else c.push(zt(i,h,M));else M(null,i)},g=0;g<h;++g)d(g);return l}function gn(t,r){r||(r={});var i={},e=[];Qt(t,"",i,r);var o=0,s=0;for(var a in i){var u=i[a],h=u[0],f=u[1],c=0==f.level?0:8,l=(M=nn(a)).length,p=f.comment,v=p&&nn(p),d=v&&v.length,g=un(f.extra);l>65535&&I(11);var y=c?kt(h,f):h,m=y.length,b=V();b.p(h),e.push(K(f,{size:h.length,crc:b.d(),c:y,f:M,m:v,u:l!=a.length||v&&p.length!=d,o:o,compression:c})),o+=30+l+g+m,s+=76+2*(l+g)+(d||0)+m}for(var w=new n(s+22),x=o,z=s-o,k=0;k<e.length;++k){var M;hn(w,(M=e[k]).o,M,M.f,M.u,M.c.length);var S=30+M.f.length+un(M.extra);w.set(M.c,M.o+S),hn(w,o,M,M.f,M.u,M.c.length,M.o,M.m),o+=16+S+(M.m?M.m.length:0)}return fn(w,o,e.length,z,x),w}_e.Zip=vn;var yn=function(){function t(){}return t.prototype.push=function(t,n){this.ondata(null,t,n)},t.compression=0,t}();_e.UnzipPassThrough=yn;var mn=function(){function t(){var t=this;this.i=new Mt(function(n,r){t.ondata(null,n,r)})}return t.prototype.push=function(t,n){try{this.i.push(t,n)}catch(t){this.ondata(t,null,n)}},t.compression=8,t}();_e.UnzipInflate=mn;var bn=function(){function t(t,n){var r=this;n<32e4?this.i=new Mt(function(t,n){r.ondata(null,t,n)}):(this.i=new St(function(t,n,i){r.ondata(t,n,i)}),this.terminate=this.i.terminate)}return t.prototype.push=function(t,n){this.i.terminate&&(t=D(t,0)),this.i.push(t,n)},t.compression=8,t}();_e.AsyncUnzipInflate=bn;var wn=function(){function t(t){this.onfile=t,this.k=[],this.o={0:yn},this.p=j}return t.prototype.push=function(t,r){var i=this;if(this.onfile||I(5),this.p||I(4),this.c>0){var e=Math.min(this.c,t.length),o=t.subarray(0,e);if(this.c-=e,this.d?this.d.push(o,!this.c):this.k[0].push(o),(t=t.subarray(e)).length)return this.push(t,r)}else{var s=0,a=0,u=void 0,h=void 0;this.p.length?t.length?((h=new n(this.p.length+t.length)).set(this.p),h.set(t,this.p.length)):h=this.p:h=t;for(var f=h.length,c=this.c,l=c&&this.d,p=function(){var t=ft(h,a);if(67324752==t){s=1,u=a,v.d=null,v.c=0;var n=ht(h,a+6),r=ht(h,a+8),e=2048&n,o=8&n,l=ht(h,a+26),p=ht(h,a+28);if(f>a+30+l+p){var d=[];v.k.unshift(d),s=2;var g,y=ft(h,a+18),m=ft(h,a+22),b=rn(h.subarray(a+30,a+=30+l),!e),w=an(h,a,p,2,y,m,0),x=w[0],z=w[1];o&&(x=-1-w[3]),a+=p,v.c=x;var k={name:b,compression:r,start:function(){if(k.ondata||I(5),x){var t=i.o[r];t||k.ondata(I(14,"unknown compression type "+r,1),null,!1),(g=x<0?new t(b):new t(b,x,z)).ondata=function(t,n,r){k.ondata(t,n,r)};for(var n=0,e=d;n<e.length;n++)g.push(e[n],!1);i.k[0]==d&&i.c?i.d=g:g.push(j,!0)}else k.ondata(null,j,!0)},terminate:function(){g&&g.terminate&&g.terminate()}};x>=0&&(k.size=x,k.originalSize=z),v.onfile(k)}return"break"}if(c){if(134695760==t)return u=a+=12+(-2==c&&8),s=3,v.c=0,"break";if(33639248==t)return u=a-=4,s=3,v.c=0,"break"}},v=this;a<f-4&&"break"!==p();++a);if(this.p=j,c<0){var d=h.subarray(0,s?u-12-(-2==c&&8)-(134695760==ft(h,u-16)&&4):a);l?l.push(d,!!s):this.k[+(2==s)].push(d)}if(2&s)return this.push(h.subarray(a),r);this.p=h.subarray(a)}r&&(this.c&&I(13),this.p=null)},t.prototype.register=function(t){this.o[t.compression]=t},t}();_e.Unzip=wn;var xn="function"==typeof queueMicrotask?queueMicrotask:"function"==typeof setTimeout?setTimeout:function(t){t()};function zn(t,r,i){i||(i=r,r={}),"function"!=typeof i&&I(7);var e=[],o=function(){for(var t=0;t<e.length;++t)e[t]()},s={},a=function(t,n){xn(function(){i(t,n)})};xn(function(){a=i});for(var u=t.length-22;101010256!=ft(t,u);--u)if(!u||t.length-u>65558)return a(I(13,0,1),null),o;var h=ht(t,u+8);if(h){var f=h,c=ft(t,u+16),l=117853008==ft(t,u-20);if(l){var p=ft(t,u-12);(l=101075792==ft(t,p))&&(f=h=ft(t,p+32),c=ft(t,p+48))}for(var v=r&&r.filter,d=function(r){var i=sn(t,c,l),u=i[0],f=i[1],p=i[2],d=i[3],g=i[4],y=on(t,i[5]);c=g;var m=function(t,n){t?(o(),a(t,null)):(n&&(s[d]=n),--h||a(null,s))};if(!v||v({name:d,size:f,originalSize:p,compression:u}))if(u)if(8==u){var b=t.subarray(y,y+f);if(p<524288||f>.8*p)try{m(null,Tt(b,{out:new n(p)}))}catch(t){m(t,null)}else e.push(At(b,{size:p},m))}else m(I(14,"unknown compression type "+u,1),null);else m(null,D(t,y,y+f));else m(null,null)},g=0;g<f;++g)d()}else a(null,{});return o}function kn(t,r){for(var i={},e=t.length-22;101010256!=ft(t,e);--e)(!e||t.length-e>65558)&&I(13);var o=ht(t,e+8);if(!o)return{};var s=ft(t,e+16),a=117853008==ft(t,e-20);if(a){var u=ft(t,e-12);(a=101075792==ft(t,u))&&(o=ft(t,u+32),s=ft(t,u+48))}for(var h=r&&r.filter,f=0;f<o;++f){var c=sn(t,s,a),l=c[0],p=c[1],v=c[2],d=c[3],g=c[4],y=on(t,c[5]);s=g,h&&!h({name:d,size:p,originalSize:v,compression:l})||(l?8==l?i[d]=Tt(t.subarray(y,y+p),{out:new n(v)}):I(14,"unknown compression type "+l):i[d]=D(t,y,y+p))}return i}return _e});
+</script>
+  <script>
+// shared/util-escape.js
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+</script>
+  <script>
+// shared/ui-toast.js
+function showToast(msg, ms) {
+  if (ms === undefined) ms = 2000;
+  var el = document.getElementById('__shared_toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '__shared_toast';
+    el.className = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  if (el.__hideTimer) {
+    clearTimeout(el.__hideTimer);
+  }
+  el.__hideTimer = setTimeout(function () {
+    el.classList.remove('show');
+  }, ms);
+}
+
+</script>
+  <script>
+// shared/io-download.js
+function downloadFile(filename, content, mime) {
+  if (mime === undefined) mime = 'text/plain;charset=utf-8';
+  var blob = new Blob([content], { type: mime });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () {
+    URL.revokeObjectURL(url);
+  }, 0);
+}
+
+</script>
+  <script>
+// shared/io-clipboard.js
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).then(function () {
+      return true;
+    }).catch(function () {
+      return false;
+    });
+  }
+  return new Promise(function (resolve) {
+    var textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    var ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch (e) {
+      ok = false;
+    }
+    document.body.removeChild(textarea);
+    resolve(ok);
+  });
+}
+
+function pasteImageFromClipboard() {
+  if (!navigator.clipboard || !navigator.clipboard.read) {
+    return Promise.resolve(null);
+  }
+  return navigator.clipboard.read().then(function (items) {
+    if (!items || items.length === 0) return null;
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (item && item.types) {
+        for (var t = 0; t < item.types.length; t++) {
+          if (item.types[t].indexOf('image/') === 0) {
+            return item.getType(item.types[t]);
+          }
+        }
+      }
+    }
+    return null;
+  }).catch(function () {
+    return null;
+  });
+}
+
+
+</script>
+  <script>
+// shared/io-zip.js
+// Requires the fflate UMD asset to be bundled before this module.
+if (typeof fflate === 'undefined' || !fflate ||
+    typeof fflate.strToU8 !== 'function' || typeof fflate.zipSync !== 'function' ||
+    typeof fflate.unzipSync !== 'function' || typeof fflate.strFromU8 !== 'function') {
+  throw new Error('io-zip.js requires the fflate asset to be loaded first.');
+}
+
+function _ioZipDedupeName(name, usedNames) {
+  if (!usedNames[name]) {
+    usedNames[name] = 1;
+    return name;
+  }
+  var dotIndex = name.lastIndexOf('.');
+  var base = dotIndex > 0 ? name.slice(0, dotIndex) : name;
+  var ext = dotIndex > 0 ? name.slice(dotIndex) : '';
+  var candidate;
+  do {
+    candidate = base + '_' + usedNames[name] + ext;
+    usedNames[name] += 1;
+  } while (usedNames[candidate]);
+  usedNames[candidate] = 1;
+  return candidate;
+}
+
+function createZipBlob(files) {
+  var entries = {};
+  var usedNames = {};
+
+  files.forEach(function (file) {
+    var name = _ioZipDedupeName(file.name, usedNames);
+    if (file.bytes instanceof Uint8Array) {
+      entries[name] = file.bytes;
+    } else if (typeof file.text === 'string') {
+      entries[name] = fflate.strToU8(file.text);
+    } else if (file.bytes && file.bytes.buffer instanceof ArrayBuffer) {
+      entries[name] = new Uint8Array(file.bytes.buffer, file.bytes.byteOffset, file.bytes.byteLength);
+    } else {
+      throw new Error('createZipBlob entry must provide either bytes (Uint8Array) or text (string)');
+    }
+  });
+
+  return new Blob([fflate.zipSync(entries)], { type: 'application/zip' });
+}
+
+// 解開一個 zip（DOCX/PPTX/XLSX 都是 zip 容器）。
+// bytesOrArrayBuffer: Uint8Array | ArrayBuffer
+// → Object<string, Uint8Array>（entry 路徑 → 內容 bytes，例如 "docProps/core.xml"）
+// 非 zip 格式（例如加密 Office 檔的 CFB/OLE 容器）會讓 fflate.unzipSync 直接丟出例外，
+// 呼叫端要自己 try/catch，不能把「解不開」誤判成「沒有內容」。
+function unzipToEntries(bytesOrArrayBuffer) {
+  var bytes = (bytesOrArrayBuffer instanceof Uint8Array)
+    ? bytesOrArrayBuffer
+    : new Uint8Array(bytesOrArrayBuffer);
+  return fflate.unzipSync(bytes);
+}
+
+// 把 unzipToEntries() 拿到的某個 entry（Uint8Array）解成 UTF-8 字串，
+// 給 DOMParser 解析 docProps/*.xml 這類文字內容用。
+function zipEntryToText(bytes) {
+  return fflate.strFromU8(bytes);
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    createZipBlob: createZipBlob,
+    unzipToEntries: unzipToEntries,
+    zipEntryToText: zipEntryToText
+  };
+}
+
+
+</script>
+  <script>
+// Day30_ooxml-privacy-cleaner/src/docx-meta.js
+//
+// DOCX（OOXML）docProps 讀取與清除。只服務 Day30 這一題，不進 shared/——比照
+// shared/PDF_CONTRACT.md 對 Day25 的裁定：只有一題用到的邏輯先留在題目自己的
+// src/index.html（bundle 時會被內嵌進同一個 <script>），第三題（PPTX）重複時
+// 才抽共用模組。
+//
+// 依賴 shared/io-zip.js 的 unzipToEntries()/zipEntryToText()，以及瀏覽器原生的
+// DOMParser／XMLSerializer／TextEncoder（不是外部函式庫，是瀏覽器內建 API）。
+
+var DOCX_NS = {
+  cp: 'http://schemas.openxmlformats.org/package/2006/metadata/core-properties',
+  dc: 'http://purl.org/dc/elements/1.1/',
+  dcterms: 'http://purl.org/dc/terms/',
+  extProps: 'http://schemas.openxmlformats.org/officeDocument/2006/extended-properties',
+  vt: 'http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes',
+  relsPkg: 'http://schemas.openxmlformats.org/package/2006/relationships',
+  w: 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+  r: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
+};
+
+function _docxFirstText(doc, ns, localName) {
+  var els = doc.getElementsByTagNameNS(ns, localName);
+  if (!els.length) return null;
+  var text = els[0].textContent;
+  return (text && text.length) ? text : null;
+}
+
+// 讀取 docProps/core.xml，回傳關鍵欄位；找不到檔案或欄位是空的都回傳 null，不拋錯誤
+// （跟 shared/img-exif.js 的 readExifTags() 同一個容錯精神）。
+function readDocxCoreProps(entries) {
+  var result = {
+    creator: null, lastModifiedBy: null, description: null,
+    title: null, subject: null, keywords: null, category: null,
+    created: null, modified: null
+  };
+  var bytes = entries['docProps/core.xml'];
+  if (!bytes) return result;
+
+  var doc = new DOMParser().parseFromString(zipEntryToText(bytes), 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) return result;
+
+  result.creator = _docxFirstText(doc, DOCX_NS.dc, 'creator');
+  result.lastModifiedBy = _docxFirstText(doc, DOCX_NS.cp, 'lastModifiedBy');
+  result.description = _docxFirstText(doc, DOCX_NS.dc, 'description');
+  result.title = _docxFirstText(doc, DOCX_NS.dc, 'title');
+  result.subject = _docxFirstText(doc, DOCX_NS.dc, 'subject');
+  result.keywords = _docxFirstText(doc, DOCX_NS.cp, 'keywords');
+  result.category = _docxFirstText(doc, DOCX_NS.cp, 'category');
+  result.created = _docxFirstText(doc, DOCX_NS.dcterms, 'created');
+  result.modified = _docxFirstText(doc, DOCX_NS.dcterms, 'modified');
+  return result;
+}
+
+// 讀取 docProps/app.xml，回傳 Company／TotalTime／TitlesOfParts（後者會列出
+// 包含隱藏投影片/工作表在內的所有標題，DOCX 目前多半是章節標題，風險較低但
+// 仍一併回傳供 UI 判斷是否要提示）。
+function readDocxAppProps(entries) {
+  var result = { company: null, totalTime: null, manager: null, template: null, hyperlinkBase: null, titlesOfParts: [] };
+  var bytes = entries['docProps/app.xml'];
+  if (!bytes) return result;
+
+  var doc = new DOMParser().parseFromString(zipEntryToText(bytes), 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) return result;
+
+  result.company = _docxFirstText(doc, DOCX_NS.extProps, 'Company');
+  result.totalTime = _docxFirstText(doc, DOCX_NS.extProps, 'TotalTime');
+  result.manager = _docxFirstText(doc, DOCX_NS.extProps, 'Manager');
+  result.template = _docxFirstText(doc, DOCX_NS.extProps, 'Template');
+  result.hyperlinkBase = _docxFirstText(doc, DOCX_NS.extProps, 'HyperlinkBase');
+
+  var titlesEl = doc.getElementsByTagNameNS(DOCX_NS.extProps, 'TitlesOfParts')[0];
+  if (titlesEl) {
+    var vectorEl = titlesEl.getElementsByTagNameNS(DOCX_NS.vt, 'vector')[0];
+    if (vectorEl) {
+      var lpstrEls = vectorEl.getElementsByTagNameNS(DOCX_NS.vt, 'lpstr');
+      for (var i = 0; i < lpstrEls.length; i++) {
+        if (lpstrEls[i].textContent) result.titlesOfParts.push(lpstrEls[i].textContent);
+      }
+    }
+  }
+  return result;
+}
+
+function hasCustomProps(entries) {
+  return !!entries['docProps/custom.xml'];
+}
+
+function hasThumbnail(entries) {
+  // OPC 規格沒規定縮圖檔名一定叫 thumbnail.jpeg，但 Word／python-docx／LibreOffice
+  // 目前實測都是這個路徑；用 _rels/.rels 的 relationship type 判斷比較穩，見
+  // _findThumbnailPath()。
+  return !!_findThumbnailPath(entries);
+}
+
+// 透過 _rels/.rels 裡 Type 含 "thumbnail" 的 Relationship 找出縮圖實際路徑，
+// 不寫死檔名——縮圖的 Target 是相對路徑（例如 "docProps/thumbnail.jpeg"）。
+function _findThumbnailPath(entries) {
+  var relsBytes = entries['_rels/.rels'];
+  if (!relsBytes) return null;
+  var doc = new DOMParser().parseFromString(zipEntryToText(relsBytes), 'application/xml');
+  var rels = doc.getElementsByTagNameNS(DOCX_NS.relsPkg, 'Relationship');
+  for (var i = 0; i < rels.length; i++) {
+    var type = rels[i].getAttribute('Type') || '';
+    if (type.indexOf('thumbnail') !== -1) {
+      var target = rels[i].getAttribute('Target') || '';
+      return target.replace(/^\/+/, ''); // 去掉可能的開頭斜線，統一成 zip entry 路徑格式
+    }
+  }
+  return null;
+}
+
+// 清空 docProps/core.xml 裡的敏感欄位文字內容（保留 XML 結構本身，不整段刪除——
+// Word 開啟時仍預期這個 part 存在，跟 JPEG APP1 segment 可以整段拿掉不是同一種情況）。
+// created/modified 時間戳不清（單純時間不算個資，跟作者/公司/描述性質不同），
+// 若之後有需求再議。
+function cleanDocxCoreProps(entries) {
+  var bytes = entries['docProps/core.xml'];
+  if (!bytes) return entries;
+
+  var doc = new DOMParser().parseFromString(zipEntryToText(bytes), 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) return entries;
+
+  var clearTargets = [
+    [DOCX_NS.dc, 'creator'],
+    [DOCX_NS.cp, 'lastModifiedBy'],
+    [DOCX_NS.dc, 'description'],
+    [DOCX_NS.dc, 'title'],
+    [DOCX_NS.dc, 'subject'],
+    [DOCX_NS.cp, 'keywords'],
+    [DOCX_NS.cp, 'category']
+  ];
+  clearTargets.forEach(function (pair) {
+    var els = doc.getElementsByTagNameNS(pair[0], pair[1]);
+    for (var i = 0; i < els.length; i++) els[i].textContent = '';
+  });
+
+  var next = Object.assign({}, entries);
+  next['docProps/core.xml'] = new TextEncoder().encode(new XMLSerializer().serializeToString(doc));
+  return next;
+}
+
+// 清空 docProps/app.xml 的 Company／TotalTime／TitlesOfParts。
+function cleanDocxAppProps(entries) {
+  var bytes = entries['docProps/app.xml'];
+  if (!bytes) return entries;
+
+  var doc = new DOMParser().parseFromString(zipEntryToText(bytes), 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) return entries;
+
+  ['Company', 'TotalTime', 'Manager', 'Template', 'HyperlinkBase'].forEach(function (name) {
+    var els = doc.getElementsByTagNameNS(DOCX_NS.extProps, name);
+    for (var i = 0; i < els.length; i++) els[i].textContent = '';
+  });
+
+  var titlesEl = doc.getElementsByTagNameNS(DOCX_NS.extProps, 'TitlesOfParts')[0];
+  if (titlesEl) {
+    var vectorEl = titlesEl.getElementsByTagNameNS(DOCX_NS.vt, 'vector')[0];
+    if (vectorEl) {
+      while (vectorEl.firstChild) vectorEl.removeChild(vectorEl.firstChild);
+      vectorEl.setAttribute('size', '0');
+    }
+  }
+
+  var next = Object.assign({}, entries);
+  next['docProps/app.xml'] = new TextEncoder().encode(new XMLSerializer().serializeToString(doc));
+  return next;
+}
+
+// 移除一個 zip entry，並同步清掉另外兩處會指向它的地方：
+//   1. _rels/.rels 裡的 <Relationship Target="entryPath">
+//   2. [Content_Types].xml 裡的 <Override PartName="/entryPath">（只有部分 part 有這個，
+//      例如 docProps/custom.xml 有，docProps/thumbnail.jpeg 沒有——用 Default Extension
+//      涵蓋，這個函式對兩種情況都正確處理：Override 不存在時單純是 no-op）
+// 實測過：只刪 part 不刪 relationship 會讓檔案打不開；Override 沒清雖然不一定會讓 Word
+// 打不開，但屬於不乾淨的殘留，一併處理。custom.xml／thumbnail 共用這個唯一入口，不各自寫一份。
+// relsPath：這個 entry 的 relationship 定義在哪個 rels 檔。套件層級的 part（docProps 底下
+// 那些）用 root 的 '_rels/.rels'（預設值）；word/ 底下的 part（例如 comments.xml/people.xml）
+// 要傳 'word/_rels/document.xml.rels'——這個 rels 檔裡的 Target 是相對於 rels 檔所在目錄的
+// 上一層（word/），不是相對於 zip 根目錄，所以要換算成完整路徑才能跟 entryPath 比對。
+function _relsBaseDir(relsPath) {
+  var idx = relsPath.indexOf('_rels/');
+  return idx <= 0 ? '' : relsPath.slice(0, idx);
+}
+
+function removeZipEntryAndRelationship(entries, entryPath, relsPath) {
+  relsPath = relsPath || '_rels/.rels';
+  if (!entries[entryPath]) return entries;
+
+  var next = Object.assign({}, entries);
+  delete next[entryPath];
+
+  var baseDir = _relsBaseDir(relsPath);
+  var relsBytes = next[relsPath];
+  if (relsBytes) {
+    var doc = new DOMParser().parseFromString(zipEntryToText(relsBytes), 'application/xml');
+    var rels = doc.getElementsByTagNameNS(DOCX_NS.relsPkg, 'Relationship');
+    for (var i = rels.length - 1; i >= 0; i--) {
+      var target = (rels[i].getAttribute('Target') || '').replace(/^\/+/, '');
+      var resolved = baseDir + target;
+      if (resolved === entryPath) {
+        rels[i].parentNode.removeChild(rels[i]);
+      }
+    }
+    next[relsPath] = new TextEncoder().encode(new XMLSerializer().serializeToString(doc));
+  }
+
+  var ctBytes = next['[Content_Types].xml'];
+  if (ctBytes) {
+    var ctDoc = new DOMParser().parseFromString(zipEntryToText(ctBytes), 'application/xml');
+    var overrides = ctDoc.getElementsByTagName('Override');
+    var wantedPartName = '/' + entryPath;
+    for (var j = overrides.length - 1; j >= 0; j--) {
+      if (overrides[j].getAttribute('PartName') === wantedPartName) {
+        overrides[j].parentNode.removeChild(overrides[j]);
+      }
+    }
+    next['[Content_Types].xml'] = new TextEncoder().encode(new XMLSerializer().serializeToString(ctDoc));
+  }
+
+  return next;
+}
+
+// --- 註解（word/comments.xml + word/people.xml） ---
+//
+// 跟 docProps 一樣視為「metadata」，清除範圍：整個 comments.xml/people.xml part、
+// document.xml 裡的錨點（commentRangeStart/End/commentReference）、word/_rels/document.xml.rels
+// 對應的 relationship、[Content_Types].xml 對應的 Override。people.xml 不一定存在
+// （實測：python-docx 原生產生的 docx 都沒有這個檔案，Word 桌面版編輯過的常有），
+// 兩種情況都要正確處理，不能假設一定有或一定沒有。
+
+function scanDocxComments(entries) {
+  var result = { count: 0, authors: [] };
+  var bytes = entries['word/comments.xml'];
+  if (!bytes) return result;
+
+  var doc = new DOMParser().parseFromString(zipEntryToText(bytes), 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) return result;
+
+  var comments = doc.getElementsByTagNameNS(DOCX_NS.w, 'comment');
+  result.count = comments.length;
+  var seen = {};
+  for (var i = 0; i < comments.length; i++) {
+    var author = comments[i].getAttribute('w:author');
+    if (author && !seen[author]) {
+      seen[author] = true;
+      result.authors.push(author);
+    }
+  }
+  return result;
+}
+
+function cleanDocxComments(entries) {
+  if (!entries['word/comments.xml']) return entries;
+  var next = entries;
+
+  var docBytes = next['word/document.xml'];
+  if (docBytes) {
+    var doc = new DOMParser().parseFromString(zipEntryToText(docBytes), 'application/xml');
+    if (!doc.getElementsByTagName('parsererror').length) {
+      ['commentRangeStart', 'commentRangeEnd'].forEach(function (tag) {
+        var els = doc.getElementsByTagNameNS(DOCX_NS.w, tag);
+        for (var i = els.length - 1; i >= 0; i--) {
+          if (els[i].parentNode) els[i].parentNode.removeChild(els[i]);
+        }
+      });
+      // commentReference 包在專門放它的 <w:r> 裡（跟 comments.xml 自己的錨點 run 同一種
+      // 樣板），拔掉整個 <w:r> 而不是只拔 <w:commentReference>，避免留下空殼 run。
+      var refs = doc.getElementsByTagNameNS(DOCX_NS.w, 'commentReference');
+      for (var j = refs.length - 1; j >= 0; j--) {
+        var refEl = refs[j];
+        var runEl = refEl.parentNode;
+        if (runEl && runEl.localName === 'r' && runEl.parentNode) {
+          runEl.parentNode.removeChild(runEl);
+        } else if (refEl.parentNode) {
+          refEl.parentNode.removeChild(refEl);
+        }
+      }
+      var nextEntries = Object.assign({}, next);
+      nextEntries['word/document.xml'] = new TextEncoder().encode(new XMLSerializer().serializeToString(doc));
+      next = nextEntries;
+    }
+  }
+
+  next = removeZipEntryAndRelationship(next, 'word/comments.xml', 'word/_rels/document.xml.rels');
+  if (next['word/people.xml']) {
+    next = removeZipEntryAndRelationship(next, 'word/people.xml', 'word/_rels/document.xml.rels');
+  }
+
+  return next;
+}
+
+// --- 追蹤修訂（word/document.xml 的 w:ins/w:del） ---
+//
+// 只偵測、不自動清除：w:ins/w:del 包的是文件實際內容（新增/刪除的句子），自動接受或
+// 拒絕都會改變文件可見內容，超出「清 metadata」的範圍（規格書明定的邊界）。
+
+function scanDocxTrackedChanges(entries) {
+  var result = { insertions: [], deletions: [] };
+  var bytes = entries['word/document.xml'];
+  if (!bytes) return result;
+
+  var doc = new DOMParser().parseFromString(zipEntryToText(bytes), 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) return result;
+
+  var insEls = doc.getElementsByTagNameNS(DOCX_NS.w, 'ins');
+  for (var i = 0; i < insEls.length; i++) {
+    result.insertions.push({
+      author: insEls[i].getAttribute('w:author'),
+      date: insEls[i].getAttribute('w:date')
+    });
+  }
+  var delEls = doc.getElementsByTagNameNS(DOCX_NS.w, 'del');
+  for (var j = 0; j < delEls.length; j++) {
+    result.deletions.push({
+      author: delEls[j].getAttribute('w:author'),
+      date: delEls[j].getAttribute('w:date')
+    });
+  }
+  return result;
+}
+
+// --- 本機路徑超連結（word/_rels/document.xml.rels 的 External hyperlink） ---
+//
+// 清除動作只拆 <w:hyperlink> 包裝＋刪 relationship，不改寫可見文字——顯示文字是文件內容，
+// 只偵測警示（跟追蹤修訂同一個判斷邏輯：metadata 才清，內容只提示）。
+
+var _DOCX_LOCAL_PATH_TARGET_PATTERN = /^(file:\/\/|[a-zA-Z]:[\\\/]|\\\\|\.\.[\\\/])/i;
+var _DOCX_LOCAL_PATH_TEXT_PATTERN = /^([a-zA-Z]:[\\\/]|\\\\|\.\.[\\\/]|file:\/\/)/i;
+
+function scanDocxLocalPathLinks(entries) {
+  var result = { relationshipHits: [], displayTextHits: [] };
+
+  var relsBytes = entries['word/_rels/document.xml.rels'];
+  if (relsBytes) {
+    var relsDoc = new DOMParser().parseFromString(zipEntryToText(relsBytes), 'application/xml');
+    if (!relsDoc.getElementsByTagName('parsererror').length) {
+      var rels = relsDoc.getElementsByTagNameNS(DOCX_NS.relsPkg, 'Relationship');
+      for (var i = 0; i < rels.length; i++) {
+        var mode = rels[i].getAttribute('TargetMode');
+        var target = rels[i].getAttribute('Target') || '';
+        if (mode === 'External' && _DOCX_LOCAL_PATH_TARGET_PATTERN.test(target)) {
+          result.relationshipHits.push({ id: rels[i].getAttribute('Id'), target: target });
+        }
+      }
+    }
+  }
+
+  var docBytes = entries['word/document.xml'];
+  if (docBytes) {
+    var doc = new DOMParser().parseFromString(zipEntryToText(docBytes), 'application/xml');
+    if (!doc.getElementsByTagName('parsererror').length) {
+      var tEls = doc.getElementsByTagNameNS(DOCX_NS.w, 't');
+      for (var j = 0; j < tEls.length; j++) {
+        var text = tEls[j].textContent || '';
+        if (_DOCX_LOCAL_PATH_TEXT_PATTERN.test(text)) {
+          result.displayTextHits.push(text);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+function _docxHyperlinkRid(el) {
+  var v = el.getAttributeNS(DOCX_NS.r, 'id');
+  return v || el.getAttribute('r:id');
+}
+
+function cleanDocxLocalPathLinks(entries) {
+  var scan = scanDocxLocalPathLinks(entries);
+  if (!scan.relationshipHits.length) return entries;
+
+  var idsToRemove = {};
+  scan.relationshipHits.forEach(function (hit) { idsToRemove[hit.id] = true; });
+
+  var next = Object.assign({}, entries);
+
+  var docBytes = next['word/document.xml'];
+  if (docBytes) {
+    var doc = new DOMParser().parseFromString(zipEntryToText(docBytes), 'application/xml');
+    if (!doc.getElementsByTagName('parsererror').length) {
+      var hyperlinks = doc.getElementsByTagNameNS(DOCX_NS.w, 'hyperlink');
+      for (var i = hyperlinks.length - 1; i >= 0; i--) {
+        var linkEl = hyperlinks[i];
+        var rId = _docxHyperlinkRid(linkEl);
+        if (rId && idsToRemove[rId] && linkEl.parentNode) {
+          var parent = linkEl.parentNode;
+          while (linkEl.firstChild) {
+            parent.insertBefore(linkEl.firstChild, linkEl);
+          }
+          parent.removeChild(linkEl);
+        }
+      }
+      next['word/document.xml'] = new TextEncoder().encode(new XMLSerializer().serializeToString(doc));
+    }
+  }
+
+  var relsBytes = next['word/_rels/document.xml.rels'];
+  if (relsBytes) {
+    var relsDoc = new DOMParser().parseFromString(zipEntryToText(relsBytes), 'application/xml');
+    if (!relsDoc.getElementsByTagName('parsererror').length) {
+      var rels = relsDoc.getElementsByTagNameNS(DOCX_NS.relsPkg, 'Relationship');
+      for (var k = rels.length - 1; k >= 0; k--) {
+        var id = rels[k].getAttribute('Id');
+        if (idsToRemove[id]) rels[k].parentNode.removeChild(rels[k]);
+      }
+      next['word/_rels/document.xml.rels'] = new TextEncoder().encode(new XMLSerializer().serializeToString(relsDoc));
+    }
+  }
+
+  return next;
+}
+
+// --- 加密偵測 ---
+//
+// 加密的 Office 檔是 CFB/OLE 容器不是 zip，fflate.unzipSync() 對這種輸入會直接同步丟出
+// Error（實測訊息："invalid zip data"）。catch 到例外只能證明「不是合法 zip」，不能斷言
+// 一定是密碼保護（單純壞掉的 zip 也會觸發同一個錯誤）——用 magic bytes 精準區分兩種情況，
+// 避免對單純損毀的檔案誤判成「有密碼保護」。
+
+var _CFB_MAGIC = [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1];
+
+function isLikelyEncryptedOfficeFile(arrayBuffer) {
+  if (!arrayBuffer || !(arrayBuffer instanceof ArrayBuffer) || arrayBuffer.byteLength < 8) {
+    return false;
+  }
+  var view = new Uint8Array(arrayBuffer, 0, 8);
+  for (var i = 0; i < 8; i++) {
+    if (view[i] !== _CFB_MAGIC[i]) return false;
+  }
+  return true;
+}
+
+// --- 檔案大小閘門 ---
+//
+// DOCX 的正常大小分佈跟 PDF/圖片完全不是同一個量級（實測調查：純文字 docx 約 12KB，
+// 含內嵌物件平均約 557KB，托爾斯泰《戰爭與和平》全文存成 docx 也只有約 1.2MB）——
+// 30MB 以上的 docx 已經是離群值，不能直接套用 shared/pdf-file-size.js 的 30/100MB
+// 門檻。閘門刻意比 PDF/圖片更保守：unzipSync() 是同步全量解壓，瀏覽器 UI thread
+// 對大檔案+多 entry 的敏感度比 Node benchmark 更高。
+var DOCX_SIZE_WARN_BYTES = 15 * 1024 * 1024;   // 15MB
+var DOCX_SIZE_REJECT_BYTES = 50 * 1024 * 1024; // 50MB
+
+function checkDocxFileSize(bytes) {
+  var size = Number(bytes);
+  if (isNaN(size) || size < 0) {
+    return { ok: false, level: 'reject', message: '無效的檔案大小' };
+  }
+  if (size > DOCX_SIZE_REJECT_BYTES) {
+    return {
+      ok: false,
+      level: 'reject',
+      message: '檔案大小（' + (size / (1024 * 1024)).toFixed(1) + 'MB）超過 50MB 上限。' +
+        'docx 一般不會超過這個大小，若您確定檔案正常，請改用桌面版 Office 處理。'
+    };
+  }
+  if (size > DOCX_SIZE_WARN_BYTES) {
+    return {
+      ok: true,
+      level: 'warn',
+      message: '檔案較大（' + (size / (1024 * 1024)).toFixed(1) + 'MB > 15MB），處理可能需要較長時間'
+    };
+  }
+  return { ok: true, level: 'pass', message: '檔案大小符合標準' };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    readDocxCoreProps: readDocxCoreProps,
+    readDocxAppProps: readDocxAppProps,
+    hasCustomProps: hasCustomProps,
+    hasThumbnail: hasThumbnail,
+    cleanDocxCoreProps: cleanDocxCoreProps,
+    cleanDocxAppProps: cleanDocxAppProps,
+    removeZipEntryAndRelationship: removeZipEntryAndRelationship,
+    _findThumbnailPath: _findThumbnailPath,
+    scanDocxComments: scanDocxComments,
+    cleanDocxComments: cleanDocxComments,
+    scanDocxTrackedChanges: scanDocxTrackedChanges,
+    scanDocxLocalPathLinks: scanDocxLocalPathLinks,
+    cleanDocxLocalPathLinks: cleanDocxLocalPathLinks,
+    isLikelyEncryptedOfficeFile: isLikelyEncryptedOfficeFile,
+    checkDocxFileSize: checkDocxFileSize
+  };
+}
+
+</script>
+  <script>
+// Day30_ooxml-privacy-cleaner/src/xlsx-meta.js
+//
+// XLSX（OOXML）特有隱私角落：pivot cache 原始資料殘留、隱藏工作表、外部連結本機路徑、
+// 檔案大小閘門。docProps（core.xml/app.xml/custom.xml/thumbnail）那層跟 DOCX 完全同一套
+// OPC 機制，直接呼叫 docx-meta.js 已匯出的 readDocxCoreProps/readDocxAppProps/
+// cleanDocxCoreProps/cleanDocxAppProps/hasCustomProps/hasThumbnail/_findThumbnailPath/
+// removeZipEntryAndRelationship/isLikelyEncryptedOfficeFile，不重寫一份——這些函式本來
+// 就只操作 package-level 的 docProps/_rels/.rels/[Content_Types].xml，不含任何 word 專屬
+// 邏輯，格式無關（研究筆記已用 XLSX 測資逐一驗證過）。比照 shared/PDF_CONTRACT.md 對
+// Day25 的裁定，本檔仍只服務 Day30，不進 shared/；第三格式（PPTX）加入後才評估是否要把
+// docx-meta.js 這幾個共用函式整組抽成 shared/ooxml-meta.js。
+//
+// 依賴：docx-meta.js（先載入，提供上述共用函式）、shared/io-zip.js 的 zipEntryToText()、
+// 瀏覽器原生 DOMParser／XMLSerializer／TextEncoder。
+
+var XLSX_NS = {
+  main: 'http://schemas.openxmlformats.org/spreadsheetml/2006/main',
+  relsPkg: 'http://schemas.openxmlformats.org/package/2006/relationships'
+};
+
+// --- Pivot Cache 資料殘留 ---
+//
+// 來源工作表刪除後，xl/pivotCache/pivotCacheDefinition*.xml（sharedItems，字串明文）與
+// pivotCacheRecords*.xml（實際數值/索引）仍完整保留，這是實測確認的行為，不是推論
+// （見 xlsx_structure_notes.md 第 1 節）。檔名是動態編號的，用正則掃描，不寫死。
+
+var _XLSX_PIVOT_DEF_PATTERN = /^xl\/pivotCache\/pivotCacheDefinition(\d+)\.xml$/;
+
+function scanXlsxPivotCaches(entries) {
+  var result = { count: 0, caches: [] };
+  Object.keys(entries).forEach(function (path) {
+    var m = path.match(_XLSX_PIVOT_DEF_PATTERN);
+    if (!m) return;
+    var idx = m[1];
+    var recordsPath = 'xl/pivotCache/pivotCacheRecords' + idx + '.xml';
+    var doc = new DOMParser().parseFromString(zipEntryToText(entries[path]), 'application/xml');
+    var sharedItemsPreview = [];
+    if (!doc.getElementsByTagName('parsererror').length) {
+      var sEls = doc.getElementsByTagNameNS(XLSX_NS.main, 's');
+      for (var i = 0; i < sEls.length && sharedItemsPreview.length < 20; i++) {
+        var v = sEls[i].getAttribute('v');
+        if (v) sharedItemsPreview.push(v);
+      }
+    }
+    result.caches.push({
+      definitionPath: path,
+      recordsPath: entries[recordsPath] ? recordsPath : null,
+      sharedItemsPreview: sharedItemsPreview
+    });
+  });
+  result.count = result.caches.length;
+  return result;
+}
+
+// 偵測到 pivot cache 就整組移除（part + relationship + Content_Types Override +
+// xl/workbook.xml 的 <pivotCaches> 節點）——pivot table 本身沒有 cache 會直接失效，
+// 不是「清 metadata 不動內容」能兼顧的情況，UI 層要明確警示「將移除此檔案內的樞紐分析表」。
+function cleanXlsxPivotCaches(entries) {
+  var scan = scanXlsxPivotCaches(entries);
+  if (!scan.count) return entries;
+
+  var next = entries;
+  scan.caches.forEach(function (cache) {
+    var idx = cache.definitionPath.match(_XLSX_PIVOT_DEF_PATTERN)[1];
+    var defRelsPath = 'xl/pivotCache/_rels/pivotCacheDefinition' + idx + '.xml.rels';
+    if (cache.recordsPath && next[cache.recordsPath]) {
+      next = removeZipEntryAndRelationship(next, cache.recordsPath, defRelsPath);
+    }
+    if (next[defRelsPath]) {
+      var withoutRels = Object.assign({}, next);
+      delete withoutRels[defRelsPath];
+      next = withoutRels;
+    }
+    next = removeZipEntryAndRelationship(next, cache.definitionPath, 'xl/_rels/workbook.xml.rels');
+  });
+
+  var wbBytes = next['xl/workbook.xml'];
+  if (wbBytes) {
+    var doc = new DOMParser().parseFromString(zipEntryToText(wbBytes), 'application/xml');
+    if (!doc.getElementsByTagName('parsererror').length) {
+      var pivotCachesEls = doc.getElementsByTagNameNS(XLSX_NS.main, 'pivotCaches');
+      for (var i = pivotCachesEls.length - 1; i >= 0; i--) {
+        if (pivotCachesEls[i].parentNode) pivotCachesEls[i].parentNode.removeChild(pivotCachesEls[i]);
+      }
+      var nextEntries = Object.assign({}, next);
+      nextEntries['xl/workbook.xml'] = new TextEncoder().encode(new XMLSerializer().serializeToString(doc));
+      next = nextEntries;
+    }
+  }
+
+  return next;
+}
+
+// --- 隱藏工作表 ---
+//
+// state="hidden"／"veryHidden" 只是 UI 顯示旗標，工作表名稱（xl/workbook.xml 的
+// <sheet name="...">）與內容（對應 xl/worksheets/sheetN.xml）完全沒有被移除或混淆——
+// 只偵測、不自動移除：移除隱藏工作表整個分頁是「改變文件內容」的操作，比照 DOCX
+// 追蹤修訂的判準（規格書：內容變更只警示，不自動清除）。
+
+function scanXlsxHiddenSheets(entries) {
+  var result = [];
+  var wbBytes = entries['xl/workbook.xml'];
+  if (!wbBytes) return result;
+  var doc = new DOMParser().parseFromString(zipEntryToText(wbBytes), 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) return result;
+  var sheets = doc.getElementsByTagNameNS(XLSX_NS.main, 'sheet');
+  for (var i = 0; i < sheets.length; i++) {
+    var state = sheets[i].getAttribute('state');
+    if (state === 'hidden' || state === 'veryHidden') {
+      result.push({ name: sheets[i].getAttribute('name'), state: state });
+    }
+  }
+  return result;
+}
+
+// --- 外部連結（xl/externalLinks/）本機路徑 ---
+//
+// 跟 DOCX 的 word/_rels/document.xml.rels 外部 hyperlink 同一套判斷（TargetMode="External"
+// + file:// 開頭的 Target），但多一層：xl/_rels/workbook.xml.rels 只指到
+// xl/externalLinks/externalLinkN.xml 本體，實際路徑存在
+// xl/externalLinks/_rels/externalLinkN.xml.rels 裡。儲存格公式殘留的外部參照字串
+// （例如 =[來源.xlsx]工作表1!A1，存在 xl/worksheets/sheetN.xml 的 <f> 元素）屬於文件內容，
+// 不在這裡處理，只掃描/清除 externalLinks part 本身。
+
+var _XLSX_EXTERNAL_LINK_PATTERN = /^xl\/externalLinks\/externalLink(\d+)\.xml$/;
+var _XLSX_LOCAL_PATH_TARGET_PATTERN = /^(file:\/\/|[a-zA-Z]:[\\\/]|\\\\|\.\.[\\\/])/i;
+
+function scanXlsxExternalLinks(entries) {
+  var result = { relationshipHits: [] };
+  Object.keys(entries).forEach(function (path) {
+    var m = path.match(_XLSX_EXTERNAL_LINK_PATTERN);
+    if (!m) return;
+    var relsPath = 'xl/externalLinks/_rels/externalLink' + m[1] + '.xml.rels';
+    var relsBytes = entries[relsPath];
+    if (!relsBytes) return;
+    var doc = new DOMParser().parseFromString(zipEntryToText(relsBytes), 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length) return;
+    var rels = doc.getElementsByTagNameNS(XLSX_NS.relsPkg, 'Relationship');
+    for (var i = 0; i < rels.length; i++) {
+      var mode = rels[i].getAttribute('TargetMode');
+      var target = rels[i].getAttribute('Target') || '';
+      if (mode === 'External' && _XLSX_LOCAL_PATH_TARGET_PATTERN.test(target)) {
+        result.relationshipHits.push({ id: rels[i].getAttribute('Id'), target: target, linkPath: path });
+      }
+    }
+  });
+  return result;
+}
+
+function cleanXlsxExternalLinks(entries) {
+  var scan = scanXlsxExternalLinks(entries);
+  if (!scan.relationshipHits.length) return entries;
+
+  var linkPaths = {};
+  scan.relationshipHits.forEach(function (hit) { linkPaths[hit.linkPath] = true; });
+
+  // 找出 xl/_rels/workbook.xml.rels 裡指到即將刪除之 externalLink 的 Relationship ID
+  var removedRids = {};
+  var wbRelsBytes = entries['xl/_rels/workbook.xml.rels'];
+  if (wbRelsBytes) {
+    var relsDoc = new DOMParser().parseFromString(zipEntryToText(wbRelsBytes), 'application/xml');
+    if (!relsDoc.getElementsByTagName('parsererror').length) {
+      var rels = relsDoc.getElementsByTagNameNS(XLSX_NS.relsPkg, 'Relationship');
+      for (var k = 0; k < rels.length; k++) {
+        var target = (rels[k].getAttribute('Target') || '').replace(/^\/+/, '');
+        var resolved = 'xl/' + target;
+        if (linkPaths[resolved]) {
+          var id = rels[k].getAttribute('Id');
+          if (id) removedRids[id] = true;
+        }
+      }
+    }
+  }
+
+  var next = entries;
+  Object.keys(linkPaths).forEach(function (linkPath) {
+    var m = linkPath.match(_XLSX_EXTERNAL_LINK_PATTERN);
+    var relsPath = 'xl/externalLinks/_rels/externalLink' + m[1] + '.xml.rels';
+    next = removeZipEntryAndRelationship(next, linkPath, 'xl/_rels/workbook.xml.rels');
+    if (next[relsPath]) {
+      var withoutRels = Object.assign({}, next);
+      delete withoutRels[relsPath];
+      next = withoutRels;
+    }
+  });
+
+  var wbBytes = next['xl/workbook.xml'];
+  if (wbBytes) {
+    var doc = new DOMParser().parseFromString(zipEntryToText(wbBytes), 'application/xml');
+    if (!doc.getElementsByTagName('parsererror').length) {
+      var extRefsEls = doc.getElementsByTagNameNS(XLSX_NS.main, 'externalReferences');
+      for (var i = extRefsEls.length - 1; i >= 0; i--) {
+        var parentEl = extRefsEls[i];
+        var refEls = parentEl.getElementsByTagNameNS(XLSX_NS.main, 'externalReference');
+        for (var j = refEls.length - 1; j >= 0; j--) {
+          var rid = refEls[j].getAttributeNS(XLSX_NS.r, 'id') || refEls[j].getAttribute('r:id');
+          if (rid && removedRids[rid]) {
+            parentEl.removeChild(refEls[j]);
+          }
+        }
+        // 若該 externalReferences 底下所有 externalReference 皆已被移除，才拔除外層容器
+        var remaining = parentEl.getElementsByTagNameNS(XLSX_NS.main, 'externalReference');
+        if (remaining.length === 0 && parentEl.parentNode) {
+          parentEl.parentNode.removeChild(parentEl);
+        }
+      }
+      var nextEntries = Object.assign({}, next);
+      nextEntries['xl/workbook.xml'] = new TextEncoder().encode(new XMLSerializer().serializeToString(doc));
+      next = nextEntries;
+    }
+  }
+
+  return next;
+}
+
+// --- 檔案大小閘門 ---
+//
+// XLSX 常態內含大量數值資料，不能套用 DOCX 的 15/50MB 門檻——研究實測 30 萬列 x 5 欄
+// 的「正常但偏大」業務報表約 9.67MB，25MB 還有相當餘裕；80MB 已接近 SharePoint Online
+// 上傳限制（10MB）的 8 倍，多半代表資料量極端或有異常（例如大量重複 pivot cache），
+// 見 xlsx_structure_notes.md 第 5 節。
+
+var XLSX_SIZE_WARN_BYTES = 25 * 1024 * 1024;   // 25MB
+var XLSX_SIZE_REJECT_BYTES = 80 * 1024 * 1024; // 80MB
+
+function checkXlsxFileSize(bytes) {
+  var size = Number(bytes);
+  if (isNaN(size) || size < 0) {
+    return { ok: false, level: 'reject', message: '無效的檔案大小' };
+  }
+  if (size > XLSX_SIZE_REJECT_BYTES) {
+    return {
+      ok: false,
+      level: 'reject',
+      message: '檔案大小（' + (size / (1024 * 1024)).toFixed(1) + 'MB）超過 80MB 上限。' +
+        'xlsx 正常業務報表不會到這個大小，若您確定檔案正常，請改用桌面版 Excel 處理。'
+    };
+  }
+  if (size > XLSX_SIZE_WARN_BYTES) {
+    return {
+      ok: true,
+      level: 'warn',
+      message: '檔案較大（' + (size / (1024 * 1024)).toFixed(1) + 'MB > 25MB），處理可能需要較長時間'
+    };
+  }
+  return { ok: true, level: 'pass', message: '檔案大小符合標準' };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    XLSX_NS: XLSX_NS,
+    scanXlsxPivotCaches: scanXlsxPivotCaches,
+    cleanXlsxPivotCaches: cleanXlsxPivotCaches,
+    scanXlsxHiddenSheets: scanXlsxHiddenSheets,
+    scanXlsxExternalLinks: scanXlsxExternalLinks,
+    cleanXlsxExternalLinks: cleanXlsxExternalLinks,
+    checkXlsxFileSize: checkXlsxFileSize
+  };
+}
+
+</script>
+  <script>
+// Day30_ooxml-privacy-cleaner/src/pptx-meta.js
+//
+// PPTX（OOXML）特有隱私角落：圖片裁切前完整原圖殘留（燒進像素清除，比照 Day16
+// screenshot-sanitizer「遮蔽必須燒進像素，不能只是視覺疊加層」的原則）、講者備忘稿、
+// 隱藏投影片、檔案大小閘門。docProps（core.xml/app.xml/custom.xml/thumbnail）那層跟
+// DOCX/XLSX 完全同一套 OPC 機制，直接呼叫 docx-meta.js 已匯出的函式，不重寫（格式無關，
+// 見 pptx_structure_notes.md）。
+//
+// 依賴：docx-meta.js（removeZipEntryAndRelationship 等）、shared/io-zip.js 的
+// zipEntryToText()、瀏覽器原生 DOMParser／XMLSerializer／TextEncoder／Image／canvas
+// （圖片裁切清除需要實際解碼並重繪像素，這是本檔唯一用到 canvas 的地方）。
+
+var PPTX_NS = {
+  a: 'http://schemas.openxmlformats.org/drawingml/2006/main',
+  p: 'http://schemas.openxmlformats.org/presentationml/2006/main',
+  relsPkg: 'http://schemas.openxmlformats.org/package/2006/relationships',
+  r: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
+};
+
+var _PPTX_SLIDE_PATTERN = /^ppt\/slides\/slide(\d+)\.xml$/;
+var _PPTX_NOTES_SLIDE_PATTERN = /^ppt\/notesSlides\/notesSlide(\d+)\.xml$/;
+
+function _pptxSlideRelsPath(slidePath) {
+  var m = slidePath.match(_PPTX_SLIDE_PATTERN);
+  return 'ppt/slides/_rels/slide' + m[1] + '.xml.rels';
+}
+
+// rels 檔的 Target 是相對於「rels 檔所屬 part 的所在目錄」（不是 _rels 目錄本身），
+// 例如 ppt/slides/_rels/slide1.xml.rels 裡的 "../media/image1.png" 要相對於
+// ppt/slides/ 解析，才會得到正確的 ppt/media/image1.png。
+function _resolveRelativeTarget(baseDir, target) {
+  if (!target) return '';
+  if (target.charAt(0) === '/') return target.replace(/^\/+/, '');
+  var baseParts = baseDir.split('/').filter(Boolean);
+  target.split('/').forEach(function (part) {
+    if (part === '..') baseParts.pop();
+    else if (part && part !== '.') baseParts.push(part);
+  });
+  return baseParts.join('/');
+}
+
+function _pptxSlideRelMap(entries, slidePath) {
+  var map = {};
+  var relsBytes = entries[_pptxSlideRelsPath(slidePath)];
+  if (!relsBytes) return map;
+  var doc = new DOMParser().parseFromString(zipEntryToText(relsBytes), 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) return map;
+  var rels = doc.getElementsByTagNameNS(PPTX_NS.relsPkg, 'Relationship');
+  for (var i = 0; i < rels.length; i++) {
+    map[rels[i].getAttribute('Id')] = _resolveRelativeTarget('ppt/slides', rels[i].getAttribute('Target') || '');
+  }
+  return map;
+}
+
+function _pptxBlipRid(el) {
+  var v = el.getAttributeNS(PPTX_NS.r, 'embed');
+  return v || el.getAttribute('r:embed');
+}
+
+// --- 圖片裁切：ppt/media/ 存的是裁切前完整原圖 ---
+//
+// <a:srcRect l="" t="" r="" b=""/>（單位：萬分之一，即 100000 = 100%）是純顯示層屬性，
+// 底層 media part 永遠是裁切前的完整原圖。掃描結果回傳每一處裁切的 slide/media 對應與
+// 裁切比例，供 UI 顯示與後續清除使用。
+
+function scanPptxCroppedImages(entries) {
+  var result = { count: 0, crops: [] };
+  Object.keys(entries).sort().forEach(function (path) {
+    if (!_PPTX_SLIDE_PATTERN.test(path)) return;
+    var relMap = _pptxSlideRelMap(entries, path);
+    var doc = new DOMParser().parseFromString(zipEntryToText(entries[path]), 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length) return;
+    var blips = doc.getElementsByTagNameNS(PPTX_NS.a, 'blip');
+    for (var j = 0; j < blips.length; j++) {
+      var rId = _pptxBlipRid(blips[j]);
+      if (!rId || !relMap[rId]) continue;
+      var parent = blips[j].parentNode; // a:blipFill，srcRect 是它的直接子節點
+      var srcRect = parent ? parent.getElementsByTagNameNS(PPTX_NS.a, 'srcRect')[0] : null;
+      if (!srcRect) continue;
+      var l = parseInt(srcRect.getAttribute('l') || '0', 10);
+      var t = parseInt(srcRect.getAttribute('t') || '0', 10);
+      var r = parseInt(srcRect.getAttribute('r') || '0', 10);
+      var b = parseInt(srcRect.getAttribute('b') || '0', 10);
+      if (!l && !t && !r && !b) continue;
+      result.crops.push({ slidePath: path, mediaPath: relMap[rId], l: l, t: t, r: r, b: b });
+    }
+  });
+  result.count = result.crops.length;
+  return result;
+}
+
+var _PPTX_IMAGE_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp' };
+
+function _pptxMediaExt(path) {
+  var m = path.match(/\.([a-zA-Z0-9]+)$/);
+  return m ? m[1].toLowerCase() : '';
+}
+
+// 實際解碼圖片、依裁切比例只保留可見範圍重繪，回傳裁切後的位元組——這是真的「清除」
+// （像素層面移除），不是只加一個警示文字。
+function _pptxCropImageBytes(bytes, mime, l, t, r, b) {
+  return new Promise(function (resolve, reject) {
+    var blob = new Blob([bytes], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var img = new Image();
+    img.onload = function () {
+      URL.revokeObjectURL(url);
+      var w = img.naturalWidth, h = img.naturalHeight;
+      var cropLeft = Math.min(w - 1, Math.max(0, Math.round(w * l / 100000)));
+      var cropTop = Math.min(h - 1, Math.max(0, Math.round(h * t / 100000)));
+      var cropRight = Math.min(w - 1, Math.max(0, Math.round(w * r / 100000)));
+      var cropBottom = Math.min(h - 1, Math.max(0, Math.round(h * b / 100000)));
+      var visW = Math.max(1, w - cropLeft - cropRight);
+      var visH = Math.max(1, h - cropTop - cropBottom);
+      if (cropLeft + visW > w) visW = Math.max(1, w - cropLeft);
+      if (cropTop + visH > h) visH = Math.max(1, h - cropTop);
+      var canvas = document.createElement('canvas');
+      canvas.width = visW;
+      canvas.height = visH;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, cropLeft, cropTop, visW, visH, 0, 0, visW, visH);
+      canvas.toBlob(function (outBlob) {
+        if (!outBlob) { reject(new Error('canvas toBlob failed')); return; }
+        outBlob.arrayBuffer().then(function (ab) { resolve(new Uint8Array(ab)); }, reject);
+      }, mime);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('image decode failed')); };
+    img.src = url;
+  });
+}
+
+// 清除是非同步的（圖片解碼/canvas 重繪本質上是非同步 API），呼叫端要用 await/.then()。
+// 回傳 { entries, appliedMedia, skippedMedia }：
+//   - appliedMedia：實際完成像素級裁切、srcRect 已移除的媒體檔路徑
+//   - skippedMedia：同一媒體檔被多處引用但裁切規格不一致、裁切比例超出合理範圍
+//     （<0 或 >100%）、或不是已知的點陣圖格式時，不自動處理，避免用單一裁切覆蓋掉
+//     另一處合法用途的顯示，只回報供 UI 警示
+function cleanPptxCroppedImages(entries) {
+  var scan = scanPptxCroppedImages(entries);
+  if (!scan.count) {
+    return Promise.resolve({ entries: entries, appliedMedia: [], skippedMedia: [] });
+  }
+
+  // 依 mediaPath 分組，確認同一媒體檔的所有 crop 參數完全一致才自動切，
+  // 若同一原圖被兩張投影片各切不同區域，不自動切（切了會造成另一張破圖）。
+  var byMedia = {};
+  scan.crops.forEach(function (c) {
+    if (!byMedia[c.mediaPath]) byMedia[c.mediaPath] = [];
+    byMedia[c.mediaPath].push(c);
+  });
+
+  var appliedMedia = [];
+  var skippedMedia = [];
+  var cropTasks = [];
+
+  Object.keys(byMedia).forEach(function (mediaPath) {
+    var crops = byMedia[mediaPath];
+    var first = crops[0];
+    var consistent = crops.every(function (c) {
+      return c.l === first.l && c.t === first.t && c.r === first.r && c.b === first.b;
+    });
+    var inRange = [first.l, first.t, first.r, first.b].every(function (v) { return v >= 0 && v <= 100000; }) &&
+      (first.l + first.r < 100000) && (first.t + first.b < 100000);
+    var mime = _PPTX_IMAGE_MIME[_pptxMediaExt(mediaPath)];
+    if (!consistent || !inRange || !mime || !entries[mediaPath]) {
+      skippedMedia.push(mediaPath);
+      return;
+    }
+    cropTasks.push(
+      _pptxCropImageBytes(entries[mediaPath], mime, first.l, first.t, first.r, first.b)
+        .then(function (bytes) { return { mediaPath: mediaPath, bytes: bytes }; })
+        .catch(function () { skippedMedia.push(mediaPath); return null; })
+    );
+  });
+
+  return Promise.all(cropTasks).then(function (results) {
+    var next = Object.assign({}, entries);
+    var appliedSet = {};
+    results.filter(Boolean).forEach(function (res) {
+      next[res.mediaPath] = res.bytes;
+      appliedMedia.push(res.mediaPath);
+      appliedSet[res.mediaPath] = true;
+    });
+
+    // 圖片本體已經是裁切後版本，slide XML 裡對應的 <a:srcRect> 要移除，否則渲染引擎
+    // 會在已經裁切過的圖上再裁一次。只動處理過的媒體對應的 srcRect，跳過的維持原樣。
+    if (appliedMedia.length) {
+      var slidePaths = {};
+      scan.crops.forEach(function (c) { if (appliedSet[c.mediaPath]) slidePaths[c.slidePath] = true; });
+      Object.keys(slidePaths).forEach(function (slidePath) {
+        var relMap = _pptxSlideRelMap(next, slidePath);
+        var doc = new DOMParser().parseFromString(zipEntryToText(next[slidePath]), 'application/xml');
+        if (doc.getElementsByTagName('parsererror').length) return;
+        var blips = doc.getElementsByTagNameNS(PPTX_NS.a, 'blip');
+        for (var j = 0; j < blips.length; j++) {
+          var rId = _pptxBlipRid(blips[j]);
+          if (!rId || !appliedSet[relMap[rId]]) continue;
+          var parent = blips[j].parentNode;
+          var srcRect = parent ? parent.getElementsByTagNameNS(PPTX_NS.a, 'srcRect')[0] : null;
+          if (srcRect && srcRect.parentNode) srcRect.parentNode.removeChild(srcRect);
+        }
+        next[slidePath] = new TextEncoder().encode(new XMLSerializer().serializeToString(doc));
+      });
+    }
+
+    return { entries: next, appliedMedia: appliedMedia, skippedMedia: skippedMedia };
+  });
+}
+
+// --- 講者備忘稿（ppt/notesSlides/） ---
+//
+// 附加資訊、不是文件正文，跟 DOCX comments 同一種判斷：整組移除（part + 引用它的
+// slide 對應 rels 裡的 relationship + Content_Types Override）。
+
+function scanPptxSpeakerNotes(entries) {
+  var result = { count: 0, notes: [] };
+  Object.keys(entries).sort().forEach(function (path) {
+    if (!_PPTX_NOTES_SLIDE_PATTERN.test(path)) return;
+    var doc = new DOMParser().parseFromString(zipEntryToText(entries[path]), 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length) return;
+    var tEls = doc.getElementsByTagNameNS(PPTX_NS.a, 't');
+    var texts = [];
+    for (var i = 0; i < tEls.length; i++) {
+      if (tEls[i].textContent) texts.push(tEls[i].textContent);
+    }
+    if (texts.length) result.notes.push({ path: path, preview: texts.join(' ').slice(0, 80) });
+  });
+  result.count = result.notes.length;
+  return result;
+}
+
+function cleanPptxSpeakerNotes(entries) {
+  var scan = scanPptxSpeakerNotes(entries);
+  if (!scan.count) return entries;
+
+  var next = entries;
+  scan.notes.forEach(function (note) {
+    var m = note.path.match(_PPTX_NOTES_SLIDE_PATTERN);
+    var idx = m[1];
+
+    // 先在引用這份 notesSlide 的 slide 自己的 rels 裡移除對應 relationship
+    // （notesSlide 的關聯定義在 slide 層級，不是套件層級，跟 DOCX word/comments.xml
+    // 掛在 word/_rels/document.xml.rels 是同一種模式）。
+    Object.keys(next).forEach(function (path) {
+      if (!_PPTX_SLIDE_PATTERN.test(path)) return;
+      var relsPath = _pptxSlideRelsPath(path);
+      if (!next[relsPath]) return;
+      var doc = new DOMParser().parseFromString(zipEntryToText(next[relsPath]), 'application/xml');
+      if (doc.getElementsByTagName('parsererror').length) return;
+      var rels = doc.getElementsByTagNameNS(PPTX_NS.relsPkg, 'Relationship');
+      var changed = false;
+      for (var i = rels.length - 1; i >= 0; i--) {
+        var target = _resolveRelativeTarget('ppt/slides', rels[i].getAttribute('Target') || '');
+        if (target === note.path) {
+          rels[i].parentNode.removeChild(rels[i]);
+          changed = true;
+        }
+      }
+      if (changed) {
+        var nextEntries = Object.assign({}, next);
+        nextEntries[relsPath] = new TextEncoder().encode(new XMLSerializer().serializeToString(doc));
+        next = nextEntries;
+      }
+    });
+
+    // relsPath 傳套件層級的 rels 只是為了借用 removeZipEntryAndRelationship 順便清掉
+    // Content_Types 的 Override（relationship 已經在上面手動清掉了，這裡不會重複找到）。
+    next = removeZipEntryAndRelationship(next, note.path, '_rels/.rels');
+    var notesRelsPath = 'ppt/notesSlides/_rels/notesSlide' + idx + '.xml.rels';
+    if (next[notesRelsPath]) {
+      var withoutRels = Object.assign({}, next);
+      delete withoutRels[notesRelsPath];
+      next = withoutRels;
+    }
+  });
+
+  return next;
+}
+
+// --- 隱藏投影片 ---
+//
+// <p:sld show="0"> 只是顯示旗標，投影片本體內容完全沒有被移除。只偵測警示（跟 DOCX
+// 追蹤修訂、XLSX 隱藏工作表同一個判準：改變文件內容的操作不自動處理）。
+
+function scanPptxHiddenSlides(entries) {
+  var result = [];
+  Object.keys(entries).sort().forEach(function (path) {
+    if (!_PPTX_SLIDE_PATTERN.test(path)) return;
+    var doc = new DOMParser().parseFromString(zipEntryToText(entries[path]), 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length) return;
+    var sldEls = doc.getElementsByTagNameNS(PPTX_NS.p, 'sld');
+    if (!sldEls.length || sldEls[0].getAttribute('show') !== '0') return;
+    var titleEls = doc.getElementsByTagNameNS(PPTX_NS.a, 't');
+    result.push({ path: path, titlePreview: titleEls.length ? titleEls[0].textContent : null });
+  });
+  return result;
+}
+
+// --- 檔案大小閘門 ---
+//
+// PPTX 是三格式裡唯一常態內嵌大型媒體（尤其影片）的格式，門檻不能比照 DOCX（15/50MB）
+// 或 XLSX（25/80MB）。研究實測：一般簡報平均 4-10MB，內嵌中等長度影片的合理上限約
+// 100MB，見 pptx_structure_notes.md 第 5 節。
+
+var PPTX_SIZE_WARN_BYTES = 20 * 1024 * 1024;   // 20MB
+var PPTX_SIZE_REJECT_BYTES = 100 * 1024 * 1024; // 100MB
+
+function checkPptxFileSize(bytes) {
+  var size = Number(bytes);
+  if (isNaN(size) || size < 0) {
+    return { ok: false, level: 'reject', message: '無效的檔案大小' };
+  }
+  if (size > PPTX_SIZE_REJECT_BYTES) {
+    return {
+      ok: false,
+      level: 'reject',
+      message: '檔案大小（' + (size / (1024 * 1024)).toFixed(1) + 'MB）超過 100MB 上限。' +
+        'pptx 一般簡報分享場景很少超過這個量級，若您確定檔案正常，請改用桌面版 PowerPoint 處理。'
+    };
+  }
+  if (size > PPTX_SIZE_WARN_BYTES) {
+    return {
+      ok: true,
+      level: 'warn',
+      message: '檔案較大（' + (size / (1024 * 1024)).toFixed(1) + 'MB > 20MB），處理可能需要較長時間'
+    };
+  }
+  return { ok: true, level: 'pass', message: '檔案大小符合標準' };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    PPTX_NS: PPTX_NS,
+    scanPptxCroppedImages: scanPptxCroppedImages,
+    cleanPptxCroppedImages: cleanPptxCroppedImages,
+    scanPptxSpeakerNotes: scanPptxSpeakerNotes,
+    cleanPptxSpeakerNotes: cleanPptxSpeakerNotes,
+    scanPptxHiddenSlides: scanPptxHiddenSlides,
+    checkPptxFileSize: checkPptxFileSize
+  };
+}
+
+</script>
+
+  <script>
+  (function () {
+    var state = {
+      items: [], // Array<{ id, file, entries, before, cleanedEntries, cleanedBefore, status: 'scanned'|'cleaned'|'skipped'|'error'|'unsupported'|'encrypted', process: boolean }>
+      cleaned: false
+    };
+
+    var dropZone = document.getElementById('drop-zone');
+    var fileInput = document.getElementById('file-input');
+    var btnSelectFiles = document.getElementById('btn-select-files');
+    var cleanOptionsCard = document.getElementById('clean-options-card');
+    var planStatsText = document.getElementById('plan-stats-text');
+    var btnStartClean = document.getElementById('btn-start-clean');
+    var btnClear = document.getElementById('btn-clear');
+    var resultsSection = document.getElementById('results-section');
+    var docCount = document.getElementById('doc-count');
+    var docsContainer = document.getElementById('docs-container');
+    var downloadActions = document.getElementById('download-actions');
+    var btnDownloadZip = document.getElementById('btn-download-zip');
+    var btnCopySummary = document.getElementById('btn-copy-summary');
+    var btnDownloadOffline = document.getElementById('btn-download-offline');
+
+    var nextId = 1;
+
+    // 標籤文字依實際偵測到的項目動態組成，不用固定字串（固定字串會在只命中其中一項時，
+    // 誤導使用者以為其他項目也存在——例如乾淨檔案只帶縮圖，标籤卻寫著「含...追蹤修訂」）。
+    function _riskResult(level, reasons) {
+      if (level === 'none' || !reasons.length) return { level: 'none', label: '🟢 無明顯風險', cls: 'risk-none' };
+      var icon = level === 'high' ? '🔴' : '🟡';
+      var text = level === 'high' ? '高風險' : '中風險';
+      return { level: level, label: icon + ' ' + text + '（含' + reasons.join('/') + '）', cls: 'risk-' + level };
+    }
+
+    function computeRisk(before, format) {
+      if (!before) return { level: 'none', label: '', cls: 'risk-none' };
+      if (format === 'xlsx') {
+        var xlsxHigh = [];
+        if (before.core.creator) xlsxHigh.push('作者');
+        if (before.core.lastModifiedBy) xlsxHigh.push('最後修改者');
+        if (before.core.description) xlsxHigh.push('描述');
+        if (before.app.company) xlsxHigh.push('公司');
+        if (before.pivotCaches.count > 0) xlsxHigh.push('樞紐分析表快取');
+        if (before.externalLinks.relationshipHits.length > 0) xlsxHigh.push('外部連結');
+        if (xlsxHigh.length) return _riskResult('high', xlsxHigh);
+        var xlsxMed = [];
+        if (before.hasThumbnail) xlsxMed.push('縮圖');
+        if (before.hasCustom) xlsxMed.push('自訂屬性');
+        if (before.hiddenSheets.length > 0) xlsxMed.push('隱藏工作表');
+        if (xlsxMed.length) return _riskResult('med', xlsxMed);
+        return _riskResult('none', []);
+      }
+      if (format === 'pptx') {
+        var pptxHigh = [];
+        if (before.core.creator) pptxHigh.push('作者');
+        if (before.core.lastModifiedBy) pptxHigh.push('最後修改者');
+        if (before.core.description) pptxHigh.push('描述');
+        if (before.app.company) pptxHigh.push('公司');
+        if (before.speakerNotes.count > 0) pptxHigh.push('講者備忘稿');
+        if (before.croppedImages.count > 0) pptxHigh.push('裁切圖片原圖殘留');
+        if (pptxHigh.length) return _riskResult('high', pptxHigh);
+        var pptxMed = [];
+        if (before.hasThumbnail) pptxMed.push('縮圖');
+        if (before.hasCustom) pptxMed.push('自訂屬性');
+        if (before.hiddenSlides.length > 0) pptxMed.push('隱藏投影片');
+        if (pptxMed.length) return _riskResult('med', pptxMed);
+        return _riskResult('none', []);
+      }
+      var docxHigh = [];
+      if (before.core.creator) docxHigh.push('作者');
+      if (before.core.lastModifiedBy) docxHigh.push('最後修改者');
+      if (before.core.description) docxHigh.push('描述');
+      if (before.app.company) docxHigh.push('公司');
+      if (before.app.manager) docxHigh.push('主管');
+      if (before.app.template) docxHigh.push('範本路徑');
+      if (before.comments.count > 0) docxHigh.push('註解');
+      if (before.localPaths.relationshipHits.length > 0 || before.localPaths.displayTextHits.length > 0) docxHigh.push('本機路徑');
+      if (docxHigh.length) return _riskResult('high', docxHigh);
+      var docxMed = [];
+      if (before.hasThumbnail) docxMed.push('縮圖');
+      if (before.hasCustom) docxMed.push('自訂屬性');
+      if (before.trackedChanges.insertions.length > 0 || before.trackedChanges.deletions.length > 0) docxMed.push('追蹤修訂');
+      if (docxMed.length) return _riskResult('med', docxMed);
+      return _riskResult('none', []);
+    }
+
+    function summarizeBefore(entries, format) {
+      var base = {
+        core: readDocxCoreProps(entries),
+        app: readDocxAppProps(entries),
+        hasCustom: hasCustomProps(entries),
+        hasThumbnail: hasThumbnail(entries)
+      };
+      if (format === 'xlsx') {
+        base.pivotCaches = scanXlsxPivotCaches(entries);
+        base.hiddenSheets = scanXlsxHiddenSheets(entries);
+        base.externalLinks = scanXlsxExternalLinks(entries);
+      } else if (format === 'pptx') {
+        base.croppedImages = scanPptxCroppedImages(entries);
+        base.speakerNotes = scanPptxSpeakerNotes(entries);
+        base.hiddenSlides = scanPptxHiddenSlides(entries);
+      } else {
+        base.comments = scanDocxComments(entries);
+        base.trackedChanges = scanDocxTrackedChanges(entries);
+        base.localPaths = scanDocxLocalPathLinks(entries);
+      }
+      return base;
+    }
+
+    // 回傳 Promise：PPTX 的圖片裁切清除本質上是非同步的（canvas 解碼/重繪），為了讓三種
+    // 格式共用同一個呼叫介面，統一都用 Promise 包裝，DOCX/XLSX 內部雖是同步運算但一樣
+    // 走 Promise.resolve()。
+    function cleanEntries(entries, format) {
+      var next = cleanDocxCoreProps(entries);
+      next = cleanDocxAppProps(next);
+      if (hasCustomProps(next)) next = removeZipEntryAndRelationship(next, 'docProps/custom.xml');
+      var thumbPath = _findThumbnailPath(next);
+      if (thumbPath) next = removeZipEntryAndRelationship(next, thumbPath);
+
+      if (format === 'xlsx') {
+        next = cleanXlsxPivotCaches(next);
+        next = cleanXlsxExternalLinks(next);
+        return Promise.resolve({ entries: next, pptxSkippedMedia: [] });
+      }
+      if (format === 'pptx') {
+        next = cleanPptxSpeakerNotes(next);
+        return cleanPptxCroppedImages(next).then(function (result) {
+          return { entries: result.entries, pptxSkippedMedia: result.skippedMedia };
+        });
+      }
+      next = cleanDocxComments(next);
+      next = cleanDocxLocalPathLinks(next);
+      return Promise.resolve({ entries: next, pptxSkippedMedia: [] });
+    }
+
+    function detectFormat(filename) {
+      if (/\.docx$/i.test(filename)) return 'docx';
+      if (/\.xlsx$/i.test(filename)) return 'xlsx';
+      if (/\.pptx$/i.test(filename)) return 'pptx';
+      return null;
+    }
+
+    function addFiles(fileList) {
+      var files = Array.prototype.slice.call(fileList);
+      files.forEach(function (file) {
+        var format = detectFormat(file.name);
+        if (!format) return;
+        var item = { id: nextId++, file: file, format: format, entries: null, before: null, status: 'loading', process: false };
+        state.items.push(item);
+        renderList();
+
+        var sizeCheck = format === 'xlsx' ? checkXlsxFileSize(file.size)
+          : format === 'pptx' ? checkPptxFileSize(file.size)
+          : checkDocxFileSize(file.size);
+        if (!sizeCheck.ok) {
+          item.status = 'skipped';
+          item.skipReason = sizeCheck.message;
+          renderList();
+          return;
+        }
+
+        var reader = new FileReader();
+        reader.onload = function () {
+          var buf = reader.result;
+          var entries;
+          try {
+            entries = unzipToEntries(new Uint8Array(buf));
+          } catch (err) {
+            item.status = isLikelyEncryptedOfficeFile(buf) ? 'encrypted' : 'error';
+            item.errorMessage = item.status === 'encrypted'
+              ? '此檔案有密碼保護，請先在 Office 解除保護後再上傳'
+              : '此檔案可能已損毀，或不是合法的 ' + format.toUpperCase() + ' 格式';
+            renderList();
+            return;
+          }
+          item.entries = entries;
+          item.before = summarizeBefore(entries, format);
+          item.status = 'scanned';
+          item.process = true;
+          renderList();
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function updateStats() {
+      var toProcess = state.items.filter(function (i) { return i.process && i.status === 'scanned'; }).length;
+      var toKeep = state.items.filter(function (i) { return i.status === 'scanned' && !i.process; }).length;
+      planStatsText.textContent = '即將清除：' + toProcess + ' 份，保留原樣：' + toKeep + ' 份';
+      cleanOptionsCard.style.display = state.items.some(function (i) { return i.status === 'scanned'; }) ? 'block' : 'none';
+      btnStartClean.disabled = toProcess === 0;
+    }
+
+    function fieldLine(label, value) {
+      return '<div><strong>' + escapeHtml(label) + '：</strong>' + escapeHtml(value == null || value === '' ? '無' : value) + '</div>';
+    }
+
+    function renderList() {
+      resultsSection.style.display = state.items.length ? 'block' : 'none';
+      docCount.textContent = String(state.items.length);
+      updateStats();
+
+      docsContainer.innerHTML = state.items.map(function (item, idx) {
+        if (item.status === 'loading') {
+          return '<div class="doc-card"><div class="doc-header"><div class="doc-icon">📄</div>' +
+            '<strong>' + escapeHtml(item.file.name) + '</strong><span>讀取中…</span></div></div>';
+        }
+        if (item.status === 'skipped') {
+          return '<div class="doc-card"><div class="doc-header"><div class="doc-icon">📄</div>' +
+            '<strong>' + escapeHtml(item.file.name) + '</strong>' +
+            '<span class="risk-badge risk-med">⚠ 已略過</span></div>' +
+            '<div class="warn-box">' + escapeHtml(item.skipReason) + '</div></div>';
+        }
+        if (item.status === 'encrypted' || item.status === 'error') {
+          return '<div class="doc-card"><div class="doc-header"><div class="doc-icon">📄</div>' +
+            '<strong>' + escapeHtml(item.file.name) + '</strong>' +
+            '<span class="risk-badge risk-med">⚠ 無法處理</span></div>' +
+            '<div class="warn-box">' + escapeHtml(item.errorMessage) + '</div></div>';
+        }
+
+        var b = item.before;
+        var format = item.format;
+        var risk = computeRisk(b, format);
+
+        var formatFieldsBefore, warnParts;
+        if (format === 'xlsx') {
+          formatFieldsBefore =
+            fieldLine('樞紐分析表快取', String(b.pivotCaches.count)) +
+            fieldLine('隱藏工作表', String(b.hiddenSheets.length) + (b.hiddenSheets.length ? '（' + b.hiddenSheets.map(function (s) { return s.name; }).join('、') + '）' : '')) +
+            fieldLine('外部連結（本機路徑）', String(b.externalLinks.relationshipHits.length));
+          warnParts = [];
+          if (b.hiddenSheets.length > 0) {
+            warnParts.push('偵測到 ' + b.hiddenSheets.length + ' 個隱藏工作表，清除不會處理這些，請自行到 Excel 確認是否要刪除。');
+          }
+          if (b.pivotCaches.count > 0) {
+            warnParts.push('偵測到 ' + b.pivotCaches.count + ' 個樞紐分析表快取，清除會將其連同快取內殘留的原始資料一併移除，檔案內對應的樞紐分析表將會失效。');
+          }
+        } else if (format === 'pptx') {
+          formatFieldsBefore =
+            fieldLine('裁切圖片（原圖殘留）', String(b.croppedImages.count)) +
+            fieldLine('講者備忘稿', String(b.speakerNotes.count)) +
+            fieldLine('隱藏投影片', String(b.hiddenSlides.length) + (b.hiddenSlides.length ? '（' + b.hiddenSlides.map(function (s) { return s.titlePreview || '（無標題）'; }).join('、') + '）' : ''));
+          warnParts = [];
+          if (b.hiddenSlides.length > 0) {
+            warnParts.push('偵測到 ' + b.hiddenSlides.length + ' 個隱藏投影片，清除不會處理這些，請自行到 PowerPoint 確認是否要刪除。');
+          }
+          if (b.croppedImages.count > 0) {
+            warnParts.push('偵測到 ' + b.croppedImages.count + ' 處圖片裁切，裁切前完整原圖預設會被移除（重新繪製為裁切後版本）；若同一張圖片被多處以不同裁切範圍引用，該圖片會略過自動處理，只提示風險。');
+          }
+        } else {
+          var trackedCount = b.trackedChanges.insertions.length + b.trackedChanges.deletions.length;
+          formatFieldsBefore =
+            fieldLine('註解數量', String(b.comments.count) + (b.comments.authors.length ? '（' + b.comments.authors.join('、') + '）' : '')) +
+            fieldLine('本機路徑超連結', String(b.localPaths.relationshipHits.length));
+          warnParts = [];
+          if (trackedCount > 0) {
+            warnParts.push('偵測到 ' + trackedCount + ' 處追蹤修訂（新增/刪除內容），清除不會處理這些，請自行到 Word 確認是否要接受/拒絕修訂。');
+          }
+          if (b.localPaths.displayTextHits.length > 0) {
+            warnParts.push('偵測到 ' + b.localPaths.displayTextHits.length + ' 處文字內容裡直接寫出本機路徑，清除只會拆除超連結，不會改寫這些顯示文字。');
+          }
+        }
+
+        var metaGrid = '<div class="doc-meta-grid">' +
+          fieldLine('作者', b.core.creator) +
+          fieldLine('最後修改者', b.core.lastModifiedBy) +
+          fieldLine('描述/備註', b.core.description) +
+          fieldLine('公司', b.app.company) +
+          (b.app.manager ? fieldLine('主管/負責人', b.app.manager) : '') +
+          (b.app.template ? fieldLine('範本路徑', b.app.template) : '') +
+          fieldLine('自訂屬性', b.hasCustom ? '有' : '無') +
+          fieldLine('內嵌縮圖', b.hasThumbnail ? '有' : '無') +
+          formatFieldsBefore +
+          '</div>';
+
+        var warnBox = warnParts.length ? '<div class="warn-box">⚠️ ' + escapeHtml(warnParts.join(' ')) + '</div>' : '';
+
+        var processToggle = '<label style="font-size: 0.85rem;"><input type="checkbox" class="chk-item-process" data-idx="' + idx + '" ' + (item.process ? 'checked' : '') + '> 此份要清除</label>';
+
+        var diffSection = '';
+        if (state.cleaned && item.status === 'cleaned') {
+          var a = item.cleanedBefore;
+          var formatRowsAfter;
+          if (format === 'xlsx') {
+            formatRowsAfter =
+              '<tr><td>樞紐分析表快取</td><td>' + b.pivotCaches.count + '</td><td>' + (a.pivotCaches.count > 0 ? a.pivotCaches.count + ' 仍在' : '<strong>✓ 已清除</strong>') + '</td></tr>' +
+              '<tr><td>外部連結（本機路徑）</td><td>' + b.externalLinks.relationshipHits.length + ' 條</td><td>' + (a.externalLinks.relationshipHits.length > 0 ? a.externalLinks.relationshipHits.length + ' 條仍在' : '<strong>✓ 已清除</strong>') + '</td></tr>';
+          } else if (format === 'pptx') {
+            var skippedCount = (item.pptxSkippedMedia || []).length;
+            formatRowsAfter =
+              '<tr><td>裁切圖片（原圖殘留）</td><td>' + b.croppedImages.count + '</td><td>' + (a.croppedImages.count > 0 ? a.croppedImages.count + ' 仍在（' + skippedCount + ' 張因裁切規格不一致略過自動處理）' : '<strong>✓ 已清除</strong>') + '</td></tr>' +
+              '<tr><td>講者備忘稿</td><td>' + b.speakerNotes.count + '</td><td>' + (a.speakerNotes.count > 0 ? a.speakerNotes.count + ' 仍在' : '<strong>✓ 已清除</strong>') + '</td></tr>';
+          } else {
+            formatRowsAfter =
+              '<tr><td>註解</td><td>' + b.comments.count + ' 則</td><td>' + (a.comments.count > 0 ? a.comments.count + ' 則仍在' : '<strong>✓ 已清除</strong>') + '</td></tr>' +
+              '<tr><td>本機路徑超連結</td><td>' + b.localPaths.relationshipHits.length + ' 條</td><td>' + (a.localPaths.relationshipHits.length > 0 ? a.localPaths.relationshipHits.length + ' 條仍在' : '<strong>✓ 已清除</strong>') + '</td></tr>';
+          }
+          diffSection = '<table class="diff-table">' +
+            '<thead><tr><th>檢測項目</th><th>清除前</th><th>清除後（重新驗證）</th></tr></thead><tbody>' +
+            '<tr><td>作者</td><td>' + escapeHtml(b.core.creator || '無') + '</td><td>' + (a.core.creator ? escapeHtml(a.core.creator) : '<strong>✓ 已清除</strong>') + '</td></tr>' +
+            '<tr><td>公司</td><td>' + escapeHtml(b.app.company || '無') + '</td><td>' + (a.app.company ? escapeHtml(a.app.company) : '<strong>✓ 已清除</strong>') + '</td></tr>' +
+            '<tr><td>自訂屬性</td><td>' + (b.hasCustom ? '有' : '無') + '</td><td>' + (a.hasCustom ? '仍有' : '<strong>✓ 已清除</strong>') + '</td></tr>' +
+            '<tr><td>內嵌縮圖</td><td>' + (b.hasThumbnail ? '有' : '無') + '</td><td>' + (a.hasThumbnail ? '仍有' : '<strong>✓ 已清除</strong>') + '</td></tr>' +
+            formatRowsAfter +
+            '</tbody></table>';
+        }
+
+        var downloadBtn = (state.cleaned && item.status === 'cleaned')
+          ? '<button type="button" class="btn secondary btn-sm btn-download-one" data-idx="' + idx + '">下載清除版</button>' : '';
+
+        return '<div class="doc-card">' +
+          '<div class="doc-header"><div class="doc-icon">' + (format === 'xlsx' ? '📊' : format === 'pptx' ? '🖼️' : '📄') + '</div>' +
+          '<div style="flex:1; min-width: 180px;"><strong>#' + (idx + 1) + ' ' + escapeHtml(item.file.name) + '</strong><br>' +
+          '<span class="risk-badge ' + risk.cls + '">' + risk.label + '</span></div>' +
+          '<div style="display:flex; gap:0.5rem; align-items:center;">' + processToggle + downloadBtn + '</div></div>' +
+          metaGrid + warnBox + diffSection + '</div>';
+      }).join('');
+
+      docsContainer.querySelectorAll('.chk-item-process').forEach(function (chk) {
+        chk.addEventListener('change', function () {
+          var idx = Number(chk.getAttribute('data-idx'));
+          state.items[idx].process = chk.checked;
+          updateStats();
+        });
+      });
+      docsContainer.querySelectorAll('.btn-download-one').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var idx = Number(btn.getAttribute('data-idx'));
+          downloadOne(state.items[idx]);
+        });
+      });
+    }
+
+    var _MIME_BY_FORMAT = {
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    };
+
+    function downloadOne(item) {
+      var zipFiles = Object.keys(item.cleanedEntries).map(function (name) {
+        return { name: name, bytes: item.cleanedEntries[name] };
+      });
+      var blob = createZipBlob(zipFiles);
+      var base = item.file.name.replace(/\.(docx|xlsx|pptx)$/i, '');
+      downloadFile(base + '_cleaned.' + item.format, blob, _MIME_BY_FORMAT[item.format]);
+    }
+
+    btnStartClean.addEventListener('click', function () {
+      var targets = state.items.filter(function (item) { return item.status === 'scanned' && item.process; });
+      btnStartClean.disabled = true;
+      Promise.all(targets.map(function (item) {
+        return cleanEntries(item.entries, item.format).then(function (result) {
+          item.cleanedEntries = result.entries;
+          item.pptxSkippedMedia = result.pptxSkippedMedia;
+          item.cleanedBefore = summarizeBefore(result.entries, item.format);
+          item.status = 'cleaned';
+        });
+      })).then(function () {
+        state.cleaned = true;
+        var count = state.items.filter(function (i) { return i.status === 'cleaned'; }).length;
+        downloadActions.style.display = count > 0 ? 'flex' : 'none';
+        showToast('已完成 ' + count + ' 份文件的 Metadata 清除！');
+        renderList();
+      });
+    });
+
+    btnClear.addEventListener('click', function () {
+      state.items = [];
+      state.cleaned = false;
+      downloadActions.style.display = 'none';
+      renderList();
+      showToast('已清空清單');
+    });
+
+    btnDownloadZip.addEventListener('click', function () {
+      var cleanedItems = state.items.filter(function (i) { return i.status === 'cleaned'; });
+      if (!cleanedItems.length) return;
+      var zipFiles = [];
+      cleanedItems.forEach(function (item) {
+        var innerZipFiles = Object.keys(item.cleanedEntries).map(function (name) {
+          return { name: name, bytes: item.cleanedEntries[name] };
+        });
+        var innerBlobBytes = fflate.zipSync(innerZipFiles.reduce(function (acc, f) {
+          acc[f.name] = (f.bytes instanceof Uint8Array) ? f.bytes : new Uint8Array(f.bytes);
+          return acc;
+        }, {}));
+        var base = item.file.name.replace(/\.(docx|xlsx|pptx)$/i, '');
+        zipFiles.push({ name: base + '_cleaned.' + item.format, bytes: innerBlobBytes });
+      });
+      var outerBlob = createZipBlob(zipFiles);
+      downloadFile('cleaned_office_batch.zip', outerBlob, 'application/zip');
+    });
+
+    btnCopySummary.addEventListener('click', function () {
+      var lines = state.items.map(function (item, idx) {
+        if (!item.before) return '#' + (idx + 1) + ' ' + item.file.name + '：無法解析';
+        var risk = computeRisk(item.before, item.format);
+        return '#' + (idx + 1) + ' ' + item.file.name + '：' + risk.label;
+      });
+      copyToClipboard(lines.join('\n'));
+      showToast('已複製風險摘要');
+    });
+
+    // 不用 shared/io-dropzone.js 的 setupDropZone()：它預設走單檔 .txt/.md 的
+    // readAsText 流程，這裡需要多檔 + ArrayBuffer + 自訂大小閘門，手寫拖放邏輯更直接。
+    dropZone.addEventListener('dragover', function (e) { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', function () { dropZone.classList.remove('dragover'); });
+    dropZone.addEventListener('drop', function (e) {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+    });
+    dropZone.addEventListener('click', function (e) {
+      if (e.target === btnSelectFiles) return;
+      fileInput.click();
+    });
+    btnSelectFiles.addEventListener('click', function (e) {
+      e.stopPropagation();
+      fileInput.click();
+    });
+    fileInput.addEventListener('change', function () {
+      addFiles(fileInput.files);
+      fileInput.value = '';
+    });
+
+    function buildCleanHtmlCopy() {
+      var doc = document.documentElement.cloneNode(true);
+
+      var toast = doc.querySelector('#__shared_toast');
+      if (toast) toast.remove();
+
+      var navBack = doc.querySelector('.nav-back');
+      if (navBack) navBack.remove();
+
+      var offlineBtn = doc.querySelector('#btn-download-offline');
+      if (offlineBtn) offlineBtn.remove();
+
+      var docsCont = doc.querySelector('#docs-container');
+      if (docsCont) docsCont.innerHTML = '';
+
+      var resultsSec = doc.querySelector('#results-section');
+      if (resultsSec) resultsSec.style.display = 'none';
+
+      var cleanCard = doc.querySelector('#clean-options-card');
+      if (cleanCard) cleanCard.style.display = 'none';
+
+      var docCnt = doc.querySelector('#doc-count');
+      if (docCnt) docCnt.textContent = '0';
+
+      var planStats = doc.querySelector('#plan-stats-text');
+      if (planStats) planStats.textContent = '即將清除：0 份，保留原樣：0 份';
+
+      var dlActions = doc.querySelector('#download-actions');
+      if (dlActions) dlActions.style.display = 'none';
+
+      return '<!DOCTYPE html>\n' + doc.outerHTML;
+    }
+    window.buildCleanHtmlCopy = buildCleanHtmlCopy;
+
+    if (btnDownloadOffline) {
+      btnDownloadOffline.addEventListener('click', function () {
+        var cleanHtml = buildCleanHtmlCopy();
+        downloadFile('ooxml-privacy-cleaner-offline.html', cleanHtml, 'text/html;charset=utf-8');
+        showToast('已下載離線版工具');
+      });
+    }
+  })();
+  </script>
+</body>
+</html>

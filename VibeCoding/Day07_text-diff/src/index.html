@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文字差異比對器</title>
+<style>
+/* shared/base.css — 共用樣式基底，逐字複製，勿手動修改（改請去 shared/base.css 源頭並重新複製） */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 {
+  line-height: 1.3;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+textarea,
+input[type="text"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 160px;
+}
+
+button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--color-bg);
+}
+
+button.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover {
+  background: var(--color-primary-hover);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover {
+  text-decoration: underline;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+/* ---- 本題（text-diff）專屬樣式 ---- */
+.page-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.page-header h1 {
+  font-size: 1.4rem;
+  margin: 0 0 16px;
+}
+
+.section-gap {
+  margin-top: 16px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.col-label {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--color-border);
+}
+
+.swatch-added { background: #d1fae5; }
+.swatch-removed { background: #fee2e2; }
+.swatch-modified { background: #fef3c7; }
+.swatch-unchanged { background: var(--color-surface); }
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--color-border);
+  font-size: 0.95rem;
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-row .stat-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+#result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+#result-list .empty {
+  color: var(--color-text-muted);
+  padding: 8px 0;
+}
+
+.diff-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 0.92rem;
+  word-break: break-word;
+}
+
+@media (max-width: 640px) {
+  .diff-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.diff-row .diff-old,
+.diff-row .diff-new {
+  white-space: pre-wrap;
+}
+
+.diff-row.diff-added .diff-new { background: #d1fae5; border-radius: 3px; padding: 2px 4px; }
+.diff-row.diff-added .diff-old { color: var(--color-text-muted); }
+.diff-row.diff-removed .diff-old { background: #fee2e2; border-radius: 3px; padding: 2px 4px; }
+.diff-row.diff-removed .diff-new { color: var(--color-text-muted); }
+.diff-row.diff-modified .diff-old { background: #fef3c7; border-radius: 3px; padding: 2px 4px; }
+.diff-row.diff-modified .diff-new { background: #fef3c7; border-radius: 3px; padding: 2px 4px; }
+
+.diff-fold {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  margin: 2px 0;
+}
+
+.diff-fold-toggle {
+  padding: 6px 10px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.diff-fold-toggle:hover {
+  color: var(--color-primary);
+}
+
+.diff-fold-content {
+  padding: 0 4px 4px;
+}
+
+.diff-fold-content[hidden] {
+  display: none;
+}
+
+.about-box {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="nav-back" href="../index.html">← 返回作品集</a>
+
+  <div class="page-header">
+    <h1>文字差異比對器</h1>
+  </div>
+
+  <p class="section-gap" style="color: var(--color-text-muted); font-size: 0.9rem; margin-top: 0;">
+    左右兩欄分別貼上「舊版」「新版」文字，或拖曳單一 .txt / .md 檔案帶入對應欄位，按「開始比對」逐句列出差異。
+  </p>
+
+  <div class="grid-2">
+    <div>
+      <div class="col-label">舊版</div>
+      <div id="dropzone-old" class="dropzone">拖曳 TXT / MD 檔案到此，或直接貼上文字</div>
+      <div class="section-gap">
+        <textarea id="input-old" placeholder="在這裡貼上舊版文字…" aria-label="舊版輸入"></textarea>
+      </div>
+    </div>
+    <div>
+      <div class="col-label">新版</div>
+      <div id="dropzone-new" class="dropzone">拖曳 TXT / MD 檔案到此，或直接貼上文字</div>
+      <div class="section-gap">
+        <textarea id="input-new" placeholder="在這裡貼上新版文字…" aria-label="新版輸入"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-gap button-row">
+    <button type="button" id="btn-compare" class="primary">開始比對</button>
+  </div>
+
+  <div class="section-gap legend">
+    <span class="legend-item"><span class="legend-swatch swatch-added"></span>新增</span>
+    <span class="legend-item"><span class="legend-swatch swatch-removed"></span>刪除</span>
+    <span class="legend-item"><span class="legend-swatch swatch-modified"></span>修改</span>
+    <span class="legend-item"><span class="legend-swatch swatch-unchanged"></span>未變動</span>
+  </div>
+
+  <div class="section-gap card">
+    <h3>差異統計摘要</h3>
+    <div class="stat-row"><span>新增</span><span class="stat-value" id="stat-added">0</span></div>
+    <div class="stat-row"><span>刪除</span><span class="stat-value" id="stat-removed">0</span></div>
+    <div class="stat-row"><span>修改</span><span class="stat-value" id="stat-modified">0</span></div>
+    <div class="stat-row"><span>未變動</span><span class="stat-value" id="stat-unchanged">0</span></div>
+  </div>
+
+  <div class="section-gap button-row">
+    <button type="button" id="btn-expand-all">全部展開</button>
+    <button type="button" id="btn-collapse-all">全部收合</button>
+    <button type="button" id="btn-copy">複製摘要</button>
+    <button type="button" id="btn-download">下載差異報告 MD</button>
+    <button type="button" id="btn-download-offline">下載本工具離線版</button>
+  </div>
+
+  <div class="section-gap card">
+    <h3>並排比對結果</h3>
+    <div id="result-list"><div class="empty">尚未比對</div></div>
+  </div>
+
+  <div class="about-box" id="about-box">
+    <p style="margin: 0 0 8px;">本工具全程在瀏覽器本機執行，不上傳任何內容。</p>
+    <!--{{LICENSES}}-->
+  </div>
+</div>
+
+<!--{{SHARED:util-escape}}-->
+<!--{{SHARED:ui-toast}}-->
+<!--{{SHARED:io-download}}-->
+<!--{{SHARED:io-clipboard}}-->
+<!--{{SHARED:io-dropzone}}-->
+<!--{{ASSET:jsdiff}}-->
+
+<script>
+(function () {
+  "use strict";
+
+  // ---- T4：逐句斷句 ----
+
+  function normKey(s) {
+    return String(s).replace(/\s+/g, "");
+  }
+
+  function splitSentencesFromPara(para) {
+    var result = [];
+    var re = /[^。！？；]*[。！？；]+/g;
+    var m;
+    var lastIndex = 0;
+    while ((m = re.exec(para)) !== null) {
+      if (m[0].length === 0) {
+        re.lastIndex++;
+        continue;
+      }
+      var trimmed = m[0].trim();
+      if (trimmed !== "") result.push(trimmed);
+      lastIndex = re.lastIndex;
+    }
+    var rest = para.slice(lastIndex).trim();
+    if (rest !== "") result.push(rest);
+    if (result.length === 0 && para.trim() !== "") result.push(para.trim());
+    return result;
+  }
+
+  function textToSentences(text) {
+    if (!text) return [];
+    var paras = text.split(/\n\s*\n+/);
+    var sentences = [];
+    for (var i = 0; i < paras.length; i++) {
+      var norm = paras[i].replace(/\n/g, " ").trim();
+      if (norm === "") continue;
+      var parts = splitSentencesFromPara(norm);
+      for (var j = 0; j < parts.length; j++) {
+        sentences.push(parts[j]);
+      }
+    }
+    return sentences;
+  }
+
+  // ---- T5：diffArrays 比對 + N≠M 配對規則 ----
+
+  function buildDiffRows(oldSentences, newSentences) {
+    var diffResult = Diff.diffArrays(oldSentences, newSentences, {
+      comparator: function (a, b) {
+        return normKey(a) === normKey(b);
+      }
+    });
+
+    var rows = [];
+    var i = 0;
+    while (i < diffResult.length) {
+      var part = diffResult[i];
+      if (!part.added && !part.removed) {
+        for (var k = 0; k < part.value.length; k++) {
+          rows.push({ type: "unchanged", oldText: part.value[k], newText: part.value[k] });
+        }
+        i++;
+        continue;
+      }
+
+      var removedItems = [];
+      var addedItems = [];
+      var j = i;
+      while (j < diffResult.length && (diffResult[j].added || diffResult[j].removed)) {
+        if (diffResult[j].removed) {
+          removedItems = removedItems.concat(diffResult[j].value);
+        } else {
+          addedItems = addedItems.concat(diffResult[j].value);
+        }
+        j++;
+      }
+
+      var n = removedItems.length;
+      var mLen = addedItems.length;
+      var pairCount = Math.min(n, mLen);
+      for (var p = 0; p < pairCount; p++) {
+        rows.push({ type: "modified", oldText: removedItems[p], newText: addedItems[p] });
+      }
+      if (n > mLen) {
+        for (var r1 = pairCount; r1 < n; r1++) {
+          rows.push({ type: "removed", oldText: removedItems[r1], newText: null });
+        }
+      } else if (mLen > n) {
+        for (var r2 = pairCount; r2 < mLen; r2++) {
+          rows.push({ type: "added", oldText: null, newText: addedItems[r2] });
+        }
+      }
+      i = j;
+    }
+    return rows;
+  }
+
+  // ---- T6：未變動區塊摺疊（連續 >=3 句） ----
+
+  function groupFolds(rows) {
+    var grouped = [];
+    var i = 0;
+    while (i < rows.length) {
+      if (rows[i].type === "unchanged") {
+        var j = i;
+        while (j < rows.length && rows[j].type === "unchanged") j++;
+        var runLen = j - i;
+        if (runLen >= 3) {
+          grouped.push({ type: "fold", items: rows.slice(i, j) });
+        } else {
+          for (var k = i; k < j; k++) grouped.push(rows[k]);
+        }
+        i = j;
+      } else {
+        grouped.push(rows[i]);
+        i++;
+      }
+    }
+    return grouped;
+  }
+
+  // ---- T7：統計摘要 ----
+
+  function computeStats(rows) {
+    var stats = { added: 0, removed: 0, modified: 0, unchanged: 0 };
+    for (var i = 0; i < rows.length; i++) {
+      stats[rows[i].type] += 1;
+    }
+    return stats;
+  }
+
+  // ---- 渲染 ----
+
+  function renderDiffRowHtml(row) {
+    var oldHtml = row.oldText === null || row.oldText === undefined ? "" : escapeHtml(row.oldText);
+    var newHtml = row.newText === null || row.newText === undefined ? "" : escapeHtml(row.newText);
+    return '<div class="diff-row diff-' + row.type + '">' +
+      '<div class="diff-old">' + oldHtml + "</div>" +
+      '<div class="diff-new">' + newHtml + "</div>" +
+      "</div>";
+  }
+
+  function renderResultHtml(grouped) {
+    if (grouped.length === 0) {
+      return '<div class="empty">兩欄皆無內容可比對</div>';
+    }
+    var html = "";
+    var foldIdx = 0;
+    for (var i = 0; i < grouped.length; i++) {
+      var g = grouped[i];
+      if (g.type === "fold") {
+        var idx = foldIdx++;
+        var itemsHtml = "";
+        for (var k = 0; k < g.items.length; k++) {
+          itemsHtml += renderDiffRowHtml(g.items[k]);
+        }
+        html += '<div class="diff-fold" data-fold-idx="' + idx + '">' +
+          '<div class="diff-fold-toggle" role="button" tabindex="0" data-count="' + g.items.length + '">未變動 ' + g.items.length + ' 句（點擊展開）</div>' +
+          '<div class="diff-fold-content" hidden>' + itemsHtml + "</div>" +
+          "</div>";
+      } else {
+        html += renderDiffRowHtml(g);
+      }
+    }
+    return html;
+  }
+
+  // ---- 主流程 ----
+
+  var inputOld = document.getElementById("input-old");
+  var inputNew = document.getElementById("input-new");
+  var dropzoneOld = document.getElementById("dropzone-old");
+  var dropzoneNew = document.getElementById("dropzone-new");
+  var resultList = document.getElementById("result-list");
+
+  var statAdded = document.getElementById("stat-added");
+  var statRemoved = document.getElementById("stat-removed");
+  var statModified = document.getElementById("stat-modified");
+  var statUnchanged = document.getElementById("stat-unchanged");
+
+  var lastStats = null;
+  var lastRows = null;
+
+  function compare() {
+    var oldSentences = textToSentences(inputOld.value);
+    var newSentences = textToSentences(inputNew.value);
+    var rows = buildDiffRows(oldSentences, newSentences);
+    var stats = computeStats(rows);
+    var grouped = groupFolds(rows);
+
+    lastRows = rows;
+    lastStats = stats;
+
+    statAdded.textContent = stats.added;
+    statRemoved.textContent = stats.removed;
+    statModified.textContent = stats.modified;
+    statUnchanged.textContent = stats.unchanged;
+
+    resultList.innerHTML = renderResultHtml(grouped);
+  }
+
+  document.getElementById("btn-compare").addEventListener("click", compare);
+
+  setupDropZone(dropzoneOld, function (text) {
+    inputOld.value = text;
+  }, {
+    accept: [".txt", ".md"],
+    onError: function (msg) { showToast(msg); }
+  });
+
+  setupDropZone(dropzoneNew, function (text) {
+    inputNew.value = text;
+  }, {
+    accept: [".txt", ".md"],
+    onError: function (msg) { showToast(msg); }
+  });
+
+  // 摺疊區塊展開／收合（事件代理）
+  resultList.addEventListener("click", function (e) {
+    var toggle = e.target.closest ? e.target.closest(".diff-fold-toggle") : null;
+    if (!toggle) return;
+    var fold = toggle.parentNode;
+    var content = fold.querySelector(".diff-fold-content");
+    if (!content) return;
+    var count = toggle.getAttribute("data-count");
+    if (content.hasAttribute("hidden")) {
+      content.removeAttribute("hidden");
+      toggle.textContent = "未變動 " + count + " 句（點擊收合）";
+    } else {
+      content.setAttribute("hidden", "");
+      toggle.textContent = "未變動 " + count + " 句（點擊展開）";
+    }
+  });
+
+  document.getElementById("btn-expand-all").addEventListener("click", function () {
+    var contents = resultList.querySelectorAll(".diff-fold-content");
+    for (var i = 0; i < contents.length; i++) {
+      contents[i].removeAttribute("hidden");
+      var toggle = contents[i].previousElementSibling;
+      if (toggle) toggle.textContent = "未變動 " + toggle.getAttribute("data-count") + " 句（點擊收合）";
+    }
+  });
+
+  document.getElementById("btn-collapse-all").addEventListener("click", function () {
+    var contents = resultList.querySelectorAll(".diff-fold-content");
+    for (var i = 0; i < contents.length; i++) {
+      contents[i].setAttribute("hidden", "");
+      var toggle = contents[i].previousElementSibling;
+      if (toggle) toggle.textContent = "未變動 " + toggle.getAttribute("data-count") + " 句（點擊展開）";
+    }
+  });
+
+  // ---- T7：複製摘要／下載報告 ----
+
+  function buildSummaryText() {
+    if (!lastStats) return "尚未比對";
+    return "新增 " + lastStats.added + " 句／刪除 " + lastStats.removed +
+      " 句／修改 " + lastStats.modified + " 句／未變動 " + lastStats.unchanged + " 句";
+  }
+
+  document.getElementById("btn-copy").addEventListener("click", function () {
+    copyToClipboard(buildSummaryText()).then(function (ok) {
+      showToast(ok ? "已複製摘要" : "複製失敗，請手動選取");
+    });
+  });
+
+  function buildReportMarkdown() {
+    var lines = [];
+    lines.push("# 文字差異比對報告");
+    lines.push("");
+    lines.push("## 統計摘要");
+    lines.push("");
+    if (lastStats) {
+      lines.push("- 新增：" + lastStats.added + " 句");
+      lines.push("- 刪除：" + lastStats.removed + " 句");
+      lines.push("- 修改：" + lastStats.modified + " 句");
+      lines.push("- 未變動：" + lastStats.unchanged + " 句");
+    } else {
+      lines.push("尚未比對");
+    }
+    lines.push("");
+    lines.push("## 逐句差異列表");
+    lines.push("");
+    if (lastRows && lastRows.length > 0) {
+      var typeLabel = { added: "新增", removed: "刪除", modified: "修改", unchanged: "未變動" };
+      for (var i = 0; i < lastRows.length; i++) {
+        var row = lastRows[i];
+        var label = "[" + typeLabel[row.type] + "]";
+        if (row.type === "modified") {
+          lines.push(label + " 舊：" + row.oldText);
+          lines.push(label + " 新：" + row.newText);
+        } else if (row.type === "removed") {
+          lines.push(label + " " + row.oldText);
+        } else if (row.type === "added") {
+          lines.push(label + " " + row.newText);
+        } else {
+          lines.push(label + " " + row.oldText);
+        }
+      }
+    } else {
+      lines.push("（無資料）");
+    }
+    lines.push("");
+    lines.push("---");
+    lines.push("差異比對引擎：jsdiff diff@9.0.0，BSD-3-Clause 授權。");
+    return lines.join("\n");
+  }
+
+  document.getElementById("btn-download").addEventListener("click", function () {
+    downloadFile("text-diff-report.md", buildReportMarkdown(), "text/markdown;charset=utf-8");
+  });
+
+  // ---- T9：下載本工具離線版 ----
+
+  function buildCleanHtmlCopy() {
+    var clone = document.documentElement.cloneNode(true);
+
+    var oldTa = clone.querySelector("#input-old");
+    if (oldTa) oldTa.value = "";
+    var newTa = clone.querySelector("#input-new");
+    if (newTa) newTa.value = "";
+
+    var statIds = ["stat-added", "stat-removed", "stat-modified", "stat-unchanged"];
+    for (var i = 0; i < statIds.length; i++) {
+      var el = clone.querySelector("#" + statIds[i]);
+      if (el) el.textContent = "0";
+    }
+
+    var rl = clone.querySelector("#result-list");
+    if (rl) rl.innerHTML = '<div class="empty">尚未比對</div>';
+
+    var toastEl = clone.querySelector("#__shared_toast");
+    if (toastEl && toastEl.parentNode) toastEl.parentNode.removeChild(toastEl);
+
+    var navBack = clone.querySelector(".nav-back");
+    if (navBack && navBack.parentNode) navBack.parentNode.removeChild(navBack);
+
+    var htmlStr = "<!DOCTYPE html>\n" + clone.outerHTML;
+    downloadFile("text-diff-offline.html", htmlStr, "text/html;charset=utf-8");
+  }
+
+  document.getElementById("btn-download-offline").addEventListener("click", buildCleanHtmlCopy);
+})();
+</script>
+</body>
+</html>

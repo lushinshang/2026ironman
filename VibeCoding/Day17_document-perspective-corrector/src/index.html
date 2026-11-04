@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文件照片透視校正器 — Day17</title>
+  <style>
+/* shared/base.css — 共用樣式基底 */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 { line-height: 1.3; }
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 1rem;
+}
+
+button, .btn {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+button:hover, .btn:hover { background: var(--color-bg); }
+
+button.primary, .btn.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover, .btn.primary:hover { background: var(--color-primary-hover); }
+
+button:disabled, .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #eff6ff;
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover { text-decoration: underline; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show { opacity: 1; }
+
+.workspace-grid {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+@media (max-width: 768px) {
+  .workspace-grid { grid-template-columns: 1fr; }
+}
+
+.canvas-container {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: #1e293b;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  /* corner-handle 半徑 12px + 3px 邊框，留一圈內距避免落在圖片邊界的角點被裁掉一半 */
+  padding: 20px;
+}
+#main-canvas {
+  max-width: 100%;
+  max-height: 600px;
+  display: block;
+}
+.corner-handle {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  margin-left: -12px;
+  margin-top: -12px;
+  background: #2563eb;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  cursor: grab;
+  z-index: 10;
+  touch-action: none;
+}
+.corner-handle:active { cursor: grabbing; background: #1d4ed8; }
+
+.crop-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  margin-top: -10px;
+  background: #f59e0b;
+  border: 3px solid #ffffff;
+  border-radius: 3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  cursor: nwse-resize;
+  z-index: 11;
+  touch-action: none;
+  display: none;
+}
+.crop-handle:active { cursor: grabbing; background: #d97706; }
+
+.overlay-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Tier 1/2 即時透視預覽面板：Tier 1 拖曳中用 CSS matrix3d 近似，
+   Tier 2 停止拖曳 debounce 150ms 後換成真正 warpImageData() 的精確縮圖 */
+.live-preview-panel {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 140px;
+  max-width: 38%;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  padding: 6px;
+  z-index: 6;
+  pointer-events: none;
+  display: none;
+}
+.live-preview-panel.visible { display: block; }
+.live-preview-label {
+  color: #e2e8f0;
+  font-size: 0.7rem;
+  margin-bottom: 4px;
+  text-align: center;
+}
+.live-preview-stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: #0f172a;
+  border-radius: 4px;
+}
+#live-preview-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transform-origin: 0 0;
+}
+
+.filter-group {
+  margin-bottom: 1rem;
+}
+.filter-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+.filter-group input[type="range"] {
+  width: 100%;
+}
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+
+@media print {
+  body * { visibility: hidden; }
+  #print-area, #print-area * { visibility: visible; }
+  #print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  #print-img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav-back">
+      <a href="../index.html">← 回首頁</a>
+    </nav>
+
+    <header>
+      <h1>文件照片透視校正器</h1>
+      <p class="subtitle" style="color: var(--color-text-muted);">
+        手機斜拍公文、發票、證書或白板？拖曳四個角點即可校正為正面平整文件，並支援增強對比與灰階模式。
+      </p>
+    </header>
+
+    <div class="dropzone" id="drop-zone">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">📄</div>
+      <div style="margin-bottom: 0.75rem;">拖放 JPG / PNG / WebP 文件照片至此，或點擊選取檔案</div>
+      <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" style="display: none;">
+      <button type="button" class="btn secondary" id="btn-select-file">選擇文件照片</button>
+    </div>
+
+    <div id="editor-section" style="display: none;">
+      <div class="card" style="padding: 0.75rem 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+          <div class="btn-group" style="margin: 0;">
+            <button type="button" class="btn btn-sm secondary" id="btn-rot-left">↶ 向左旋轉 90°</button>
+            <button type="button" class="btn btn-sm secondary" id="btn-rot-right">↷ 向右旋轉 90°</button>
+            <button type="button" class="btn btn-sm primary" id="btn-apply-warp">⚡ 套用透視校正</button>
+            <button type="button" class="btn btn-sm secondary" id="btn-apply-crop">✂️ 套用裁切</button>
+            <button type="button" class="btn btn-sm secondary" id="btn-reset-crop">↩️ 重設裁切</button>
+            <button type="button" class="btn btn-sm secondary" id="btn-toggle-view">👁️ 檢視原圖 (Before)</button>
+            <button type="button" class="btn btn-sm secondary" id="btn-restore">還原重置</button>
+          </div>
+          <div style="font-size: 0.85rem; color: #64748b;" id="status-hint">
+            拖曳畫面中四個藍色角點以對齊文件四角
+          </div>
+        </div>
+      </div>
+
+      <div class="workspace-grid">
+        <div class="canvas-container" id="canvas-container">
+          <canvas id="main-canvas"></canvas>
+          <svg class="overlay-svg" id="overlay-svg">
+            <polygon id="poly-guide" points="" fill="rgba(37, 99, 235, 0.2)" stroke="#2563eb" stroke-width="2" stroke-dasharray="4,4" />
+            <rect id="crop-rect" x="0" y="0" width="0" height="0" fill="rgba(245, 158, 11, 0.12)" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6,4" style="display: none;" />
+          </svg>
+          <div class="corner-handle" id="handle-tl" data-corner="0"></div>
+          <div class="corner-handle" id="handle-tr" data-corner="1"></div>
+          <div class="corner-handle" id="handle-br" data-corner="2"></div>
+          <div class="corner-handle" id="handle-bl" data-corner="3"></div>
+          <div class="crop-handle" id="crop-handle-tl" data-crop-corner="0"></div>
+          <div class="crop-handle" id="crop-handle-tr" data-crop-corner="1"></div>
+          <div class="crop-handle" id="crop-handle-br" data-crop-corner="2"></div>
+          <div class="crop-handle" id="crop-handle-bl" data-crop-corner="3"></div>
+          <div class="live-preview-panel" id="live-preview-panel">
+            <div class="live-preview-label">即時預覽</div>
+            <div class="live-preview-stage">
+              <img id="live-preview-img" alt="即時透視校正預覽">
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar">
+          <div class="card">
+            <h3 style="margin-top: 0; font-size: 1rem;">影像濾鏡與增強</h3>
+            <div class="filter-group">
+              <label for="filter-brightness">亮度：<span id="val-brightness">0</span></label>
+              <input type="range" id="filter-brightness" min="-100" max="100" value="0">
+            </div>
+            <div class="filter-group">
+              <label for="filter-contrast">對比度：<span id="val-contrast">0</span></label>
+              <input type="range" id="filter-contrast" min="-100" max="100" value="0">
+            </div>
+            <div class="filter-group">
+              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" id="filter-grayscale"> 灰階文件模式 (黑白增強)
+              </label>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 style="margin-top: 0; font-size: 1rem;">匯出與儲存</h3>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <button type="button" class="btn primary" id="btn-dl-jpg">下載校正 JPG</button>
+              <button type="button" class="btn secondary" id="btn-dl-png">下載校正 PNG</button>
+              <button type="button" class="btn secondary" id="btn-print-pdf">🖨️ 輸出 / 列印 PDF</button>
+              <button type="button" class="btn secondary btn-sm" id="btn-copy-summary">📋 複製處理摘要</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="print-area" style="display: none;">
+      <img id="print-img" src="" alt="校正後文件">
+    </div>
+
+    <div class="btn-group" style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+      <button type="button" class="btn secondary" id="btn-download-offline">💾 下載本工具離線版</button>
+    </div>
+
+    <!--{{LICENSES}}-->
+  </div>
+
+  <!--{{SHARED:util-escape}}-->
+  <!--{{SHARED:ui-toast}}-->
+  <!--{{SHARED:ui-debounce}}-->
+  <!--{{SHARED:io-download}}-->
+  <!--{{SHARED:io-clipboard}}-->
+  <!--{{SHARED:io-dropzone}}-->
+  <!--{{SHARED:img-file-size}}-->
+  <!--{{SHARED:img-decode}}-->
+  <!--{{SHARED:img-canvas}}-->
+  <!--{{SHARED:img-perspective}}-->
+
+  <script>
+  (function () {
+    var state = {
+      file: null,
+      fileName: 'document.jpg',
+      rawImageCanvas: null, // Readonly orientation-corrected canvas
+      rotatedCanvas: null,  // Current rotation canvas
+      rotationDeg: 0,       // 0, 90, 180, 270
+      corners: [            // Normalized [0, 1] coordinates: TL, TR, BR, BL
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 1, y: 1 },
+        { x: 0, y: 1 }
+      ],
+      activeCorner: -1,
+      cropRect: { x0: 0, y0: 0, x1: 1, y1: 1 }, // Normalized [0,1] crop box on warpedCanvas only
+      warpedCanvas: null,   // Output after solveHomography + warpImageData
+      isWarped: false,
+      isBeforeView: false,
+      filters: {
+        brightness: 0,
+        contrast: 0,
+        grayscale: false
+      }
+    };
+
+    var dropZone = document.getElementById('drop-zone');
+    var fileInput = document.getElementById('file-input');
+    var btnSelectFile = document.getElementById('btn-select-file');
+    var editorSection = document.getElementById('editor-section');
+    var canvasContainer = document.getElementById('canvas-container');
+    var mainCanvas = document.getElementById('main-canvas');
+    var mainCtx = mainCanvas ? mainCanvas.getContext('2d') : null;
+    var overlaySvg = document.getElementById('overlay-svg');
+    var polyGuide = document.getElementById('poly-guide');
+    var handles = [
+      document.getElementById('handle-tl'),
+      document.getElementById('handle-tr'),
+      document.getElementById('handle-br'),
+      document.getElementById('handle-bl')
+    ];
+
+    var btnRotLeft = document.getElementById('btn-rot-left');
+    var btnRotRight = document.getElementById('btn-rot-right');
+    var btnApplyWarp = document.getElementById('btn-apply-warp');
+    var btnApplyCrop = document.getElementById('btn-apply-crop');
+    var btnResetCrop = document.getElementById('btn-reset-crop');
+    var btnToggleView = document.getElementById('btn-toggle-view');
+    var btnRestore = document.getElementById('btn-restore');
+    var statusHint = document.getElementById('status-hint');
+
+    var cropRectEl = document.getElementById('crop-rect');
+    var cropHandles = [
+      document.getElementById('crop-handle-tl'),
+      document.getElementById('crop-handle-tr'),
+      document.getElementById('crop-handle-br'),
+      document.getElementById('crop-handle-bl')
+    ];
+    var activeCropHandle = -1;
+    // idx→[xKey,yKey]：拖曳該角點時要更新 cropRect 的哪兩個邊界值
+    var cropHandleKeys = [
+      ['x0', 'y0'], // tl
+      ['x1', 'y0'], // tr
+      ['x1', 'y1'], // br
+      ['x0', 'y1']  // bl
+    ];
+
+    var filterBrightness = document.getElementById('filter-brightness');
+    var valBrightness = document.getElementById('val-brightness');
+    var filterContrast = document.getElementById('filter-contrast');
+    var valContrast = document.getElementById('val-contrast');
+    var filterGrayscale = document.getElementById('filter-grayscale');
+
+    var btnDlJpg = document.getElementById('btn-dl-jpg');
+    var btnDlPng = document.getElementById('btn-dl-png');
+    var btnPrintPdf = document.getElementById('btn-print-pdf');
+    var btnCopySummary = document.getElementById('btn-copy-summary');
+    var btnDownloadOffline = document.getElementById('btn-download-offline');
+    var printArea = document.getElementById('print-area');
+    var printImg = document.getElementById('print-img');
+
+    var livePreviewPanel = document.getElementById('live-preview-panel');
+    var livePreviewImg = document.getElementById('live-preview-img');
+
+    function resetCorners() {
+      state.corners = [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 1, y: 1 },
+        { x: 0, y: 1 }
+      ];
+    }
+
+    function createRotatedCanvas(sourceCanvas, deg) {
+      var rad = (deg % 360) * Math.PI / 180;
+      var sin = Math.abs(Math.sin(rad));
+      var cos = Math.abs(Math.cos(rad));
+      var newW = Math.round(sourceCanvas.width * cos + sourceCanvas.height * sin);
+      var newH = Math.round(sourceCanvas.width * sin + sourceCanvas.height * cos);
+
+      var rotC = document.createElement('canvas');
+      rotC.width = newW;
+      rotC.height = newH;
+      var rotCtx = rotC.getContext('2d');
+
+      rotCtx.translate(newW / 2, newH / 2);
+      rotCtx.rotate(rad);
+      rotCtx.drawImage(sourceCanvas, -sourceCanvas.width / 2, -sourceCanvas.height / 2);
+
+      return rotC;
+    }
+
+    function updateHandlesPosition() {
+      if (!mainCanvas || state.isWarped || state.isBeforeView) {
+        handles.forEach(function (h) { if (h) h.style.display = 'none'; });
+        if (polyGuide) polyGuide.setAttribute('points', '');
+        return;
+      }
+
+      var rect = mainCanvas.getBoundingClientRect();
+      var containerRect = canvasContainer.getBoundingClientRect();
+      var offsetX = rect.left - containerRect.left;
+      var offsetY = rect.top - containerRect.top;
+
+      var points = [];
+      state.corners.forEach(function (pt, idx) {
+        var hx = offsetX + pt.x * rect.width;
+        var hy = offsetY + pt.y * rect.height;
+
+        if (handles[idx]) {
+          handles[idx].style.left = hx + 'px';
+          handles[idx].style.top = hy + 'px';
+          handles[idx].style.display = 'block';
+        }
+        points.push(hx + ',' + hy);
+      });
+
+      if (polyGuide) {
+        polyGuide.setAttribute('points', points.join(' '));
+      }
+    }
+
+    // 二次裁切框只在 Tier 3 校正完成（isWarped）且非 Before 檢視時顯示，
+    // 僅操作 state.cropRect（正規化座標），不動 corners / rawImageCanvas / rotatedCanvas
+    function updateCropHandlesPosition() {
+      var visible = state.isWarped && !state.isBeforeView && !!state.warpedCanvas;
+
+      if (!visible || !mainCanvas) {
+        cropHandles.forEach(function (h) { if (h) h.style.display = 'none'; });
+        if (cropRectEl) cropRectEl.style.display = 'none';
+        return;
+      }
+
+      var rect = mainCanvas.getBoundingClientRect();
+      var containerRect = canvasContainer.getBoundingClientRect();
+      var offsetX = rect.left - containerRect.left;
+      var offsetY = rect.top - containerRect.top;
+
+      var cr = state.cropRect;
+      var x0 = offsetX + cr.x0 * rect.width;
+      var y0 = offsetY + cr.y0 * rect.height;
+      var x1 = offsetX + cr.x1 * rect.width;
+      var y1 = offsetY + cr.y1 * rect.height;
+
+      var pts = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+      cropHandles.forEach(function (h, idx) {
+        if (!h) return;
+        h.style.left = pts[idx][0] + 'px';
+        h.style.top = pts[idx][1] + 'px';
+        h.style.display = 'block';
+      });
+
+      if (cropRectEl) {
+        cropRectEl.setAttribute('x', x0);
+        cropRectEl.setAttribute('y', y0);
+        cropRectEl.setAttribute('width', Math.max(0, x1 - x0));
+        cropRectEl.setAttribute('height', Math.max(0, y1 - y0));
+        cropRectEl.style.display = 'block';
+      }
+    }
+
+    function applyFiltersToCanvas(srcCanvas) {
+      var outC = document.createElement('canvas');
+      outC.width = srcCanvas.width;
+      outC.height = srcCanvas.height;
+      var ctx = outC.getContext('2d');
+      ctx.drawImage(srcCanvas, 0, 0);
+
+      var b = state.filters.brightness;
+      var c = state.filters.contrast;
+      var gray = state.filters.grayscale;
+
+      if (b === 0 && c === 0 && !gray) {
+        return outC;
+      }
+
+      var imgData = ctx.getImageData(0, 0, outC.width, outC.height);
+      var data = imgData.data;
+      var factor = (c !== 0) ? ((259 * (c + 255)) / (255 * (259 - c))) : 1;
+
+      for (var i = 0; i < data.length; i += 4) {
+        var r = data[i];
+        var g = data[i + 1];
+        var bVal = data[i + 2];
+
+        // Grayscale
+        if (gray) {
+          var gAvg = 0.299 * r + 0.587 * g + 0.114 * bVal;
+          r = g = bVal = gAvg;
+        }
+
+        // Contrast
+        if (c !== 0) {
+          r = factor * (r - 128) + 128;
+          g = factor * (g - 128) + 128;
+          bVal = factor * (bVal - 128) + 128;
+        }
+
+        // Brightness
+        if (b !== 0) {
+          r += b;
+          g += b;
+          bVal += b;
+        }
+
+        data[i] = Math.min(255, Math.max(0, r));
+        data[i + 1] = Math.min(255, Math.max(0, g));
+        data[i + 2] = Math.min(255, Math.max(0, bVal));
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+      return outC;
+    }
+
+    function renderDisplay() {
+      if (!mainCanvas || !mainCtx) return;
+
+      if (state.isBeforeView && state.rotatedCanvas) {
+        mainCanvas.width = state.rotatedCanvas.width;
+        mainCanvas.height = state.rotatedCanvas.height;
+        mainCtx.drawImage(state.rotatedCanvas, 0, 0);
+        updateHandlesPosition();
+        updateCropHandlesPosition();
+        setLivePreviewVisible(false);
+        if (statusHint) statusHint.textContent = '【目前為 Before 原圖檢視模式（旋轉後、校正前）】';
+        return;
+      }
+
+      if (state.isWarped && state.warpedCanvas) {
+        var filtered = applyFiltersToCanvas(state.warpedCanvas);
+        mainCanvas.width = filtered.width;
+        mainCanvas.height = filtered.height;
+        mainCtx.drawImage(filtered, 0, 0);
+        updateHandlesPosition();
+        updateCropHandlesPosition();
+        setLivePreviewVisible(false);
+        if (statusHint) statusHint.textContent = '已套用透視校正與濾鏡。可拖曳裁切框後按「套用裁切」，或直接下載/輸出 PDF。';
+        return;
+      }
+
+      if (state.rotatedCanvas) {
+        mainCanvas.width = state.rotatedCanvas.width;
+        mainCanvas.height = state.rotatedCanvas.height;
+        mainCtx.drawImage(state.rotatedCanvas, 0, 0);
+        updateHandlesPosition();
+        updateCropHandlesPosition();
+        setLivePreviewVisible(true);
+        applyTier1Preview();
+        if (statusHint) statusHint.textContent = '拖曳畫面中四個藍色角點以對齊文件四角';
+      }
+    }
+
+    function performPerspectiveWarp(sourceCanvas, normCorners) {
+      var w = sourceCanvas.width;
+      var h = sourceCanvas.height;
+
+      // img-perspective.js contract: solveHomography()/invertHomography() take
+      // [[x,y],[x,y],[x,y],[x,y]] arrays, not {x,y} objects (srcQuad[i][0]/[1]).
+      var srcPts = normCorners.map(function (p) {
+        return [p.x * w, p.y * h];
+      });
+
+      // Compute destination dimensions based on max width & height of edges
+      var topLen = Math.hypot(srcPts[1][0] - srcPts[0][0], srcPts[1][1] - srcPts[0][1]);
+      var botLen = Math.hypot(srcPts[2][0] - srcPts[3][0], srcPts[2][1] - srcPts[3][1]);
+      var leftLen = Math.hypot(srcPts[3][0] - srcPts[0][0], srcPts[3][1] - srcPts[0][1]);
+      var rightLen = Math.hypot(srcPts[2][0] - srcPts[1][0], srcPts[2][1] - srcPts[1][1]);
+
+      var dstW = Math.max(10, Math.round(Math.max(topLen, botLen)));
+      var dstH = Math.max(10, Math.round(Math.max(leftLen, rightLen)));
+
+      var dstPts = [
+        [0, 0],
+        [dstW, 0],
+        [dstW, dstH],
+        [0, dstH]
+      ];
+
+      var H = solveHomography(srcPts, dstPts);
+      var Hinv = invertHomography(H);
+
+      var srcCtx = sourceCanvas.getContext('2d');
+      var srcImgData = srcCtx.getImageData(0, 0, w, h);
+
+      var dstImgData = warpImageData(srcImgData, Hinv, dstW, dstH);
+
+      var outCanvas = document.createElement('canvas');
+      outCanvas.width = dstW;
+      outCanvas.height = dstH;
+      var outCtx = outCanvas.getContext('2d');
+      outCtx.putImageData(dstImgData, 0, 0);
+
+      return outCanvas;
+    }
+
+    // ---- Tier 1 / Tier 2 即時透視預覽（IMG_CONTRACT.md 第 6 節）----
+    // Tier 1（拖曳中每個 pointermove）：只算 homography，換成 CSS matrix3d 套在
+    // #live-preview-img（承載原圖的元素）上，不呼叫 warpImageData()。
+    // Tier 2（拖曳停止 debounce 150ms 後）：對長邊 800px 縮小 canvas 真正跑一次
+    // warpImageData()，取代 Tier 1 的 CSS 近似結果。
+
+    function homographyToMatrix3d(H) {
+      // 3x3 row-major homography [h0..h8] 嵌入 CSS matrix3d 的 4x4 column-major矩陣
+      // （z 軸不變，w 分量取代第三列做透視除法）。
+      return 'matrix3d(' +
+        H[0] + ',' + H[3] + ',0,' + H[6] + ',' +
+        H[1] + ',' + H[4] + ',0,' + H[7] + ',' +
+        '0,0,1,0,' +
+        H[2] + ',' + H[5] + ',0,' + H[8] +
+        ')';
+    }
+
+    function updateLivePreviewSource() {
+      if (!livePreviewImg || !state.rotatedCanvas) return;
+      livePreviewImg.style.transform = 'none';
+      livePreviewImg.src = state.rotatedCanvas.toDataURL('image/png');
+    }
+
+    function setLivePreviewVisible(visible) {
+      if (!livePreviewPanel) return;
+      livePreviewPanel.classList.toggle('visible', !!visible);
+    }
+
+    function applyTier1Preview() {
+      if (!livePreviewImg) return;
+      var w = livePreviewImg.clientWidth || livePreviewImg.naturalWidth;
+      var h = livePreviewImg.clientHeight || livePreviewImg.naturalHeight;
+      if (!w || !h) return;
+
+      var srcQuad = [[0, 0], [w, 0], [w, h], [0, h]];
+      var dstQuad = state.corners.map(function (p) {
+        return [p.x * w, p.y * h];
+      });
+
+      try {
+        var H = solveHomography(srcQuad, dstQuad);
+        livePreviewImg.style.transform = homographyToMatrix3d(H);
+      } catch (err) {
+        // 拖曳過程中角點暫時退化/共線時保留上一幀畫面，不中斷拖曳
+      }
+    }
+
+    var scheduleTier2Preview = debounce(function () {
+      if (!state.rotatedCanvas || !livePreviewImg) return;
+      try {
+        var smallSrc = resizeCanvas(state.rotatedCanvas, { maxLongEdge: 800 });
+        var warped = performPerspectiveWarp(smallSrc, state.corners);
+        livePreviewImg.style.transform = 'none';
+        livePreviewImg.src = warped.toDataURL('image/png');
+      } catch (err) {
+        // 角點退化/共線：保留目前畫面，不覆蓋成壞圖
+      }
+    }, 150);
+
+    function loadDocumentFile(file) {
+      var gate = checkImageFileSize(file.size);
+      if (!gate.ok) {
+        showToast(gate.message, 3000);
+        return;
+      } else if (gate.level === 'warn') {
+        showToast(gate.message, 2500);
+      }
+
+      loadImageFile(file).then(function (res) {
+        state.file = file;
+        state.fileName = file.name || 'document.jpg';
+        state.rawImageCanvas = res.canvas;
+        state.rotationDeg = 0;
+        state.rotatedCanvas = res.canvas;
+        state.warpedCanvas = null;
+        state.isWarped = false;
+        state.isBeforeView = false;
+        state.cropRect = { x0: 0, y0: 0, x1: 1, y1: 1 };
+        state.filters = { brightness: 0, contrast: 0, grayscale: false };
+
+        if (filterBrightness) filterBrightness.value = 0;
+        if (valBrightness) valBrightness.textContent = '0';
+        if (filterContrast) filterContrast.value = 0;
+        if (valContrast) valContrast.textContent = '0';
+        if (filterGrayscale) filterGrayscale.checked = false;
+
+        resetCorners();
+
+        if (editorSection) editorSection.style.display = 'block';
+        if (dropZone) dropZone.style.display = 'none';
+
+        updateLivePreviewSource();
+        renderDisplay();
+        showToast('文件照片載入成功！');
+      }).catch(function (err) {
+        showToast('載入失敗：' + (err.message || '未知錯誤'));
+      });
+    }
+
+    if (btnSelectFile && fileInput) {
+      btnSelectFile.addEventListener('click', function () {
+        fileInput.click();
+      });
+      fileInput.addEventListener('change', function () {
+        if (fileInput.files && fileInput.files[0]) {
+          loadDocumentFile(fileInput.files[0]);
+          fileInput.value = '';
+        }
+      });
+    }
+
+    if (dropZone) {
+      setupDropZone(dropZone, function () {}, {
+        accept: ['.jpg', '.jpeg', '.png', '.webp'],
+        gate: function (file) { return checkImageFileSize(file.size); },
+        onError: function (msg) { showToast(msg); }
+      });
+      dropZone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          loadDocumentFile(e.dataTransfer.files[0]);
+        }
+      });
+    }
+
+    // Corner dragging interaction
+    handles.forEach(function (handle, idx) {
+      if (!handle) return;
+      handle.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        state.activeCorner = idx;
+        handle.setPointerCapture(e.pointerId);
+      });
+
+      handle.addEventListener('pointermove', function (e) {
+        if (state.activeCorner !== idx || !mainCanvas) return;
+        var rect = mainCanvas.getBoundingClientRect();
+        var clientX = e.clientX;
+        var clientY = e.clientY;
+
+        var normX = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1);
+        var normY = Math.min(Math.max((clientY - rect.top) / rect.height, 0), 1);
+
+        state.corners[idx] = { x: normX, y: normY };
+        updateHandlesPosition();
+        applyTier1Preview();
+        scheduleTier2Preview();
+      });
+
+      handle.addEventListener('pointerup', function (e) {
+        if (state.activeCorner === idx) {
+          state.activeCorner = -1;
+          handle.releasePointerCapture(e.pointerId);
+          updateHandlesPosition();
+          scheduleTier2Preview();
+        }
+      });
+    });
+
+    // Crop-box dragging interaction（僅調整 state.cropRect，不動角點與原始畫布）
+    cropHandles.forEach(function (handle, idx) {
+      if (!handle) return;
+      handle.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        activeCropHandle = idx;
+        handle.setPointerCapture(e.pointerId);
+      });
+
+      handle.addEventListener('pointermove', function (e) {
+        if (activeCropHandle !== idx || !mainCanvas) return;
+        var rect = mainCanvas.getBoundingClientRect();
+        var normX = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+        var normY = Math.min(Math.max((e.clientY - rect.top) / rect.height, 0), 1);
+        var minGap = 0.03;
+        var keys = cropHandleKeys[idx];
+
+        if (keys[0] === 'x0') {
+          state.cropRect.x0 = Math.min(normX, state.cropRect.x1 - minGap);
+        } else {
+          state.cropRect.x1 = Math.max(normX, state.cropRect.x0 + minGap);
+        }
+        if (keys[1] === 'y0') {
+          state.cropRect.y0 = Math.min(normY, state.cropRect.y1 - minGap);
+        } else {
+          state.cropRect.y1 = Math.max(normY, state.cropRect.y0 + minGap);
+        }
+
+        updateCropHandlesPosition();
+      });
+
+      handle.addEventListener('pointerup', function (e) {
+        if (activeCropHandle === idx) {
+          activeCropHandle = -1;
+          handle.releasePointerCapture(e.pointerId);
+          updateCropHandlesPosition();
+        }
+      });
+    });
+
+    window.addEventListener('resize', function () {
+      updateHandlesPosition();
+      updateCropHandlesPosition();
+    });
+
+    if (btnRotLeft) {
+      btnRotLeft.addEventListener('click', function () {
+        if (!state.rawImageCanvas) return;
+        state.rotationDeg = (state.rotationDeg + 270) % 360;
+        state.rotatedCanvas = createRotatedCanvas(state.rawImageCanvas, state.rotationDeg);
+        state.isWarped = false;
+        state.warpedCanvas = null;
+        state.cropRect = { x0: 0, y0: 0, x1: 1, y1: 1 };
+        resetCorners();
+        updateLivePreviewSource();
+        renderDisplay();
+        showToast('已向左旋轉 90°');
+      });
+    }
+
+    if (btnRotRight) {
+      btnRotRight.addEventListener('click', function () {
+        if (!state.rawImageCanvas) return;
+        state.rotationDeg = (state.rotationDeg + 90) % 360;
+        state.rotatedCanvas = createRotatedCanvas(state.rawImageCanvas, state.rotationDeg);
+        state.isWarped = false;
+        state.warpedCanvas = null;
+        state.cropRect = { x0: 0, y0: 0, x1: 1, y1: 1 };
+        resetCorners();
+        updateLivePreviewSource();
+        renderDisplay();
+        showToast('已向右旋轉 90°');
+      });
+    }
+
+    if (btnApplyWarp) {
+      btnApplyWarp.addEventListener('click', function () {
+        if (!state.rotatedCanvas) return;
+        try {
+          state.warpedCanvas = performPerspectiveWarp(state.rotatedCanvas, state.corners);
+          state.isWarped = true;
+          state.isBeforeView = false;
+          state.cropRect = { x0: 0, y0: 0, x1: 1, y1: 1 };
+          renderDisplay();
+          showToast('透視校正完成！');
+        } catch (err) {
+          showToast('校正失敗（角點退化或共線）：' + (err.message || '未知錯誤'));
+        }
+      });
+    }
+
+    if (btnApplyCrop) {
+      btnApplyCrop.addEventListener('click', function () {
+        if (!state.isWarped || !state.warpedCanvas) return;
+        var cr = state.cropRect;
+        var w = state.warpedCanvas.width;
+        var h = state.warpedCanvas.height;
+        var sx = Math.round(cr.x0 * w);
+        var sy = Math.round(cr.y0 * h);
+        var sw = Math.max(1, Math.round((cr.x1 - cr.x0) * w));
+        var sh = Math.max(1, Math.round((cr.y1 - cr.y0) * h));
+
+        // 全範圍（未調整裁切框）時不需要重繪，直接跳過以保持輸出與未使用裁切功能時完全一致
+        if (sx === 0 && sy === 0 && sw === w && sh === h) {
+          showToast('裁切框維持全範圍，未套用裁切');
+          return;
+        }
+
+        var croppedCanvas = document.createElement('canvas');
+        croppedCanvas.width = sw;
+        croppedCanvas.height = sh;
+        croppedCanvas.getContext('2d').drawImage(state.warpedCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+
+        // 裁切只取代 state.warpedCanvas（Tier 3 校正輸出），不動角點資料或
+        // state.rawImageCanvas / state.rotatedCanvas
+        state.warpedCanvas = croppedCanvas;
+        state.cropRect = { x0: 0, y0: 0, x1: 1, y1: 1 };
+        renderDisplay();
+        showToast('已套用裁切');
+      });
+    }
+
+    if (btnResetCrop) {
+      btnResetCrop.addEventListener('click', function () {
+        state.cropRect = { x0: 0, y0: 0, x1: 1, y1: 1 };
+        updateCropHandlesPosition();
+        showToast('已重設裁切範圍');
+      });
+    }
+
+    if (btnToggleView) {
+      btnToggleView.addEventListener('click', function () {
+        state.isBeforeView = !state.isBeforeView;
+        btnToggleView.textContent = state.isBeforeView ? '👁️ 切換回校正 (After)' : '👁️ 檢視原圖 (Before)';
+        renderDisplay();
+      });
+    }
+
+    if (btnRestore) {
+      btnRestore.addEventListener('click', function () {
+        if (!state.rawImageCanvas) return;
+        state.rotationDeg = 0;
+        state.rotatedCanvas = state.rawImageCanvas;
+        state.warpedCanvas = null;
+        state.isWarped = false;
+        state.isBeforeView = false;
+        state.cropRect = { x0: 0, y0: 0, x1: 1, y1: 1 };
+        state.filters = { brightness: 0, contrast: 0, grayscale: false };
+
+        if (filterBrightness) filterBrightness.value = 0;
+        if (valBrightness) valBrightness.textContent = '0';
+        if (filterContrast) filterContrast.value = 0;
+        if (valContrast) valContrast.textContent = '0';
+        if (filterGrayscale) filterGrayscale.checked = false;
+
+        resetCorners();
+        updateLivePreviewSource();
+        renderDisplay();
+        showToast('已還原重置');
+      });
+    }
+
+    // Filters event listeners
+    if (filterBrightness) {
+      filterBrightness.addEventListener('input', function () {
+        state.filters.brightness = Number(filterBrightness.value);
+        if (valBrightness) valBrightness.textContent = filterBrightness.value;
+        renderDisplay();
+      });
+    }
+
+    if (filterContrast) {
+      filterContrast.addEventListener('input', function () {
+        state.filters.contrast = Number(filterContrast.value);
+        if (valContrast) valContrast.textContent = filterContrast.value;
+        renderDisplay();
+      });
+    }
+
+    if (filterGrayscale) {
+      filterGrayscale.addEventListener('change', function () {
+        state.filters.grayscale = filterGrayscale.checked;
+        renderDisplay();
+      });
+    }
+
+    function getFinalExportCanvas() {
+      if (state.warpedCanvas) {
+        return applyFiltersToCanvas(state.warpedCanvas);
+      } else if (state.rotatedCanvas) {
+        return applyFiltersToCanvas(state.rotatedCanvas);
+      }
+      return mainCanvas;
+    }
+
+    function getExportBaseName() {
+      var dot = state.fileName.lastIndexOf('.');
+      return (dot !== -1) ? state.fileName.substring(0, dot) : state.fileName;
+    }
+
+    if (btnDlJpg) {
+      btnDlJpg.addEventListener('click', function () {
+        var canvas = getFinalExportCanvas();
+        if (!canvas) return;
+        canvasToBlob(canvas, 'image/jpeg', 0.95).then(function (blob) {
+          downloadFile(getExportBaseName() + '_perspective.jpg', blob, 'image/jpeg');
+          showToast('已下載校正後 JPG');
+        });
+      });
+    }
+
+    if (btnDlPng) {
+      btnDlPng.addEventListener('click', function () {
+        var canvas = getFinalExportCanvas();
+        if (!canvas) return;
+        canvasToBlob(canvas, 'image/png', 0.95).then(function (blob) {
+          downloadFile(getExportBaseName() + '_perspective.png', blob, 'image/png');
+          showToast('已下載校正後 PNG');
+        });
+      });
+    }
+
+    if (btnPrintPdf) {
+      btnPrintPdf.addEventListener('click', function () {
+        var canvas = getFinalExportCanvas();
+        if (!canvas || !printImg) return;
+        canvasToBlob(canvas, 'image/png', 0.95).then(function (blob) {
+          var url = URL.createObjectURL(blob);
+          printImg.src = url;
+          if (printArea) printArea.style.display = 'block';
+          window.print();
+          setTimeout(function () {
+            if (printArea) printArea.style.display = 'none';
+            URL.revokeObjectURL(url);
+          }, 1000);
+        });
+      });
+    }
+
+    if (btnCopySummary) {
+      btnCopySummary.addEventListener('click', function () {
+        var text = '【文件照片透視校正報告】\n' +
+                   '檔案名稱：' + state.fileName + '\n' +
+                   '旋轉角度：' + state.rotationDeg + '°\n' +
+                   '透視校正狀態：' + (state.isWarped ? '已完成校正' : '尚未校正') + '\n' +
+                   '影像濾鏡：亮度 ' + state.filters.brightness + ', 對比 ' + state.filters.contrast + ', 灰階 ' + (state.filters.grayscale ? '開啟' : '關閉') + '\n';
+        copyToClipboard(text).then(function () {
+          showToast('已複製處理摘要');
+        });
+      });
+    }
+
+    function buildCleanHtmlCopy() {
+      var doc = document.documentElement.cloneNode(true);
+
+      var toast = doc.querySelector('#__shared_toast');
+      if (toast) toast.remove();
+
+      var navBack = doc.querySelector('.nav-back');
+      if (navBack) navBack.remove();
+
+      var offlineBtn = doc.querySelector('#btn-download-offline');
+      if (offlineBtn) offlineBtn.remove();
+
+      var edSection = doc.querySelector('#editor-section');
+      if (edSection) edSection.style.display = 'none';
+
+      var dZone = doc.querySelector('#drop-zone');
+      if (dZone) dZone.style.display = 'block';
+
+      var c = doc.querySelector('#main-canvas');
+      if (c) { c.width = 0; c.height = 0; }
+
+      return '<!DOCTYPE html>\n' + doc.outerHTML;
+    }
+
+    window.buildCleanHtmlCopy = buildCleanHtmlCopy;
+
+    if (btnDownloadOffline) {
+      btnDownloadOffline.addEventListener('click', function () {
+        var cleanHtml = buildCleanHtmlCopy();
+        downloadFile('document-perspective-corrector-offline.html', cleanHtml, 'text/html;charset=utf-8');
+        showToast('已下載離線版工具');
+      });
+    }
+  })();
+  </script>
+</body>
+</html>

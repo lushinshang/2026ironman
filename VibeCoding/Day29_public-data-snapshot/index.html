@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>公開資訊變更雷達 — Day29</title>
+<style>
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-success: #16a34a;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font-sans); color: var(--color-text); background: var(--color-bg); line-height: 1.6; }
+.container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+h1, h2, h3 { line-height: 1.3; }
+.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 16px; }
+.hint { font-size: 0.85rem; color: var(--color-text-muted); }
+.nav-back { display: inline-block; margin-bottom: 16px; color: var(--color-text-muted); text-decoration: none; }
+.nav-back:hover { text-decoration: underline; }
+
+.notice-banner { background: #fff7ed; border: 1px solid #fdba74; border-radius: var(--radius); padding: 10px 14px; font-size: 0.85rem; color: #9a3412; margin-bottom: 16px; }
+
+.section { margin: 24px 0; }
+.section-title { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.section-title h2 { margin: 0; font-size: 1.15rem; }
+.section-note { font-size: 0.82rem; color: var(--color-text-muted); margin: 4px 0 12px 0; }
+
+.status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 640px) { .status-grid { grid-template-columns: 1fr; } }
+.status-card { text-align: center; }
+.status-card .status-label { font-size: 0.9rem; color: var(--color-text-muted); margin-bottom: 8px; }
+.status-card .status-value { font-size: 1.4rem; font-weight: 700; }
+
+.timeline { display: flex; flex-direction: column; gap: 14px; }
+.timeline-entry { border: 1px solid var(--color-border); border-radius: var(--radius); padding: 14px; }
+.timeline-entry .entry-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.timeline-entry .entry-time { font-family: var(--font-mono); font-size: 0.82rem; color: var(--color-text-muted); }
+.timeline-entry .entry-count { font-size: 0.85rem; font-weight: 600; color: var(--color-primary); }
+.timeline-entry ul { margin: 0; padding-left: 18px; }
+.timeline-entry li { margin: 4px 0; }
+.timeline-entry a { color: var(--color-primary); text-decoration: none; }
+.timeline-entry a:hover { text-decoration: underline; }
+.entry-pubdate { font-size: 0.78rem; color: var(--color-text-muted); }
+
+.empty-state { text-align: center; padding: 32px 0; color: var(--color-text-muted); }
+.empty-state .empty-icon { font-size: 1.6rem; margin-bottom: 8px; }
+
+footer.page-footer { margin-top: 32px; border-top: 1px solid var(--color-border); padding-top: 16px; font-size: 0.82rem; color: var(--color-text-muted); }
+footer.page-footer a { color: var(--color-primary); }
+footer.page-footer p { margin: 4px 0; }
+
+.loading-state { text-align: center; padding: 40px 0; color: var(--color-text-muted); }
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="nav-back" href="../index.html">&larr; 回作品集</a>
+  <h1>公開資訊變更雷達</h1>
+  <p class="hint">資料來源：iThome RSS。GitHub Actions 每小時檢查一次，<strong>有新文章才建立紀錄與 GitHub Issue 通知</strong>，沒有變化的檢查不會留下任何痕跡——這是一個安靜的雷達，不是每天固定產出的報表。</p>
+
+  <div class="notice-banner">
+    這是網站，不是離線 HTML。需透過網站瀏覽（讀取伺服器上的 <code>data/history.jsonl</code>），
+    <strong>不支援下載後單獨離線使用</strong>——資料由 GitHub Actions 自動更新，離線下載無法重現這個能力。
+  </div>
+
+  <div id="app">
+    <div class="loading-state" id="loading-state">載入資料中…</div>
+  </div>
+
+  <footer class="page-footer" id="page-footer" style="display:none;">
+    <p>資料來源：<a href="https://www.ithome.com.tw/rss.xml" target="_blank" rel="noopener">iThome RSS</a>（<code>https://www.ithome.com.tw/rss.xml</code>），本站為<strong>非官方</strong>整理呈現，<strong>僅供技術練習展示</strong>（GitHub Actions 排程 + Repo 即 State + Diff 通知），非商用、非官方轉載。</p>
+    <p>機制：每小時抓取一次 RSS，比對前一次留下的 <code>seen.json</code>（以文章 <code>guid</code> 判斷是否為新文章），有新文章才建立一張彙總 GitHub Issue 並在此頁面留下一筆時間軸紀錄；沒有新文章的檢查不會產生任何內容，避免無意義的重複版本。</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // 安全性：所有來自 RSS（history.jsonl）的文字一律用 textContent 賦值，
+  // 連結一律用 anchor.href = url 賦值，絕不把來源資料字串拼進 innerHTML，
+  // 避免 iThome RSS 若被入侵夾帶惡意字串時造成 XSS。
+  // 只允許 http/https 開頭的連結，防止 RSS 來源夾帶 javascript: 等危險 scheme
+  function safeHttpUrl(u) {
+    try {
+      var parsed = new URL(u, location.href);
+      return (parsed.protocol === "https:" || parsed.protocol === "http:") ? parsed.href : "#";
+    } catch (e) {
+      return "#";
+    }
+  }
+
+  function el(tag, opts) {
+    var node = document.createElement(tag);
+    opts = opts || {};
+    if (opts.text != null) node.textContent = opts.text;
+    if (opts.className) node.className = opts.className;
+    if (opts.href != null) node.href = safeHttpUrl(opts.href);
+    if (opts.target) node.target = opts.target;
+    if (opts.rel) node.rel = opts.rel;
+    return node;
+  }
+
+  function parseJsonl(text) {
+    var lines = text.split(/\r?\n/);
+    var entries = [];
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line) continue;
+      try {
+        entries.push(JSON.parse(line));
+      } catch (e) {
+        console.warn("[Day29 Radar] 略過無法解析的一行 history.jsonl：", line, e);
+      }
+    }
+    return entries;
+  }
+
+  function fmtRelative(fromDate, toDate) {
+    var diffMs = toDate - fromDate;
+    if (diffMs < 0) diffMs = 0;
+    var diffHours = diffMs / (1000 * 60 * 60);
+    if (diffHours < 1) return "不到 1 小時前";
+    if (diffHours < 24) return Math.floor(diffHours) + " 小時前";
+    var diffDays = Math.floor(diffHours / 24);
+    return diffDays + " 天前";
+  }
+
+  // ---- 最後排程執行狀態卡片 ----
+  function renderStatusSection(container, entries) {
+    var section = el("div", { className: "section card" });
+    var title = el("div", { className: "section-title" });
+    title.appendChild(el("h2", { text: "雷達狀態" }));
+    section.appendChild(title);
+    section.appendChild(el("p", {
+      className: "section-note",
+      text: "「上次檢查有變化」是本頁能取得的最新資料點——沒有變化的排程執行不會留下時間戳記，因此無法顯示「上次檢查（不論有無變化）」的確切時間，這是這個設計本身的取捨，不是資料缺漏。"
+    }));
+
+    var grid = el("div", { className: "status-grid" });
+
+    var lastCard = el("div", { className: "status-card" });
+    lastCard.appendChild(el("div", { className: "status-label", text: "上次偵測到變化" }));
+    var lastValue = el("div", { className: "status-value" });
+    var countCard = el("div", { className: "status-card" });
+    countCard.appendChild(el("div", { className: "status-label", text: "累計變化次數" }));
+    var countValue = el("div", { className: "status-value", text: String(entries.length) });
+
+    if (entries.length === 0) {
+      lastValue.textContent = "尚無紀錄";
+    } else {
+      var latest = entries[entries.length - 1];
+      var latestDate = new Date(latest.checked_at);
+      if (isNaN(latestDate.getTime())) {
+        lastValue.textContent = latest.checked_at;
+      } else {
+        lastValue.textContent = fmtRelative(latestDate, new Date());
+      }
+    }
+    lastCard.appendChild(lastValue);
+    countCard.appendChild(countValue);
+    grid.appendChild(lastCard);
+    grid.appendChild(countCard);
+
+    // 排定於每小時第 23 分（UTC，對應 .github/workflows/day29-radar.yml 的
+    // cron: "23 * * * *"）。這裡只算「下一次排定時間」，不代表真的會準時
+    // 觸發——GitHub Actions 的 schedule 觸發本身不保證準時，已實測發生過
+    // 延遲數小時甚至整批跳過的情況，下面明確加上警語，避免使用者誤以為是承諾。
+    var nextCard = el("div", { className: "status-card" });
+    nextCard.appendChild(el("div", { className: "status-label", text: "下次排定檢查" }));
+    var next = new Date();
+    next.setUTCMinutes(23, 0, 0);
+    if (next <= new Date()) next.setUTCHours(next.getUTCHours() + 1);
+    var nextValue = el("div", {
+      className: "status-value",
+      text: next.toLocaleString("zh-TW", { hour12: false })
+    });
+    nextCard.appendChild(nextValue);
+    grid.appendChild(nextCard);
+
+    section.appendChild(grid);
+    section.appendChild(el("p", {
+      className: "section-note",
+      text: "「下次排定檢查」只是排程設定的時間點，不是保證——GitHub Actions 的 schedule 觸發實測發生過延遲數小時、甚至整批跳過的情況，實際觸發時間可能晚於顯示時間，或需要手動觸發才會執行。"
+    }));
+    container.appendChild(section);
+  }
+
+  // ---- 變更時間軸 ----
+  function renderTimelineSection(container, entries) {
+    var section = el("div", { className: "section card" });
+    var title = el("div", { className: "section-title" });
+    title.appendChild(el("h2", { text: "變更時間軸" }));
+    section.appendChild(title);
+    section.appendChild(el("p", {
+      className: "section-note",
+      text: "只有「偵測到新文章」的檢查會出現在下面，沒有變化的檢查不會產生紀錄。"
+    }));
+
+    if (entries.length === 0) {
+      var empty = el("div", { className: "empty-state" });
+      empty.appendChild(el("div", { className: "empty-icon", text: "📡" }));
+      empty.appendChild(el("div", { text: "尚未偵測到任何變化，雷達仍在安靜運轉中。" }));
+      section.appendChild(empty);
+      container.appendChild(section);
+      return;
+    }
+
+    var timeline = el("div", { className: "timeline" });
+    entries.slice().reverse().forEach(function (entry) {
+      var entryNode = el("div", { className: "timeline-entry" });
+
+      var header = el("div", { className: "entry-header" });
+      var timeNode = el("span", { className: "entry-time" });
+      var d = new Date(entry.checked_at);
+      timeNode.textContent = isNaN(d.getTime()) ? String(entry.checked_at) : d.toLocaleString("zh-TW", { hour12: false });
+      header.appendChild(timeNode);
+      header.appendChild(el("span", { className: "entry-count", text: "新增 " + (entry.new_count != null ? entry.new_count : (entry.items || []).length) + " 篇" }));
+      entryNode.appendChild(header);
+
+      var list = el("ul");
+      (entry.items || []).forEach(function (item) {
+        var li = el("li");
+        var a = el("a", { text: item.title, href: item.link, target: "_blank", rel: "noopener" });
+        li.appendChild(a);
+        if (item.pubDate) {
+          li.appendChild(document.createTextNode("　"));
+          li.appendChild(el("span", { className: "entry-pubdate", text: item.pubDate }));
+        }
+        list.appendChild(li);
+      });
+      entryNode.appendChild(list);
+
+      timeline.appendChild(entryNode);
+    });
+    section.appendChild(timeline);
+    container.appendChild(section);
+  }
+
+  function render(entries) {
+    var app = document.getElementById("app");
+    app.innerHTML = "";
+    renderStatusSection(app, entries);
+    renderTimelineSection(app, entries);
+    document.getElementById("page-footer").style.display = "block";
+  }
+
+  // 資料檔（history.jsonl）在 GitHub Pages 上有 10 分鐘快取（cache-control:
+  // max-age=600），fetch URL 不變的話瀏覽器可能直接吃本地快取、不會真的問伺服器
+  // 拿最新版本。用 query string 帶目前時間戳當 cache buster，強迫每次都是全新
+  // 的網址，繞過快取；同時加 cache: "no-store" 雙保險，避免瀏覽器對這次請求本身
+  // 也快取起來。
+  function loadData() {
+    fetch("data/history.jsonl?_=" + Date.now(), { cache: "no-store" })
+      .then(function (res) {
+        if (!res.ok) {
+          // history.jsonl 尚不存在（例如剛部署、還沒偵測到任何變化）視為空狀態，不是錯誤
+          if (res.status === 404) return "";
+          throw new Error("history.jsonl fetch failed: " + res.status);
+        }
+        return res.text();
+      })
+      .then(function (text) {
+        var entries = text.trim() ? parseJsonl(text) : [];
+        console.log("[Day29 Radar] 讀到變化紀錄筆數：", entries.length);
+        render(entries);
+      })
+      .catch(function (err) {
+        console.error("[Day29 Radar] 載入失敗：", err);
+        document.getElementById("loading-state").textContent = "資料載入失敗：" + err.message + "（需透過網站伺服器開啟，file:// 直接開啟無法讀取本地檔案）";
+      });
+  }
+
+  loadData();
+
+  // 分頁開著不動時 fetch 只會在第一次載入跑一次，之後資料源更新也不會自動反映。
+  // 監聽分頁重新變成可見（切換分頁回來、或從背景喚醒），視為「重新開啟」，
+  // 重新抓一次最新資料——不用整頁強制重新整理（會打斷使用者位置、且無法用
+  // JS 對「使用者自己按重新整理」的請求生效），效果等同於每次「回來看」都拿到新資料。
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") loadData();
+  });
+})();
+</script>
+</body>
+</html>

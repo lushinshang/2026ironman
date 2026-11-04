@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Office 文件隱私 Metadata 清除工具 — Day30</title>
+  <style>
+/* shared/base.css — 共用樣式基底 */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 { line-height: 1.3; }
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 1rem;
+}
+
+button, .btn {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+button:hover, .btn:hover { background: var(--color-bg); }
+
+button.primary, .btn.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover, .btn.primary:hover { background: var(--color-primary-hover); }
+
+button:disabled, .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #eff6ff;
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover { text-decoration: underline; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show { opacity: 1; }
+
+.risk-badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.risk-high { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.risk-med { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+.risk-low { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+.risk-none { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+.doc-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+}
+.doc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.doc-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: #eff6ff;
+  color: var(--color-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+.doc-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  background: #f8fafc;
+  padding: 0.75rem;
+  border-radius: 6px;
+}
+.warn-box {
+  font-size: 0.82rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+}
+.diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+}
+.diff-table th, .diff-table td {
+  padding: 0.6rem;
+  border: 1px solid var(--color-border);
+  text-align: left;
+}
+.diff-table th { background: #f1f5f9; }
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav-back">
+      <a href="../index.html">← 回首頁</a>
+    </nav>
+
+    <header>
+      <h1>Office 文件隱私 Metadata 清除工具</h1>
+      <p class="subtitle" style="color: var(--color-text-muted);">
+        分析 Word／Excel／PowerPoint 文件內藏的作者、公司、註解、內嵌縮圖、樞紐分析表快取、
+        未裁切原圖、講者備忘稿、本機路徑超連結等敏感資訊，一鍵清除。追蹤修訂、隱藏工作表／
+        投影片等會改變文件內容的項目只偵測提示，不會自動修改。
+      </p>
+    </header>
+
+    <div class="dropzone" id="drop-zone">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">📄</div>
+      <div style="margin-bottom: 0.75rem;">拖放多個 .docx／.xlsx／.pptx 檔案至此，或點擊選取檔案</div>
+      <input type="file" id="file-input" multiple accept=".docx,.xlsx,.pptx" style="display: none;">
+      <button type="button" class="btn secondary" id="btn-select-files">選擇 DOCX／XLSX／PPTX 檔案</button>
+    </div>
+
+    <div class="card" id="clean-options-card" style="display: none; margin-top: 1.5rem;">
+      <h3 style="margin-top: 0; font-size: 1.1rem;">清除確認清單</h3>
+      <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 0.75rem;">
+        清除時會處理以下項目，不影響文件的實際內文與版面：
+      </p>
+      <div style="display: flex; flex-wrap: wrap; gap: 1.25rem; font-size: 0.9rem;">
+        <label><input type="checkbox" checked disabled> 作者／公司／描述等 docProps 欄位</label>
+        <label><input type="checkbox" checked disabled> 自訂屬性（custom.xml）</label>
+        <label><input type="checkbox" checked disabled> 內嵌縮圖（thumbnail）</label>
+        <label><input type="checkbox" checked disabled> DOCX：註解（comments）</label>
+        <label><input type="checkbox" checked disabled> DOCX：本機路徑超連結</label>
+        <label><input type="checkbox" checked disabled> XLSX：樞紐分析表快取（pivotCache）</label>
+        <label><input type="checkbox" checked disabled> XLSX：外部連結（本機路徑）</label>
+        <label><input type="checkbox" checked disabled> PPTX：裁切圖片（燒進像素移除原圖，規格不明確時只警示）</label>
+        <label><input type="checkbox" checked disabled> PPTX：講者備忘稿</label>
+      </div>
+      <p class="warn-box" style="margin-top: 0.75rem;">
+        ⚠️ DOCX 追蹤修訂（新增/刪除的文字內容）、XLSX/PPTX 隱藏工作表/投影片、超連結顯示文字裡
+        的路徑字串，只會提示風險、<strong>不會自動修改</strong>——這些屬於文件實際內容，不是
+        metadata。清除 XLSX 樞紐分析表快取會讓檔案內原有的樞紐分析表<strong>直接失效</strong>，
+        請留意。
+      </p>
+      <div style="margin-top: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+        <span id="plan-stats-text" style="font-size: 0.9rem; font-weight: 600;">即將清除：0 份，保留原樣：0 份</span>
+        <div class="btn-group" style="margin: 0;">
+          <button type="button" class="btn primary" id="btn-start-clean">開始清除 Metadata</button>
+          <button type="button" class="btn secondary" id="btn-clear">清空佇列</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="results-section" style="display: none; margin-top: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">文件清單與風險檢視 (<span id="doc-count">0</span>)</h3>
+        <div class="btn-group" id="download-actions" style="display: none; margin: 0;">
+          <button type="button" class="btn primary btn-sm" id="btn-download-zip">📦 打包下載已清除 ZIP</button>
+          <button type="button" class="btn secondary btn-sm" id="btn-copy-summary">📋 複製風險摘要</button>
+        </div>
+      </div>
+      <div id="docs-container"></div>
+    </div>
+
+    <div class="btn-group" style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+      <button type="button" class="btn secondary" id="btn-download-offline">💾 下載本工具離線版</button>
+    </div>
+
+    <!--{{LICENSES}}-->
+  </div>
+
+  <!--{{ASSET:fflate}}-->
+  <!--{{SHARED:util-escape}}-->
+  <!--{{SHARED:ui-toast}}-->
+  <!--{{SHARED:io-download}}-->
+  <!--{{SHARED:io-clipboard}}-->
+  <!--{{SHARED:io-zip}}-->
+  <!--{{ASSET:docx-meta}}-->
+  <!--{{ASSET:xlsx-meta}}-->
+  <!--{{ASSET:pptx-meta}}-->
+
+  <script>
+  (function () {
+    var state = {
+      items: [], // Array<{ id, file, entries, before, cleanedEntries, cleanedBefore, status: 'scanned'|'cleaned'|'skipped'|'error'|'unsupported'|'encrypted', process: boolean }>
+      cleaned: false
+    };
+
+    var dropZone = document.getElementById('drop-zone');
+    var fileInput = document.getElementById('file-input');
+    var btnSelectFiles = document.getElementById('btn-select-files');
+    var cleanOptionsCard = document.getElementById('clean-options-card');
+    var planStatsText = document.getElementById('plan-stats-text');
+    var btnStartClean = document.getElementById('btn-start-clean');
+    var btnClear = document.getElementById('btn-clear');
+    var resultsSection = document.getElementById('results-section');
+    var docCount = document.getElementById('doc-count');
+    var docsContainer = document.getElementById('docs-container');
+    var downloadActions = document.getElementById('download-actions');
+    var btnDownloadZip = document.getElementById('btn-download-zip');
+    var btnCopySummary = document.getElementById('btn-copy-summary');
+    var btnDownloadOffline = document.getElementById('btn-download-offline');
+
+    var nextId = 1;
+
+    // 標籤文字依實際偵測到的項目動態組成，不用固定字串（固定字串會在只命中其中一項時，
+    // 誤導使用者以為其他項目也存在——例如乾淨檔案只帶縮圖，标籤卻寫著「含...追蹤修訂」）。
+    function _riskResult(level, reasons) {
+      if (level === 'none' || !reasons.length) return { level: 'none', label: '🟢 無明顯風險', cls: 'risk-none' };
+      var icon = level === 'high' ? '🔴' : '🟡';
+      var text = level === 'high' ? '高風險' : '中風險';
+      return { level: level, label: icon + ' ' + text + '（含' + reasons.join('/') + '）', cls: 'risk-' + level };
+    }
+
+    function computeRisk(before, format) {
+      if (!before) return { level: 'none', label: '', cls: 'risk-none' };
+      if (format === 'xlsx') {
+        var xlsxHigh = [];
+        if (before.core.creator) xlsxHigh.push('作者');
+        if (before.core.lastModifiedBy) xlsxHigh.push('最後修改者');
+        if (before.core.description) xlsxHigh.push('描述');
+        if (before.app.company) xlsxHigh.push('公司');
+        if (before.pivotCaches.count > 0) xlsxHigh.push('樞紐分析表快取');
+        if (before.externalLinks.relationshipHits.length > 0) xlsxHigh.push('外部連結');
+        if (xlsxHigh.length) return _riskResult('high', xlsxHigh);
+        var xlsxMed = [];
+        if (before.hasThumbnail) xlsxMed.push('縮圖');
+        if (before.hasCustom) xlsxMed.push('自訂屬性');
+        if (before.hiddenSheets.length > 0) xlsxMed.push('隱藏工作表');
+        if (xlsxMed.length) return _riskResult('med', xlsxMed);
+        return _riskResult('none', []);
+      }
+      if (format === 'pptx') {
+        var pptxHigh = [];
+        if (before.core.creator) pptxHigh.push('作者');
+        if (before.core.lastModifiedBy) pptxHigh.push('最後修改者');
+        if (before.core.description) pptxHigh.push('描述');
+        if (before.app.company) pptxHigh.push('公司');
+        if (before.speakerNotes.count > 0) pptxHigh.push('講者備忘稿');
+        if (before.croppedImages.count > 0) pptxHigh.push('裁切圖片原圖殘留');
+        if (pptxHigh.length) return _riskResult('high', pptxHigh);
+        var pptxMed = [];
+        if (before.hasThumbnail) pptxMed.push('縮圖');
+        if (before.hasCustom) pptxMed.push('自訂屬性');
+        if (before.hiddenSlides.length > 0) pptxMed.push('隱藏投影片');
+        if (pptxMed.length) return _riskResult('med', pptxMed);
+        return _riskResult('none', []);
+      }
+      var docxHigh = [];
+      if (before.core.creator) docxHigh.push('作者');
+      if (before.core.lastModifiedBy) docxHigh.push('最後修改者');
+      if (before.core.description) docxHigh.push('描述');
+      if (before.app.company) docxHigh.push('公司');
+      if (before.app.manager) docxHigh.push('主管');
+      if (before.app.template) docxHigh.push('範本路徑');
+      if (before.comments.count > 0) docxHigh.push('註解');
+      if (before.localPaths.relationshipHits.length > 0 || before.localPaths.displayTextHits.length > 0) docxHigh.push('本機路徑');
+      if (docxHigh.length) return _riskResult('high', docxHigh);
+      var docxMed = [];
+      if (before.hasThumbnail) docxMed.push('縮圖');
+      if (before.hasCustom) docxMed.push('自訂屬性');
+      if (before.trackedChanges.insertions.length > 0 || before.trackedChanges.deletions.length > 0) docxMed.push('追蹤修訂');
+      if (docxMed.length) return _riskResult('med', docxMed);
+      return _riskResult('none', []);
+    }
+
+    function summarizeBefore(entries, format) {
+      var base = {
+        core: readDocxCoreProps(entries),
+        app: readDocxAppProps(entries),
+        hasCustom: hasCustomProps(entries),
+        hasThumbnail: hasThumbnail(entries)
+      };
+      if (format === 'xlsx') {
+        base.pivotCaches = scanXlsxPivotCaches(entries);
+        base.hiddenSheets = scanXlsxHiddenSheets(entries);
+        base.externalLinks = scanXlsxExternalLinks(entries);
+      } else if (format === 'pptx') {
+        base.croppedImages = scanPptxCroppedImages(entries);
+        base.speakerNotes = scanPptxSpeakerNotes(entries);
+        base.hiddenSlides = scanPptxHiddenSlides(entries);
+      } else {
+        base.comments = scanDocxComments(entries);
+        base.trackedChanges = scanDocxTrackedChanges(entries);
+        base.localPaths = scanDocxLocalPathLinks(entries);
+      }
+      return base;
+    }
+
+    // 回傳 Promise：PPTX 的圖片裁切清除本質上是非同步的（canvas 解碼/重繪），為了讓三種
+    // 格式共用同一個呼叫介面，統一都用 Promise 包裝，DOCX/XLSX 內部雖是同步運算但一樣
+    // 走 Promise.resolve()。
+    function cleanEntries(entries, format) {
+      var next = cleanDocxCoreProps(entries);
+      next = cleanDocxAppProps(next);
+      if (hasCustomProps(next)) next = removeZipEntryAndRelationship(next, 'docProps/custom.xml');
+      var thumbPath = _findThumbnailPath(next);
+      if (thumbPath) next = removeZipEntryAndRelationship(next, thumbPath);
+
+      if (format === 'xlsx') {
+        next = cleanXlsxPivotCaches(next);
+        next = cleanXlsxExternalLinks(next);
+        return Promise.resolve({ entries: next, pptxSkippedMedia: [] });
+      }
+      if (format === 'pptx') {
+        next = cleanPptxSpeakerNotes(next);
+        return cleanPptxCroppedImages(next).then(function (result) {
+          return { entries: result.entries, pptxSkippedMedia: result.skippedMedia };
+        });
+      }
+      next = cleanDocxComments(next);
+      next = cleanDocxLocalPathLinks(next);
+      return Promise.resolve({ entries: next, pptxSkippedMedia: [] });
+    }
+
+    function detectFormat(filename) {
+      if (/\.docx$/i.test(filename)) return 'docx';
+      if (/\.xlsx$/i.test(filename)) return 'xlsx';
+      if (/\.pptx$/i.test(filename)) return 'pptx';
+      return null;
+    }
+
+    function addFiles(fileList) {
+      var files = Array.prototype.slice.call(fileList);
+      files.forEach(function (file) {
+        var format = detectFormat(file.name);
+        if (!format) return;
+        var item = { id: nextId++, file: file, format: format, entries: null, before: null, status: 'loading', process: false };
+        state.items.push(item);
+        renderList();
+
+        var sizeCheck = format === 'xlsx' ? checkXlsxFileSize(file.size)
+          : format === 'pptx' ? checkPptxFileSize(file.size)
+          : checkDocxFileSize(file.size);
+        if (!sizeCheck.ok) {
+          item.status = 'skipped';
+          item.skipReason = sizeCheck.message;
+          renderList();
+          return;
+        }
+
+        var reader = new FileReader();
+        reader.onload = function () {
+          var buf = reader.result;
+          var entries;
+          try {
+            entries = unzipToEntries(new Uint8Array(buf));
+          } catch (err) {
+            item.status = isLikelyEncryptedOfficeFile(buf) ? 'encrypted' : 'error';
+            item.errorMessage = item.status === 'encrypted'
+              ? '此檔案有密碼保護，請先在 Office 解除保護後再上傳'
+              : '此檔案可能已損毀，或不是合法的 ' + format.toUpperCase() + ' 格式';
+            renderList();
+            return;
+          }
+          item.entries = entries;
+          item.before = summarizeBefore(entries, format);
+          item.status = 'scanned';
+          item.process = true;
+          renderList();
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function updateStats() {
+      var toProcess = state.items.filter(function (i) { return i.process && i.status === 'scanned'; }).length;
+      var toKeep = state.items.filter(function (i) { return i.status === 'scanned' && !i.process; }).length;
+      planStatsText.textContent = '即將清除：' + toProcess + ' 份，保留原樣：' + toKeep + ' 份';
+      cleanOptionsCard.style.display = state.items.some(function (i) { return i.status === 'scanned'; }) ? 'block' : 'none';
+      btnStartClean.disabled = toProcess === 0;
+    }
+
+    function fieldLine(label, value) {
+      return '<div><strong>' + escapeHtml(label) + '：</strong>' + escapeHtml(value == null || value === '' ? '無' : value) + '</div>';
+    }
+
+    function renderList() {
+      resultsSection.style.display = state.items.length ? 'block' : 'none';
+      docCount.textContent = String(state.items.length);
+      updateStats();
+
+      docsContainer.innerHTML = state.items.map(function (item, idx) {
+        if (item.status === 'loading') {
+          return '<div class="doc-card"><div class="doc-header"><div class="doc-icon">📄</div>' +
+            '<strong>' + escapeHtml(item.file.name) + '</strong><span>讀取中…</span></div></div>';
+        }
+        if (item.status === 'skipped') {
+          return '<div class="doc-card"><div class="doc-header"><div class="doc-icon">📄</div>' +
+            '<strong>' + escapeHtml(item.file.name) + '</strong>' +
+            '<span class="risk-badge risk-med">⚠ 已略過</span></div>' +
+            '<div class="warn-box">' + escapeHtml(item.skipReason) + '</div></div>';
+        }
+        if (item.status === 'encrypted' || item.status === 'error') {
+          return '<div class="doc-card"><div class="doc-header"><div class="doc-icon">📄</div>' +
+            '<strong>' + escapeHtml(item.file.name) + '</strong>' +
+            '<span class="risk-badge risk-med">⚠ 無法處理</span></div>' +
+            '<div class="warn-box">' + escapeHtml(item.errorMessage) + '</div></div>';
+        }
+
+        var b = item.before;
+        var format = item.format;
+        var risk = computeRisk(b, format);
+
+        var formatFieldsBefore, warnParts;
+        if (format === 'xlsx') {
+          formatFieldsBefore =
+            fieldLine('樞紐分析表快取', String(b.pivotCaches.count)) +
+            fieldLine('隱藏工作表', String(b.hiddenSheets.length) + (b.hiddenSheets.length ? '（' + b.hiddenSheets.map(function (s) { return s.name; }).join('、') + '）' : '')) +
+            fieldLine('外部連結（本機路徑）', String(b.externalLinks.relationshipHits.length));
+          warnParts = [];
+          if (b.hiddenSheets.length > 0) {
+            warnParts.push('偵測到 ' + b.hiddenSheets.length + ' 個隱藏工作表，清除不會處理這些，請自行到 Excel 確認是否要刪除。');
+          }
+          if (b.pivotCaches.count > 0) {
+            warnParts.push('偵測到 ' + b.pivotCaches.count + ' 個樞紐分析表快取，清除會將其連同快取內殘留的原始資料一併移除，檔案內對應的樞紐分析表將會失效。');
+          }
+        } else if (format === 'pptx') {
+          formatFieldsBefore =
+            fieldLine('裁切圖片（原圖殘留）', String(b.croppedImages.count)) +
+            fieldLine('講者備忘稿', String(b.speakerNotes.count)) +
+            fieldLine('隱藏投影片', String(b.hiddenSlides.length) + (b.hiddenSlides.length ? '（' + b.hiddenSlides.map(function (s) { return s.titlePreview || '（無標題）'; }).join('、') + '）' : ''));
+          warnParts = [];
+          if (b.hiddenSlides.length > 0) {
+            warnParts.push('偵測到 ' + b.hiddenSlides.length + ' 個隱藏投影片，清除不會處理這些，請自行到 PowerPoint 確認是否要刪除。');
+          }
+          if (b.croppedImages.count > 0) {
+            warnParts.push('偵測到 ' + b.croppedImages.count + ' 處圖片裁切，裁切前完整原圖預設會被移除（重新繪製為裁切後版本）；若同一張圖片被多處以不同裁切範圍引用，該圖片會略過自動處理，只提示風險。');
+          }
+        } else {
+          var trackedCount = b.trackedChanges.insertions.length + b.trackedChanges.deletions.length;
+          formatFieldsBefore =
+            fieldLine('註解數量', String(b.comments.count) + (b.comments.authors.length ? '（' + b.comments.authors.join('、') + '）' : '')) +
+            fieldLine('本機路徑超連結', String(b.localPaths.relationshipHits.length));
+          warnParts = [];
+          if (trackedCount > 0) {
+            warnParts.push('偵測到 ' + trackedCount + ' 處追蹤修訂（新增/刪除內容），清除不會處理這些，請自行到 Word 確認是否要接受/拒絕修訂。');
+          }
+          if (b.localPaths.displayTextHits.length > 0) {
+            warnParts.push('偵測到 ' + b.localPaths.displayTextHits.length + ' 處文字內容裡直接寫出本機路徑，清除只會拆除超連結，不會改寫這些顯示文字。');
+          }
+        }
+
+        var metaGrid = '<div class="doc-meta-grid">' +
+          fieldLine('作者', b.core.creator) +
+          fieldLine('最後修改者', b.core.lastModifiedBy) +
+          fieldLine('描述/備註', b.core.description) +
+          fieldLine('公司', b.app.company) +
+          (b.app.manager ? fieldLine('主管/負責人', b.app.manager) : '') +
+          (b.app.template ? fieldLine('範本路徑', b.app.template) : '') +
+          fieldLine('自訂屬性', b.hasCustom ? '有' : '無') +
+          fieldLine('內嵌縮圖', b.hasThumbnail ? '有' : '無') +
+          formatFieldsBefore +
+          '</div>';
+
+        var warnBox = warnParts.length ? '<div class="warn-box">⚠️ ' + escapeHtml(warnParts.join(' ')) + '</div>' : '';
+
+        var processToggle = '<label style="font-size: 0.85rem;"><input type="checkbox" class="chk-item-process" data-idx="' + idx + '" ' + (item.process ? 'checked' : '') + '> 此份要清除</label>';
+
+        var diffSection = '';
+        if (state.cleaned && item.status === 'cleaned') {
+          var a = item.cleanedBefore;
+          var formatRowsAfter;
+          if (format === 'xlsx') {
+            formatRowsAfter =
+              '<tr><td>樞紐分析表快取</td><td>' + b.pivotCaches.count + '</td><td>' + (a.pivotCaches.count > 0 ? a.pivotCaches.count + ' 仍在' : '<strong>✓ 已清除</strong>') + '</td></tr>' +
+              '<tr><td>外部連結（本機路徑）</td><td>' + b.externalLinks.relationshipHits.length + ' 條</td><td>' + (a.externalLinks.relationshipHits.length > 0 ? a.externalLinks.relationshipHits.length + ' 條仍在' : '<strong>✓ 已清除</strong>') + '</td></tr>';
+          } else if (format === 'pptx') {
+            var skippedCount = (item.pptxSkippedMedia || []).length;
+            formatRowsAfter =
+              '<tr><td>裁切圖片（原圖殘留）</td><td>' + b.croppedImages.count + '</td><td>' + (a.croppedImages.count > 0 ? a.croppedImages.count + ' 仍在（' + skippedCount + ' 張因裁切規格不一致略過自動處理）' : '<strong>✓ 已清除</strong>') + '</td></tr>' +
+              '<tr><td>講者備忘稿</td><td>' + b.speakerNotes.count + '</td><td>' + (a.speakerNotes.count > 0 ? a.speakerNotes.count + ' 仍在' : '<strong>✓ 已清除</strong>') + '</td></tr>';
+          } else {
+            formatRowsAfter =
+              '<tr><td>註解</td><td>' + b.comments.count + ' 則</td><td>' + (a.comments.count > 0 ? a.comments.count + ' 則仍在' : '<strong>✓ 已清除</strong>') + '</td></tr>' +
+              '<tr><td>本機路徑超連結</td><td>' + b.localPaths.relationshipHits.length + ' 條</td><td>' + (a.localPaths.relationshipHits.length > 0 ? a.localPaths.relationshipHits.length + ' 條仍在' : '<strong>✓ 已清除</strong>') + '</td></tr>';
+          }
+          diffSection = '<table class="diff-table">' +
+            '<thead><tr><th>檢測項目</th><th>清除前</th><th>清除後（重新驗證）</th></tr></thead><tbody>' +
+            '<tr><td>作者</td><td>' + escapeHtml(b.core.creator || '無') + '</td><td>' + (a.core.creator ? escapeHtml(a.core.creator) : '<strong>✓ 已清除</strong>') + '</td></tr>' +
+            '<tr><td>公司</td><td>' + escapeHtml(b.app.company || '無') + '</td><td>' + (a.app.company ? escapeHtml(a.app.company) : '<strong>✓ 已清除</strong>') + '</td></tr>' +
+            '<tr><td>自訂屬性</td><td>' + (b.hasCustom ? '有' : '無') + '</td><td>' + (a.hasCustom ? '仍有' : '<strong>✓ 已清除</strong>') + '</td></tr>' +
+            '<tr><td>內嵌縮圖</td><td>' + (b.hasThumbnail ? '有' : '無') + '</td><td>' + (a.hasThumbnail ? '仍有' : '<strong>✓ 已清除</strong>') + '</td></tr>' +
+            formatRowsAfter +
+            '</tbody></table>';
+        }
+
+        var downloadBtn = (state.cleaned && item.status === 'cleaned')
+          ? '<button type="button" class="btn secondary btn-sm btn-download-one" data-idx="' + idx + '">下載清除版</button>' : '';
+
+        return '<div class="doc-card">' +
+          '<div class="doc-header"><div class="doc-icon">' + (format === 'xlsx' ? '📊' : format === 'pptx' ? '🖼️' : '📄') + '</div>' +
+          '<div style="flex:1; min-width: 180px;"><strong>#' + (idx + 1) + ' ' + escapeHtml(item.file.name) + '</strong><br>' +
+          '<span class="risk-badge ' + risk.cls + '">' + risk.label + '</span></div>' +
+          '<div style="display:flex; gap:0.5rem; align-items:center;">' + processToggle + downloadBtn + '</div></div>' +
+          metaGrid + warnBox + diffSection + '</div>';
+      }).join('');
+
+      docsContainer.querySelectorAll('.chk-item-process').forEach(function (chk) {
+        chk.addEventListener('change', function () {
+          var idx = Number(chk.getAttribute('data-idx'));
+          state.items[idx].process = chk.checked;
+          updateStats();
+        });
+      });
+      docsContainer.querySelectorAll('.btn-download-one').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var idx = Number(btn.getAttribute('data-idx'));
+          downloadOne(state.items[idx]);
+        });
+      });
+    }
+
+    var _MIME_BY_FORMAT = {
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    };
+
+    function downloadOne(item) {
+      var zipFiles = Object.keys(item.cleanedEntries).map(function (name) {
+        return { name: name, bytes: item.cleanedEntries[name] };
+      });
+      var blob = createZipBlob(zipFiles);
+      var base = item.file.name.replace(/\.(docx|xlsx|pptx)$/i, '');
+      downloadFile(base + '_cleaned.' + item.format, blob, _MIME_BY_FORMAT[item.format]);
+    }
+
+    btnStartClean.addEventListener('click', function () {
+      var targets = state.items.filter(function (item) { return item.status === 'scanned' && item.process; });
+      btnStartClean.disabled = true;
+      Promise.all(targets.map(function (item) {
+        return cleanEntries(item.entries, item.format).then(function (result) {
+          item.cleanedEntries = result.entries;
+          item.pptxSkippedMedia = result.pptxSkippedMedia;
+          item.cleanedBefore = summarizeBefore(result.entries, item.format);
+          item.status = 'cleaned';
+        });
+      })).then(function () {
+        state.cleaned = true;
+        var count = state.items.filter(function (i) { return i.status === 'cleaned'; }).length;
+        downloadActions.style.display = count > 0 ? 'flex' : 'none';
+        showToast('已完成 ' + count + ' 份文件的 Metadata 清除！');
+        renderList();
+      });
+    });
+
+    btnClear.addEventListener('click', function () {
+      state.items = [];
+      state.cleaned = false;
+      downloadActions.style.display = 'none';
+      renderList();
+      showToast('已清空清單');
+    });
+
+    btnDownloadZip.addEventListener('click', function () {
+      var cleanedItems = state.items.filter(function (i) { return i.status === 'cleaned'; });
+      if (!cleanedItems.length) return;
+      var zipFiles = [];
+      cleanedItems.forEach(function (item) {
+        var innerZipFiles = Object.keys(item.cleanedEntries).map(function (name) {
+          return { name: name, bytes: item.cleanedEntries[name] };
+        });
+        var innerBlobBytes = fflate.zipSync(innerZipFiles.reduce(function (acc, f) {
+          acc[f.name] = (f.bytes instanceof Uint8Array) ? f.bytes : new Uint8Array(f.bytes);
+          return acc;
+        }, {}));
+        var base = item.file.name.replace(/\.(docx|xlsx|pptx)$/i, '');
+        zipFiles.push({ name: base + '_cleaned.' + item.format, bytes: innerBlobBytes });
+      });
+      var outerBlob = createZipBlob(zipFiles);
+      downloadFile('cleaned_office_batch.zip', outerBlob, 'application/zip');
+    });
+
+    btnCopySummary.addEventListener('click', function () {
+      var lines = state.items.map(function (item, idx) {
+        if (!item.before) return '#' + (idx + 1) + ' ' + item.file.name + '：無法解析';
+        var risk = computeRisk(item.before, item.format);
+        return '#' + (idx + 1) + ' ' + item.file.name + '：' + risk.label;
+      });
+      copyToClipboard(lines.join('\n'));
+      showToast('已複製風險摘要');
+    });
+
+    // 不用 shared/io-dropzone.js 的 setupDropZone()：它預設走單檔 .txt/.md 的
+    // readAsText 流程，這裡需要多檔 + ArrayBuffer + 自訂大小閘門，手寫拖放邏輯更直接。
+    dropZone.addEventListener('dragover', function (e) { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', function () { dropZone.classList.remove('dragover'); });
+    dropZone.addEventListener('drop', function (e) {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+    });
+    dropZone.addEventListener('click', function (e) {
+      if (e.target === btnSelectFiles) return;
+      fileInput.click();
+    });
+    btnSelectFiles.addEventListener('click', function (e) {
+      e.stopPropagation();
+      fileInput.click();
+    });
+    fileInput.addEventListener('change', function () {
+      addFiles(fileInput.files);
+      fileInput.value = '';
+    });
+
+    function buildCleanHtmlCopy() {
+      var doc = document.documentElement.cloneNode(true);
+
+      var toast = doc.querySelector('#__shared_toast');
+      if (toast) toast.remove();
+
+      var navBack = doc.querySelector('.nav-back');
+      if (navBack) navBack.remove();
+
+      var offlineBtn = doc.querySelector('#btn-download-offline');
+      if (offlineBtn) offlineBtn.remove();
+
+      var docsCont = doc.querySelector('#docs-container');
+      if (docsCont) docsCont.innerHTML = '';
+
+      var resultsSec = doc.querySelector('#results-section');
+      if (resultsSec) resultsSec.style.display = 'none';
+
+      var cleanCard = doc.querySelector('#clean-options-card');
+      if (cleanCard) cleanCard.style.display = 'none';
+
+      var docCnt = doc.querySelector('#doc-count');
+      if (docCnt) docCnt.textContent = '0';
+
+      var planStats = doc.querySelector('#plan-stats-text');
+      if (planStats) planStats.textContent = '即將清除：0 份，保留原樣：0 份';
+
+      var dlActions = doc.querySelector('#download-actions');
+      if (dlActions) dlActions.style.display = 'none';
+
+      return '<!DOCTYPE html>\n' + doc.outerHTML;
+    }
+    window.buildCleanHtmlCopy = buildCleanHtmlCopy;
+
+    if (btnDownloadOffline) {
+      btnDownloadOffline.addEventListener('click', function () {
+        var cleanHtml = buildCleanHtmlCopy();
+        downloadFile('ooxml-privacy-cleaner-offline.html', cleanHtml, 'text/html;charset=utf-8');
+        showToast('已下載離線版工具');
+      });
+    }
+  })();
+  </script>
+</body>
+</html>

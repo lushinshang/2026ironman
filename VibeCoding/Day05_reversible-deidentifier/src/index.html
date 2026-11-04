@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>可逆式文字去識別化</title>
+<style>
+/* shared/base.css — 共用樣式基底，逐字複製，勿手動修改（改請去 shared/base.css 源頭並重新複製） */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 {
+  line-height: 1.3;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+textarea,
+input[type="text"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 160px;
+}
+
+button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--color-bg);
+}
+
+button.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover {
+  background: var(--color-primary-hover);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover {
+  text-decoration: underline;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+/* ---- 本題（reversible-deidentifier）專屬樣式 ---- */
+.page-header h1 {
+  font-size: 1.4rem;
+  margin: 0 0 16px;
+}
+
+.section-gap {
+  margin-top: 16px;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 16px;
+}
+
+.tabs button {
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  margin-bottom: -1px;
+  background: transparent;
+}
+
+.tabs button[aria-selected="true"] {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  font-weight: 600;
+}
+
+.tab-panel[hidden] {
+  display: none;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.note {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 6px 0;
+}
+
+.notice {
+  border-left: 3px solid var(--color-danger);
+  padding: 8px 12px;
+  background: #fff5f5;
+  font-size: 0.9rem;
+  margin: 8px 0;
+}
+
+.basis-list,
+.exclude-list {
+  margin: 6px 0;
+  padding-left: 20px;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.text-view {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.95rem;
+  min-height: 120px;
+  max-height: 320px;
+  overflow: auto;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.text-view mark {
+  background: #fde68a;
+  color: var(--color-text);
+  border-radius: 3px;
+}
+
+.text-view .placeholder {
+  color: var(--color-text-muted);
+}
+
+.status-line {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  padding: 6px 10px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  margin-top: 8px;
+}
+
+.stat-line {
+  font-size: 0.9rem;
+  margin-top: 8px;
+}
+
+table.mapping-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+table.mapping-table th,
+table.mapping-table td {
+  border: 1px solid var(--color-border);
+  padding: 6px 8px;
+  text-align: left;
+  word-break: break-all;
+}
+
+table.mapping-table th {
+  background: var(--color-bg);
+}
+
+table.mapping-table td.token-cell {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="nav-back" href="../index.html">← 返回作品集</a>
+
+  <div class="page-header">
+    <h1>可逆式文字去識別化</h1>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button type="button" id="tab-deid" role="tab" aria-selected="true" aria-controls="panel-deid">去識別化</button>
+    <button type="button" id="tab-restore" role="tab" aria-selected="false" aria-controls="panel-restore">還原</button>
+  </div>
+
+  <!-- ============ 去識別化分頁 ============ -->
+  <section id="panel-deid" class="tab-panel" role="tabpanel" aria-labelledby="tab-deid">
+
+    <div id="dropzone" class="dropzone">拖曳 TXT / MD 檔案到此，或直接貼上文字</div>
+    <p class="note" id="file-name"></p>
+
+    <div class="section-gap">
+      <label for="text-input"><strong>1. 原文</strong></label>
+      <textarea id="text-input" placeholder="在這裡貼上或輸入文字…" aria-label="原文"></textarea>
+    </div>
+
+    <div class="section-gap card">
+      <h3>2. 偵測設定</h3>
+      <p class="note">本次會比對的項目與其依據：</p>
+      <ul class="basis-list">
+        <li>Email — 格式規則</li>
+        <li>手機號碼 — 格式規則</li>
+        <li>市話 — 格式規則</li>
+        <li>身分證字號 — 格式規則</li>
+        <li>姓名 — 姓氏字典啟發式，會誤判也會漏判</li>
+        <li>手動指定的姓名／敏感詞 — 逐字精確比對</li>
+      </ul>
+      <p class="note">本工具不偵測：地址、生日、金融帳號、公司內部代號、職稱＋單位組合（除非你手動加入敏感詞）。</p>
+
+      <div class="section-gap">
+        <label for="sensitive-input"><strong>手動指定姓名／敏感詞</strong>（一行一個）</label>
+        <textarea id="sensitive-input" placeholder="一行一個，例如：&#10;王小明&#10;專案代號X" aria-label="手動指定姓名／敏感詞"></textarea>
+        <p class="note">若同一個人被截出不同長度的姓名（例如「王小明」與「王小」各成一個 Token），把完整姓名填進這一欄；手動指定的優先序高於自動偵測。</p>
+      </div>
+
+      <div class="button-row">
+        <button type="button" id="btn-deid" class="primary">執行去識別化</button>
+      </div>
+    </div>
+
+    <div class="section-gap card">
+      <h3>3. 原文／結果並排</h3>
+      <p class="note">送出前請自行逐字檢查；規則式偵測必然有遺漏。</p>
+      <p class="note" id="literal-notice" hidden></p>
+      <div class="grid-2">
+        <div>
+          <p class="note">原文（命中處標示）</p>
+          <div id="view-original" class="text-view"><span class="placeholder">（尚無內容）</span></div>
+        </div>
+        <div>
+          <p class="note">去識別化結果</p>
+          <div id="view-result" class="text-view"><span class="placeholder">（尚無內容）</span></div>
+        </div>
+      </div>
+      <p class="stat-line" id="deid-stats">尚未執行。</p>
+      <p class="status-line" id="mapping-status">mapping 尚未下載 — 關閉此頁面後將無法還原</p>
+      <div class="button-row">
+        <button type="button" id="btn-copy-result">複製結果</button>
+        <button type="button" id="btn-download-result">下載結果</button>
+      </div>
+    </div>
+
+    <div class="section-gap card">
+      <h3>4. mapping 對照表</h3>
+      <p class="notice">mapping 檔含完整原始個資，等同還原金鑰。請與去識別化後的文字分開保存，勿一併寄出。</p>
+      <p class="note">相同字面視為同一實體，本工具不做人物消歧；同一人的不同 Email 會拿到不同 Token。</p>
+      <table class="mapping-table">
+        <thead>
+          <tr><th>Token</th><th>原文</th><th>類型</th><th>次數</th></tr>
+        </thead>
+        <tbody id="mapping-body">
+          <tr><td colspan="4">（尚無 mapping）</td></tr>
+        </tbody>
+      </table>
+      <div class="button-row">
+        <button type="button" id="btn-export-json" class="primary" disabled>匯出 mapping JSON</button>
+        <button type="button" id="btn-export-csv" class="primary" disabled>匯出 mapping CSV</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 還原分頁 ============ -->
+  <section id="panel-restore" class="tab-panel" role="tabpanel" aria-labelledby="tab-restore" hidden>
+    <div class="card">
+      <h3>1. 載入 mapping 檔（.json / .csv）</h3>
+      <div id="restore-dropzone" class="dropzone">拖曳 mapping 檔到此</div>
+      <div class="button-row">
+        <button type="button" id="btn-choose-mapping-file">選擇檔案</button>
+        <input type="file" id="restore-file-input" accept=".json,.csv" hidden>
+      </div>
+      <p class="note" id="mapping-file-name">尚未載入 mapping。</p>
+      <p class="note">本工具不保存 mapping，也沒有任何方式在缺少 mapping 時推回原文。</p>
+    </div>
+
+    <div class="section-gap card">
+      <h3>2. 貼上去識別化後的文字</h3>
+      <div class="grid-2">
+        <div>
+          <textarea id="restore-input" placeholder="貼上含 Token 的文字…" aria-label="去識別化後的文字"></textarea>
+        </div>
+        <div>
+          <p class="note">還原結果</p>
+          <div id="view-restored" class="text-view"><span class="placeholder">（尚無內容）</span></div>
+        </div>
+      </div>
+      <p class="stat-line" id="restore-stats"></p>
+      <p class="note" id="restore-normalize-note">本工具依正規化後的結果配對 Token：同一筆資料在原文若有多種寫法（例如「0912-345-678」與「0912345678」），還原時會統一採用第一次出現的寫法。</p>
+      <div class="button-row">
+        <button type="button" id="btn-restore" class="primary" disabled>執行還原</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="button-row">
+    <button type="button" id="btn-download-offline">下載本工具離線版</button>
+  </div>
+</div>
+
+<!--{{SHARED:util-escape}}-->
+<!--{{SHARED:ui-toast}}-->
+<!--{{SHARED:io-download}}-->
+<!--{{SHARED:io-clipboard}}-->
+<!--{{SHARED:io-dropzone}}-->
+
+<!-- CORE-START：純邏輯層，不碰 DOM。驗證腳本會單獨抽出這段在 Node 執行 -->
+<script>
+var DeidCore = (function () {
+  "use strict";
+
+  // 偵測器有 4 條 regex，token 類型只有 6 種，兩者不是一對一。
+  // mobile 與 landline 格式不同、兩條都要比對，但命中後歸進同一個 PHONE token 類型。
+  var PII_PATTERNS = {
+    id:       { tokenType: "ID",    label: "身分證字號", basis: "格式規則", regex: /[A-Za-z][12]\d{8}/g },
+    mobile:   { tokenType: "PHONE", label: "手機號碼",   basis: "格式規則", regex: /09\d{2}-?\d{3}-?\d{3}/g },
+    landline: { tokenType: "PHONE", label: "市話",       basis: "格式規則", regex: /\(?0\d{1,2}\)?-?\d{3,4}-?\d{4}(?:#\d{1,6})?/g },
+    email:    { tokenType: "EMAIL", label: "Email",      basis: "格式規則", regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g }
+  };
+
+  var SURNAMES = ["王","李","張","陳","林","黃","吳","劉","蔡","楊","許","鄭","謝","洪","郭","邱","曾","廖","賴","徐","周","葉","蘇","莊","呂","江","何","蕭","羅","高","潘","簡","朱","鍾","游","彭","詹","胡","施","沈","余","盧","梁","趙","顏","柯","翁","魏","孫","戴","范","方","石","姚","董","杜","丁","馬","蔣","唐","韓","馮","鄧","曹"];
+  // {1,2} 在 JS 是貪婪的 → 最長匹配（「王小明說」匹配「王小明」）。不做後綴詞截斷。
+  var NAME_PATTERN = new RegExp("(" + SURNAMES.join("|") + ")[一-鿿]{1,2}", "g");
+
+  var TOKEN_PREFIXES = ["ID", "PHONE", "EMAIL", "PERSON", "TERM", "LITERAL"];
+  var TOKEN_LITERAL_RE = new RegExp("\\[(?:" + TOKEN_PREFIXES.join("|") + ")_\\d{3,}\\]", "g");
+
+  function findRegexMatches(text, regex, tokenType, label, basis) {
+    var re = new RegExp(regex.source, regex.flags);
+    var matches = [];
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      matches.push({ start: m.index, end: m.index + m[0].length, text: m[0], type: tokenType, label: label, basis: basis });
+      if (m[0].length === 0) re.lastIndex++;
+    }
+    return matches;
+  }
+
+  function detectPII(text) {
+    var all = [];
+    var key;
+    for (key in PII_PATTERNS) {
+      if (!Object.prototype.hasOwnProperty.call(PII_PATTERNS, key)) continue;
+      var p = PII_PATTERNS[key];
+      all = all.concat(findRegexMatches(text, p.regex, p.tokenType, p.label, p.basis));
+    }
+    all = all.concat(findRegexMatches(text, NAME_PATTERN, "PERSON", "姓名", "姓氏字典啟發式，會誤判也會漏判"));
+    return all;
+  }
+
+  // 使用者輸入的敏感詞用 String.indexOf 精確比對，不編譯成 RegExp（避開 ReDoS 與樣式注入）
+  function detectSensitive(text, sensitiveRaw) {
+    var lines = String(sensitiveRaw || "").split("\n");
+    var all = [];
+    var i;
+    for (i = 0; i < lines.length; i++) {
+      var kw = lines[i].trim();
+      if (!kw) continue;
+      var from = 0;
+      while (true) {
+        var found = text.indexOf(kw, from);
+        if (found === -1) break;
+        all.push({ start: found, end: found + kw.length, text: kw, type: "TERM", label: "手動指定", basis: "逐字精確比對" });
+        from = found + kw.length;
+      }
+    }
+    return all;
+  }
+
+  // 原文本身就含 token 樣式字面時收編成 LITERAL，避免還原階段被誤判成本工具產生的 token
+  function detectLiterals(text) {
+    return findRegexMatches(text, TOKEN_LITERAL_RE, "LITERAL", "token 樣式字串", "格式規則");
+  }
+
+  function detectAll(text, sensitiveRaw) {
+    // 手動指定是使用者明確意圖，排在最前；LITERAL 次之；自動偵測的個資最後。
+    // 這個順序配合 mergeOverlaps 內 Array.prototype.sort 的穩定性（ES2019 起規範保證），
+    // 讓 start 與長度都相同時前段來源勝出。
+    return detectSensitive(text, sensitiveRaw)
+      .concat(detectLiterals(text))
+      .concat(detectPII(text));
+  }
+
+
+  // 型別優先序（使用者裁示）：TERM > ID > PHONE > EMAIL > PERSON。
+  // LITERAL 不在使用者列出的五種內，放在 TERM 之後、ID 之前：它與 TERM 同樣是
+  // 「字面已經確定」的來源（原文既有的 token 樣式字串），優先於任何啟發式偵測。
+  var PRIORITY = { TERM: 0, LITERAL: 1, ID: 2, PHONE: 3, EMAIL: 4, PERSON: 5 };
+
+  function higherPriority(a, b) {
+    return PRIORITY[a] <= PRIORITY[b] ? a : b;
+  }
+
+  // 改寫自 v1 mergeAndDedupe()：v1 用 lastEnd 游標把重疊的後者整段丟掉，
+  // 導致手動敏感詞「小明」遇到自動偵測「王小明」時失效。
+  // v2 改為合併：範圍取聯集、type 取優先序最高者。
+  // 取聯集而非取較短者，是因為失敗方向不對稱——多遮一個字只是可讀性變差，
+  // 少遮一個字（只換掉「小明」、留下「王」）是個資外洩。
+  // 排序依賴 Array.prototype.sort 的穩定性（ES2019 起規範保證），
+  // 讓 start 與長度都相同時 detectAll 前段的來源（手動指定）勝出。
+  function mergeOverlaps(matches, fullText) {
+    var arr = matches.slice();
+    arr.sort(function (a, b) {
+      if (a.start !== b.start) return a.start - b.start;
+      return (b.end - b.start) - (a.end - a.start);
+    });
+    var result = [];
+    var i;
+    for (i = 0; i < arr.length; i++) {
+      var m = arr[i];
+      var last = result.length ? result[result.length - 1] : null;
+      if (last && m.start < last.end) {
+        if (m.end > last.end) last.end = m.end;
+        if (PRIORITY[m.type] < PRIORITY[last.type]) {
+          last.type = m.type;
+          last.label = m.label;
+          last.basis = m.basis;
+        }
+      } else {
+        result.push({ start: m.start, end: m.end, type: m.type, label: m.label, basis: m.basis });
+      }
+    }
+    for (i = 0; i < result.length; i++) {
+      result[i].text = fullText.slice(result[i].start, result[i].end);
+    }
+    return result;
+  }
+
+  // 區間層合併之後的字串層歸併：同一字面在不同位置（沒有區間重疊）被判成不同 type 時，
+  // 一律歸併到優先序最高者。少了這步，同一字串會拿到兩個 token，雙射破裂。
+  // 用 Object.create(null) 當 map，避免使用者輸入的 __proto__ 之類字面污染原型。
+  function unifyTypes(matches) {
+    var best = Object.create(null);
+    var i, k;
+    for (i = 0; i < matches.length; i++) {
+      k = matches[i].text;
+      if (best[k] === undefined || PRIORITY[matches[i].type] < PRIORITY[best[k].type]) {
+        best[k] = matches[i];
+      }
+    }
+    for (i = 0; i < matches.length; i++) {
+      var b = best[matches[i].text];
+      if (b.type !== matches[i].type) {
+        matches[i].type = b.type;
+        matches[i].label = b.label;
+        matches[i].basis = b.basis;
+      }
+    }
+    return matches;
+  }
+
+  function detectAndMerge(text, sensitiveRaw) {
+    return unifyTypes(mergeOverlaps(detectAll(text, sensitiveRaw), text));
+  }
+
+
+  // 正規化只用在「同一個東西的不同寫法」這種格式層差異（大小寫、分隔符號），
+  // 因為那是可逆的機械變換。姓名與手動敏感詞不正規化——中文字串的任何正規化
+  // （全半形、繁簡）都會引入誤合併風險。規則明定，實作不得自行擴充。
+  function normalizeFor(type, text) {
+    if (type === "EMAIL") return text.toLowerCase();
+    if (type === "PHONE") return text.replace(/[-()\s\u3000]/g, "");
+    if (type === "ID") return text.charAt(0).toUpperCase() + text.slice(1);
+    return text;
+  }
+
+  function padNum(n) {
+    var s = String(n);
+    while (s.length < 3) s = "0" + s;
+    return s;
+  }
+
+  // 原文中已經長得像 token 的字面，收集成「已佔用字面集合」，新分配的編號要跳過它們
+  function collectOccupiedLiterals(text) {
+    var set = Object.create(null);
+    var re = new RegExp(TOKEN_LITERAL_RE.source, "g");
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      set[m[0]] = true;
+      if (m[0].length === 0) re.lastIndex++;
+    }
+    return set;
+  }
+
+  // Token 分配的鍵是 (類型, 正規化後的原始字串)，不是「實體」。
+  // 同名合併、同一人的不同 Email 不合併——可逆的前提是字面雙射，
+  // 任何語意層合併都會讓映射變成多對一而摧毀還原。
+  function allocateTokens(matches, fullText) {
+    var occupied = collectOccupiedLiterals(fullText);
+    var counters = Object.create(null);
+    var i;
+    for (i = 0; i < TOKEN_PREFIXES.length; i++) counters[TOKEN_PREFIXES[i]] = 0;
+
+    var byKey = Object.create(null);
+    var entries = [];
+    var ordered = matches.slice().sort(function (a, b) { return a.start - b.start; });
+
+    for (i = 0; i < ordered.length; i++) {
+      var m = ordered[i];
+      var norm = normalizeFor(m.type, m.text);
+      var key = m.type + "\u0000" + norm;
+      var entry = byKey[key];
+      if (entry === undefined) {
+        var token;
+        do {
+          counters[m.type] += 1;
+          token = "[" + m.type + "_" + padNum(counters[m.type]) + "]";
+        } while (occupied[token] === true);
+        entry = {
+          token: token,
+          type: m.type,
+          label: m.label,
+          original: m.text,   // 保存第一次出現的原始寫法
+          normalized: norm,
+          count: 0
+        };
+        byKey[key] = entry;
+        entries.push(entry);
+      }
+      entry.count += 1;
+      m.token = entry.token;
+    }
+    return { entries: entries, byKey: byKey, occupied: occupied, matches: ordered };
+  }
+
+
+  function deidentify(text, sensitiveRaw) {
+    var matches = detectAndMerge(text, sensitiveRaw);
+    var alloc = allocateTokens(matches, text);
+    var ordered = alloc.matches;
+    var out = [];
+    var cursor = 0;
+    var literalCount = 0;
+    var i;
+    for (i = 0; i < ordered.length; i++) {
+      var m = ordered[i];
+      out.push(text.slice(cursor, m.start));
+      out.push(m.token);
+      cursor = m.end;
+      if (m.type === "LITERAL") literalCount += 1;
+    }
+    out.push(text.slice(cursor));
+    return {
+      resultText: out.join(""),
+      matches: ordered,
+      entries: alloc.entries,
+      literalCount: literalCount
+    };
+  }
+
+
+  // ================= Phase B：mapping 序列化／解析與 single-pass 還原 =================
+  // 一律以 token -> original 為準（不是 normalized）：normalized 只是分配 token 時的合併鍵，
+  // 還原要回到使用者原本寫的字面，否則往返不會逐字元相同。
+
+  var MAPPING_WARNING = "mapping 檔含完整原始個資，等同還原金鑰。請與去識別化後的文字分開保存，勿一併寄出。";
+  var CSV_WARNING_LINE = "# 本檔含完整原始個資，等同還原金鑰，請勿外傳";
+  var TOKEN_EXACT_RE = new RegExp("^\\[(?:" + TOKEN_PREFIXES.join("|") + ")_\\d{3,}\\]$");
+
+  function mappingToJson(entries) {
+    var list = [];
+    var i;
+    for (i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      list.push({ token: e.token, type: e.type, label: e.label, original: e.original, count: e.count });
+    }
+    // 物件字面的鍵順序 = JSON.stringify 的輸出順序，所以 _warning 一定在最前面，開檔即見
+    return JSON.stringify({ _warning: MAPPING_WARNING, entries: list }, null, 2);
+  }
+
+  function csvEscape(value) {
+    var s = String(value);
+    if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function mappingToCsv(entries) {
+    var lines = [CSV_WARNING_LINE, "token,original,type,count"];
+    var i;
+    for (i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      lines.push([csvEscape(e.token), csvEscape(e.original), csvEscape(e.type), csvEscape(e.count)].join(","));
+    }
+    return lines.join("\n") + "\n";
+  }
+
+  // 自行解析 CSV（欄位有限、格式自訂），不用 eval、不用動態 RegExp
+  function parseCsvRows(text) {
+    var s = String(text).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    var rows = [];
+    var row = [];
+    var field = "";
+    var inQuote = false;
+    var i;
+    for (i = 0; i < s.length; i++) {
+      var c = s.charAt(i);
+      if (inQuote) {
+        if (c === '"') {
+          if (s.charAt(i + 1) === '"') { field += '"'; i++; }
+          else { inQuote = false; }
+        } else { field += c; }
+      } else if (c === '"') {
+        inQuote = true;
+      } else if (c === ",") {
+        row.push(field); field = "";
+      } else if (c === "\n") {
+        row.push(field); rows.push(row); row = []; field = "";
+      } else {
+        field += c;
+      }
+    }
+    if (field !== "" || row.length > 0) { row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  function isForbiddenKey(k) {
+    return k === "__proto__" || k === "constructor" || k === "prototype";
+  }
+
+  // mapping 檔可能來自別處，是 v1 沒有的輸入面：JSON.parse 之後逐層檢查自有屬性名，
+  // 命中原型污染常用鍵就整份拒收（不是靜默忽略）。
+  function assertNoForbiddenKeys(node, depth) {
+    if (node === null || typeof node !== "object") return;
+    if (depth > 16) throw new Error("mapping 檔結構巢狀過深。");
+    var names = Object.getOwnPropertyNames(node);
+    var i;
+    for (i = 0; i < names.length; i++) {
+      if (isForbiddenKey(names[i])) throw new Error("mapping 檔含有不允許的欄位名稱：" + names[i]);
+      assertNoForbiddenKeys(node[names[i]], depth + 1);
+    }
+  }
+
+  function normalizeLoadedEntry(item, where) {
+    if (item === null || typeof item !== "object" || Object.prototype.toString.call(item) === "[object Array]") {
+      throw new Error(where + " 不是物件。");
+    }
+    if (typeof item.token !== "string" || !TOKEN_EXACT_RE.test(item.token)) {
+      throw new Error(where + " 的 token 格式不符：" + String(item.token));
+    }
+    if (typeof item.original !== "string") {
+      throw new Error(where + " 的原文不是字串。");
+    }
+    return {
+      token: item.token,
+      original: item.original,
+      type: typeof item.type === "string" ? item.type : "",
+      label: typeof item.label === "string" ? item.label : "",
+      count: typeof item.count === "number" ? item.count : Number(item.count) || 0
+    };
+  }
+
+  function parseMappingJson(text) {
+    var data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error("JSON 格式錯誤，無法解析。");
+    }
+    assertNoForbiddenKeys(data, 0);
+    if (data === null || typeof data !== "object" || Object.prototype.toString.call(data.entries) !== "[object Array]") {
+      throw new Error("JSON 結構不符：找不到 entries 陣列。");
+    }
+    var out = [];
+    var i;
+    for (i = 0; i < data.entries.length; i++) {
+      out.push(normalizeLoadedEntry(data.entries[i], "第 " + (i + 1) + " 筆"));
+    }
+    if (out.length === 0) throw new Error("mapping 檔沒有任何對照紀錄。");
+    return out;
+  }
+
+  function parseMappingCsv(text) {
+    var raw = parseCsvRows(text);
+    var rows = [];
+    var i;
+    for (i = 0; i < raw.length; i++) {
+      if (raw[i].length === 1 && raw[i][0].trim() === "") continue;
+      if (raw[i][0].charAt(0) === "#") continue;
+      rows.push(raw[i]);
+    }
+    if (rows.length < 2) throw new Error("CSV 內容不足：至少需要欄位標題與一筆資料。");
+    var header = [];
+    for (i = 0; i < rows[0].length; i++) header.push(rows[0][i].trim().toLowerCase());
+    var iToken = header.indexOf("token");
+    var iOriginal = header.indexOf("original");
+    if (iToken === -1 || iOriginal === -1) throw new Error("CSV 欄位標題缺少 token 或 original。");
+    var iType = header.indexOf("type");
+    var iCount = header.indexOf("count");
+    var need = Math.max(iToken, iOriginal);
+    var out = [];
+    for (i = 1; i < rows.length; i++) {
+      var r = rows[i];
+      var where = "第 " + (i + 1) + " 列";
+      if (r.length <= need) throw new Error(where + " 欄位數不足。");
+      out.push(normalizeLoadedEntry({
+        token: r[iToken],
+        original: r[iOriginal],
+        type: iType === -1 ? "" : r[iType],
+        label: "",
+        count: iCount === -1 ? 0 : Number(r[iCount]) || 0
+      }, where));
+    }
+    return out;
+  }
+
+  function parseMappingFile(fileName, text) {
+    var lower = String(fileName || "").toLowerCase();
+    var entries = lower.slice(-4) === ".csv" ? parseMappingCsv(text) : parseMappingJson(text);
+    // Object.create(null) → 查表時不會撞到 Object.prototype 上的既有屬性
+    var lookup = Object.create(null);
+    var i;
+    for (i = 0; i < entries.length; i++) {
+      if (lookup[entries[i].token] === undefined) lookup[entries[i].token] = entries[i].original;
+    }
+    return { entries: entries, lookup: lookup };
+  }
+
+  // single-pass：一條 regex 掃一次輸入，命中就把 mapping 值寫進輸出緩衝區，
+  // 輸出緩衝區不再參與掃描。因此 mapping 原文值裡本來就含 token 字面時不會被二次替換，
+  // 結果也與 mapping 的插入順序無關。禁止改成 String.replace 反覆全域取代。
+  function restoreText(text, lookup) {
+    var re = new RegExp("\\[(?:" + TOKEN_PREFIXES.join("|") + ")_\\d{3,}\\]", "g");
+    var src = String(text);
+    var out = [];
+    var cursor = 0;
+    var replaced = 0;
+    var unknown = [];
+    var seen = Object.create(null);
+    var m;
+    while ((m = re.exec(src)) !== null) {
+      out.push(src.slice(cursor, m.index));
+      var value = lookup[m[0]];
+      if (typeof value === "string") {
+        out.push(value);
+        replaced += 1;
+      } else {
+        out.push(m[0]);
+        if (seen[m[0]] !== true) { seen[m[0]] = true; unknown.push(m[0]); }
+      }
+      cursor = m.index + m[0].length;
+    }
+    out.push(src.slice(cursor));
+    return { text: out.join(""), replaced: replaced, unknown: unknown };
+  }
+
+  return {
+    PII_PATTERNS: PII_PATTERNS,
+    SURNAMES: SURNAMES,
+    NAME_PATTERN: NAME_PATTERN,
+    TOKEN_PREFIXES: TOKEN_PREFIXES,
+    TOKEN_LITERAL_RE: TOKEN_LITERAL_RE,
+    findRegexMatches: findRegexMatches,
+    detectPII: detectPII,
+    detectSensitive: detectSensitive,
+    detectLiterals: detectLiterals,
+    detectAll: detectAll,
+    PRIORITY: PRIORITY,
+    higherPriority: higherPriority,
+    mergeOverlaps: mergeOverlaps,
+    unifyTypes: unifyTypes,
+    detectAndMerge: detectAndMerge,
+    normalizeFor: normalizeFor,
+    padNum: padNum,
+    collectOccupiedLiterals: collectOccupiedLiterals,
+    allocateTokens: allocateTokens,
+    deidentify: deidentify,
+    MAPPING_WARNING: MAPPING_WARNING,
+    CSV_WARNING_LINE: CSV_WARNING_LINE,
+    TOKEN_EXACT_RE: TOKEN_EXACT_RE,
+    mappingToJson: mappingToJson,
+    mappingToCsv: mappingToCsv,
+    parseCsvRows: parseCsvRows,
+    parseMappingJson: parseMappingJson,
+    parseMappingCsv: parseMappingCsv,
+    parseMappingFile: parseMappingFile,
+    restoreText: restoreText
+  };
+})();
+</script>
+<!-- CORE-END -->
+
+<script>
+(function () {
+  "use strict";
+
+  var tabDeid = document.getElementById("tab-deid");
+  var tabRestore = document.getElementById("tab-restore");
+  var panelDeid = document.getElementById("panel-deid");
+  var panelRestore = document.getElementById("panel-restore");
+
+  function selectTab(which) {
+    var isDeid = which === "deid";
+    tabDeid.setAttribute("aria-selected", isDeid ? "true" : "false");
+    tabRestore.setAttribute("aria-selected", isDeid ? "false" : "true");
+    panelDeid.hidden = !isDeid;
+    panelRestore.hidden = isDeid;
+  }
+
+  tabDeid.addEventListener("click", function () { selectTab("deid"); });
+  tabRestore.addEventListener("click", function () { selectTab("restore"); });
+
+  var textInput = document.getElementById("text-input");
+  var sensitiveInput = document.getElementById("sensitive-input");
+  var viewOriginal = document.getElementById("view-original");
+  var viewResult = document.getElementById("view-result");
+  var mappingBody = document.getElementById("mapping-body");
+  var deidStats = document.getElementById("deid-stats");
+  var literalNotice = document.getElementById("literal-notice");
+  var fileNameEl = document.getElementById("file-name");
+
+  // mapping 只存在記憶體，不寫入任何持久化儲存
+  var state = { resultText: "", entries: [] };
+
+  var EMPTY_ROW = '<tr><td colspan="4">（尚無 mapping）</td></tr>';
+  var PLACEHOLDER = '<span class="placeholder">（尚無內容）</span>';
+  var STATUS_NOT_DOWNLOADED = "mapping 尚未下載 — 關閉此頁面後將無法還原";
+  var MAPPING_FILE_NONE = "尚未載入 mapping。";
+  var DEID_STATS_INIT = "尚未執行。";
+  var DROPZONE_TEXT = "拖曳 TXT / MD 檔案到此，或直接貼上文字";
+  var RESTORE_DROPZONE_TEXT = "拖曳 mapping 檔到此";
+
+  var mappingStatus = document.getElementById("mapping-status");
+  var btnExportJson = document.getElementById("btn-export-json");
+  var btnExportCsv = document.getElementById("btn-export-csv");
+  var restoreDropzone = document.getElementById("restore-dropzone");
+  var btnChooseMappingFile = document.getElementById("btn-choose-mapping-file");
+  var restoreFileInput = document.getElementById("restore-file-input");
+  var mappingFileNameEl = document.getElementById("mapping-file-name");
+  var restoreInput = document.getElementById("restore-input");
+  var viewRestored = document.getElementById("view-restored");
+  var restoreStats = document.getElementById("restore-stats");
+  var btnRestore = document.getElementById("btn-restore");
+
+  // 已載入的 mapping 同樣只存在記憶體，不寫入任何持久化儲存
+  var restoreState = { lookup: null, entries: [] };
+
+  function renderOriginal(text, matches) {
+    if (!text) {
+      viewOriginal.innerHTML = PLACEHOLDER;
+      return;
+    }
+    var parts = [];
+    var cursor = 0;
+    var i;
+    for (i = 0; i < matches.length; i++) {
+      var m = matches[i];
+      parts.push(escapeHtml(text.slice(cursor, m.start)));
+      parts.push("<mark>" + escapeHtml(m.text) + "</mark>");
+      cursor = m.end;
+    }
+    parts.push(escapeHtml(text.slice(cursor)));
+    viewOriginal.innerHTML = parts.join("");
+  }
+
+  function renderMapping(entries) {
+    if (entries.length === 0) {
+      mappingBody.innerHTML = EMPTY_ROW;
+      return;
+    }
+    var rows = [];
+    var i;
+    for (i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      rows.push(
+        '<tr><td class="token-cell">' + escapeHtml(e.token) + "</td>" +
+        "<td>" + escapeHtml(e.original) + "</td>" +
+        "<td>" + escapeHtml(e.label) + "</td>" +
+        "<td>" + String(e.count) + "</td></tr>"
+      );
+    }
+    mappingBody.innerHTML = rows.join("");
+  }
+
+  function resetOutput(message) {
+    state.resultText = "";
+    state.entries = [];
+    viewOriginal.innerHTML = PLACEHOLDER;
+    viewResult.innerHTML = PLACEHOLDER;
+    mappingBody.innerHTML = EMPTY_ROW;
+    literalNotice.hidden = true;
+    literalNotice.textContent = "";
+    deidStats.textContent = message;
+    resetMappingStatus();
+  }
+
+  // 每次重跑去識別化都會產生新的 mapping，狀態列必須退回「尚未下載」
+  function resetMappingStatus() {
+    mappingStatus.textContent = STATUS_NOT_DOWNLOADED;
+    btnExportJson.disabled = state.entries.length === 0;
+    btnExportCsv.disabled = state.entries.length === 0;
+  }
+
+  function runDeid() {
+    var text = textInput.value;
+    if (text.trim() === "") {
+      resetOutput("請先輸入文字。");
+      return;
+    }
+    var result = DeidCore.deidentify(text, sensitiveInput.value);
+    state.resultText = result.resultText;
+    state.entries = result.entries;
+
+    renderOriginal(text, result.matches);
+    viewResult.textContent = result.resultText;
+    renderMapping(result.entries);
+
+    if (result.matches.length === 0) {
+      deidStats.textContent = "未命中任何規則。這不代表文中沒有個資。";
+    } else {
+      deidStats.textContent = "本次命中 " + result.matches.length + " 處，產生 " +
+        result.entries.length + " 個 Token。";
+    }
+
+    if (result.literalCount > 0) {
+      literalNotice.textContent = "原文含 " + result.literalCount + " 處 token 樣式字串，已一併處理。";
+      literalNotice.hidden = false;
+    } else {
+      literalNotice.hidden = true;
+      literalNotice.textContent = "";
+    }
+
+    resetMappingStatus();
+  }
+
+  document.getElementById("btn-deid").addEventListener("click", runDeid);
+
+  // toast 訊息只講數量與動作，不帶使用者原始文字內容
+  document.getElementById("btn-copy-result").addEventListener("click", function () {
+    if (state.resultText === "") {
+      showToast("尚無結果可複製");
+      return;
+    }
+    copyToClipboard(state.resultText).then(function (ok) {
+      showToast(ok ? "已複製結果" : "複製失敗");
+    });
+  });
+
+  document.getElementById("btn-download-result").addEventListener("click", function () {
+    if (state.resultText === "") {
+      showToast("尚無結果可下載");
+      return;
+    }
+    downloadFile("deid-result.txt", state.resultText);
+    showToast("已下載結果");
+  });
+
+  setupDropZone(document.getElementById("dropzone"), function (content, name) {
+    textInput.value = content;
+    fileNameEl.textContent = "已讀入檔案：" + name;
+  }, {
+    accept: [".txt", ".md"],
+    onError: function (msg) { showToast(msg); }
+  });
+
+  // ================= Phase B：mapping 匯出 =================
+
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+
+  // 固定樣板，不含任何使用者輸入 → 無路徑穿越風險；DO-NOT-SHARE 讓警告跟著檔名走
+  function mappingFileName(ext) {
+    var d = new Date();
+    return "deid-mapping-DO-NOT-SHARE-" +
+      d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + "-" +
+      pad2(d.getHours()) + pad2(d.getMinutes()) + "." + ext;
+  }
+
+  function markMappingDownloaded(name) {
+    mappingStatus.textContent = "mapping 已下載（" + name + "）";
+  }
+
+  btnExportJson.addEventListener("click", function () {
+    if (state.entries.length === 0) { showToast("尚無 mapping 可匯出"); return; }
+    var name = mappingFileName("json");
+    downloadFile(name, DeidCore.mappingToJson(state.entries), "application/json;charset=utf-8");
+    markMappingDownloaded(name);
+    showToast("已下載 mapping JSON");
+  });
+
+  btnExportCsv.addEventListener("click", function () {
+    if (state.entries.length === 0) { showToast("尚無 mapping 可匯出"); return; }
+    var name = mappingFileName("csv");
+    downloadFile(name, DeidCore.mappingToCsv(state.entries), "text/csv;charset=utf-8");
+    markMappingDownloaded(name);
+    showToast("已下載 mapping CSV");
+  });
+
+  // ================= Phase B：mapping 載入與還原 =================
+
+  function clearLoadedMapping() {
+    restoreState.lookup = null;
+    restoreState.entries = [];
+    btnRestore.disabled = true;
+  }
+
+  // mapping 讀檔後的處理路徑：拖曳與「選擇檔案」按鈕共用這兩個具名函式，不平行複製一份邏輯
+  var MAPPING_ACCEPT = [".json", ".csv"];
+
+  function handleMappingFileContent(content, name) {
+    var parsed;
+    try {
+      parsed = DeidCore.parseMappingFile(name, content);
+    } catch (err) {
+      clearLoadedMapping();
+      // err.message 可能含檔案裡的字串，一律用 textContent 寫入，不進 innerHTML
+      mappingFileNameEl.textContent = "mapping 載入失敗：" + err.message;
+      showToast("mapping 載入失敗");
+      return;
+    }
+    restoreState.lookup = parsed.lookup;
+    restoreState.entries = parsed.entries;
+    mappingFileNameEl.textContent = "已載入 mapping：" + name + "（" + parsed.entries.length + " 筆）";
+    btnRestore.disabled = false;
+  }
+
+  function handleMappingFileError(msg) {
+    clearLoadedMapping();
+    mappingFileNameEl.textContent = msg;
+    showToast(msg);
+  }
+
+  setupDropZone(restoreDropzone, handleMappingFileContent, {
+    accept: MAPPING_ACCEPT,
+    onError: handleMappingFileError
+  });
+
+  // 「選擇檔案」按鈕：與拖曳走同一組副檔名檢查與同一組處理函式，只有觸發來源不同
+  function isMappingFileAccepted(fileName) {
+    var lower = fileName.toLowerCase();
+    for (var j = 0; j < MAPPING_ACCEPT.length; j++) {
+      var ext = MAPPING_ACCEPT[j];
+      if (lower.indexOf(ext, lower.length - ext.length) !== -1) return true;
+    }
+    return false;
+  }
+
+  btnChooseMappingFile.addEventListener("click", function () {
+    restoreFileInput.click();
+  });
+
+  restoreFileInput.addEventListener("change", function () {
+    var file = restoreFileInput.files && restoreFileInput.files[0];
+    restoreFileInput.value = ""; // 立即清空，離線版洩漏面 & 允許重選同一檔名再觸發 change
+    if (!file) return;
+    if (!isMappingFileAccepted(file.name)) {
+      handleMappingFileError("不支援的檔案類型：" + file.name);
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function () { handleMappingFileContent(reader.result, file.name); };
+    reader.onerror = function () { handleMappingFileError("讀取檔案失敗：" + file.name); };
+    reader.readAsText(file);
+  });
+
+  btnRestore.addEventListener("click", function () {
+    if (restoreState.lookup === null) return;
+    var input = restoreInput.value;
+    if (input.trim() === "") {
+      viewRestored.innerHTML = PLACEHOLDER;
+      restoreStats.textContent = "請先貼上去識別化後的文字。";
+      return;
+    }
+    var r = DeidCore.restoreText(input, restoreState.lookup);
+    viewRestored.textContent = r.text;
+    var msg = "還原 " + r.replaced + " 處";
+    if (r.unknown.length > 0) {
+      msg += "，另有 " + r.unknown.length + " 個 Token 不在 mapping 內，已原樣保留：" + r.unknown.join("、");
+    }
+    restoreStats.textContent = msg + "。";
+  });
+
+  // ================= Phase B：離線版複本 =================
+
+  // 這份產物是設計來被分享出去的，mapping 就是完整個資，所以清空範圍要比 v1 大一圈。
+  // 記憶體狀態（state / restoreState）不會被 outerHTML 序列化——序列化出去的 <script>
+  // 是靜態原始碼，不是執行期的變數值——但仍在下方保留註解與驗收 grep，避免日後誤加
+  // 「把 mapping 寫進 DOM data-* 屬性」之類的改動而失守。
+  function buildCleanHtmlCopy() {
+    var clone = document.documentElement.cloneNode(true);
+
+    function q(sel) { return clone.querySelector(sel); }
+    function drop(sel) { var el = q(sel); if (el) el.parentNode.removeChild(el); }
+    function setText(sel, txt) { var el = q(sel); if (el) el.textContent = txt; }
+    function setHtml(sel, html) { var el = q(sel); if (el) el.innerHTML = html; }
+
+    drop(".nav-back");
+    drop("#btn-download-offline");
+    // showToast() 動態塞進 body 的節點：只清文字不夠，整個節點移除
+    drop("#__shared_toast");
+
+    var textareas = ["#text-input", "#sensitive-input", "#restore-input"];
+    var i;
+    for (i = 0; i < textareas.length; i++) {
+      var ta = q(textareas[i]);
+      if (ta) { ta.value = ""; ta.textContent = ""; ta.removeAttribute("value"); }
+    }
+
+    setText("#file-name", "");                      // 使用者拖入的檔名，離線版的洩漏面之一
+    setText("#deid-stats", DEID_STATS_INIT);
+    setText("#mapping-status", STATUS_NOT_DOWNLOADED);
+    setText("#mapping-file-name", MAPPING_FILE_NONE);
+    setText("#restore-stats", "");
+    setText("#dropzone", DROPZONE_TEXT);
+    setText("#restore-dropzone", RESTORE_DROPZONE_TEXT);
+    setHtml("#view-original", PLACEHOLDER);
+    setHtml("#view-result", PLACEHOLDER);
+    setHtml("#view-restored", PLACEHOLDER);
+    setHtml("#mapping-body", EMPTY_ROW);
+
+    var dz = q("#dropzone"); if (dz) dz.className = "dropzone";
+    var rdz = q("#restore-dropzone"); if (rdz) rdz.className = "dropzone";
+
+    // 選擇檔案的 <input type="file">：value 與檔名都是離線版洩漏面，一併清空
+    var fi = q("#restore-file-input");
+    if (fi) { fi.value = ""; fi.removeAttribute("value"); }
+
+    var ln = q("#literal-notice");
+    if (ln) { ln.textContent = ""; ln.setAttribute("hidden", ""); }
+
+    var disabled = ["#btn-export-json", "#btn-export-csv", "#btn-restore"];
+    for (i = 0; i < disabled.length; i++) {
+      var b = q(disabled[i]);
+      if (b) b.setAttribute("disabled", "");
+    }
+
+    var td = q("#tab-deid"); if (td) td.setAttribute("aria-selected", "true");
+    var tr = q("#tab-restore"); if (tr) tr.setAttribute("aria-selected", "false");
+    var pd = q("#panel-deid"); if (pd) pd.removeAttribute("hidden");
+    var pr = q("#panel-restore"); if (pr) pr.setAttribute("hidden", "");
+
+    return "<!doctype html>\n" + clone.outerHTML;
+  }
+
+  // buildCleanHtmlCopy() 會移除這顆按鈕，所以離線複本裡它不存在。
+  // 沒有 null 檢查的話，離線版載入時會拋 uncaught TypeError。
+  var btnDownloadOffline = document.getElementById("btn-download-offline");
+  if (btnDownloadOffline) btnDownloadOffline.addEventListener("click", function () {
+    downloadFile("reversible-deidentifier.html", buildCleanHtmlCopy(), "text/html;charset=utf-8");
+    showToast("已下載離線版");
+  });
+})();
+</script>
+</body>
+</html>

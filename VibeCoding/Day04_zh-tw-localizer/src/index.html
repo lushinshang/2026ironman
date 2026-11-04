@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>繁簡與台灣在地化轉換器</title>
+<style>
+/* shared/base.css — 共用樣式基底，逐字複製，勿手動修改（改請去 shared/base.css 源頭並重新複製） */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 {
+  line-height: 1.3;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+textarea,
+input[type="text"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 160px;
+}
+
+button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--color-bg);
+}
+
+button.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover {
+  background: var(--color-primary-hover);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover {
+  text-decoration: underline;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+/* ---- 本題（zh-tw-localizer）專屬樣式 ---- */
+.page-header h1 {
+  font-size: 1.4rem;
+  margin: 0 0 16px;
+}
+
+.section-gap {
+  margin-top: 16px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.pane {
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 80px;
+  max-height: 320px;
+  overflow-y: auto;
+  font-size: 1rem;
+}
+
+.pane .empty,
+.muted {
+  color: var(--color-text-muted);
+}
+
+mark.cand {
+  border-radius: 3px;
+  padding: 0 1px;
+  color: var(--color-text);
+}
+
+mark.cand-s2t { background: #bfdbfe; }
+mark.cand-variant { background: #e9d5ff; }
+mark.cand-twphrase { background: #fde68a; }
+mark.cand-custom { background: #bbf7d0; }
+
+.badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  border-radius: 999px;
+  padding: 0 8px;
+  margin-right: 6px;
+  border: 1px solid var(--color-border);
+}
+
+.badge-s2t { background: #bfdbfe; }
+.badge-variant { background: #e9d5ff; }
+.badge-twphrase { background: #fde68a; }
+.badge-custom { background: #bbf7d0; }
+
+#candidate-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  font-size: 0.95rem;
+}
+
+#candidate-list li {
+  border-bottom: 1px dashed var(--color-border);
+  padding: 4px 0;
+}
+
+#candidate-list li:last-child {
+  border-bottom: none;
+}
+
+#candidate-list label {
+  cursor: pointer;
+}
+
+#candidate-list .cand-before {
+  text-decoration: line-through;
+  color: var(--color-text-muted);
+}
+
+#candidate-list .cand-after {
+  font-weight: 600;
+}
+
+.dict-scroll {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+table.dict-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+table.dict-table th,
+table.dict-table td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 2px 6px;
+  text-align: left;
+}
+
+table.dict-table input[type="text"] {
+  padding: 2px 6px;
+  font-size: 0.9rem;
+}
+
+.error-text {
+  color: var(--color-danger);
+}
+
+.bundled-licenses {
+  margin-top: 24px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.bundled-licenses ul {
+  margin: 4px 0 0;
+  padding-left: 20px;
+}
+
+.license-note {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="nav-back" href="../index.html">← 返回作品集</a>
+
+  <div class="page-header">
+    <h1>繁簡與台灣在地化轉換器</h1>
+  </div>
+
+  <div id="dropzone" class="dropzone">拖曳 TXT / MD 檔案到此，或直接貼上文字</div>
+
+  <div class="section-gap">
+    <textarea id="text-input" placeholder="在這裡貼上或輸入文字…" aria-label="輸入文字"></textarea>
+  </div>
+
+  <div class="section-gap button-row">
+    <button type="button" id="btn-generate" class="primary">產生候選</button>
+    <span class="muted" id="generate-hint">按下按鈕才會重新掃描，勾選候選不會觸發重新掃描。</span>
+  </div>
+
+  <div class="section-gap grid-2">
+    <div class="card">
+      <h3>原文</h3>
+      <div id="view-original" class="pane"><span class="empty">（尚未產生候選）</span></div>
+    </div>
+    <div class="card">
+      <h3>轉換結果</h3>
+      <div id="view-result" class="pane"><span class="empty">（尚未產生候選）</span></div>
+    </div>
+  </div>
+
+  <div class="section-gap card">
+    <h3>候選替換清單 <span class="muted" id="candidate-count">（0 筆）</span></h3>
+    <ul id="candidate-list"><li class="muted">（尚未產生候選）</li></ul>
+  </div>
+
+  <div class="section-gap card">
+    <h3>中國大陸用語 → 台灣慣用語詞庫（可編輯）</h3>
+    <div class="button-row">
+      <input type="text" id="tw-new-key" placeholder="原詞（例：視頻）" aria-label="新增原詞" style="max-width:200px">
+      <input type="text" id="tw-new-val" placeholder="替換詞（例：影片）" aria-label="新增替換詞" style="max-width:200px">
+      <button type="button" id="btn-tw-add">新增一列</button>
+      <span class="muted" id="tw-dict-count"></span>
+    </div>
+    <div class="dict-scroll section-gap">
+      <table class="dict-table">
+        <thead><tr><th>原詞</th><th>替換詞</th><th style="width:64px"></th></tr></thead>
+        <tbody id="tw-dict-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-gap card">
+    <h3>自訂詞庫（第四階段）</h3>
+    <p class="muted">格式為 JSON 物件鍵值對，例如 <code>{"視頻": "影片", "鼠標": "滑鼠"}</code>。JSON 陣列不接受。</p>
+    <div class="button-row">
+      <input type="file" id="custom-dict-file" accept=".json,application/json" aria-label="匯入自訂詞庫 JSON">
+      <button type="button" id="btn-custom-export">匯出自訂詞庫</button>
+      <button type="button" id="btn-custom-clear">清除自訂詞庫</button>
+    </div>
+    <p id="custom-dict-status" class="muted">尚未匯入自訂詞庫。</p>
+  </div>
+
+  <div class="section-gap button-row">
+    <button type="button" id="btn-copy">複製轉換結果</button>
+    <button type="button" id="btn-download-txt">下載 TXT</button>
+    <button type="button" id="btn-download-md">下載 MD</button>
+    <button type="button" id="btn-download-offline">下載本工具離線版</button>
+  </div>
+
+  <!--{{LICENSES}}-->
+  <p class="license-note">詞庫資料取自 OpenCC（<a href="https://github.com/BYVoid/OpenCC" rel="noopener">https://github.com/BYVoid/OpenCC</a>），以 Apache License 2.0 授權釋出；本頁透過 pip 套件 opencc-python-reimplemented 0.1.7 內附的詞典檔轉製後內嵌。</p>
+</div>
+
+<!--{{SHARED:util-escape}}-->
+<!--{{SHARED:ui-toast}}-->
+<!--{{SHARED:ui-debounce}}-->
+<!--{{SHARED:io-download}}-->
+<!--{{SHARED:io-clipboard}}-->
+<!--{{SHARED:io-dropzone}}-->
+
+<!--{{ASSET:stMerged}}-->
+<!--{{ASSET:twVariants}}-->
+<!--{{ASSET:twPhrases}}-->
+
+<script>
+(function () {
+  "use strict";
+
+  // ---- 詞庫載入（bundle.py json_string 模式：全域變數名 = 資源名，值為 JSON 字串）----
+  var DICT_S2T = JSON.parse(stMerged);
+  var DICT_VARIANT = JSON.parse(twVariants);
+  var BUILTIN_TW = JSON.parse(twPhrases);
+
+  var STAGE_LABEL = {
+    s2t: "簡繁",
+    variant: "異體字",
+    twphrase: "TW用語",
+    custom: "自訂"
+  };
+
+  function maxKeyLen(dict) {
+    var m = 0;
+    for (var k in dict) {
+      if (Object.prototype.hasOwnProperty.call(dict, k) && k.length > m) m = k.length;
+    }
+    return m;
+  }
+
+  // ---- 候選樹（unit）----
+  // plain leaf : { type:'plain', text }
+  // op node    : { type:'op', id, stage, before, after, accepted, children:[unit] }
+  //   before === children 組出的文字（產生當下），after === 替換後文字
+  //   有效文字 = accepted 且 children 目前組出的文字仍等於 before 時取 after，否則取 children 組出的文字
+  function effTextOf(u) {
+    if (u.type === "plain") return u.text;
+    var inner = composeUnits(u.children);
+    if (u.accepted && inner === u.before) return u.after;
+    return inner;
+  }
+
+  function composeUnits(units) {
+    var parts = [];
+    for (var i = 0; i < units.length; i++) parts.push(effTextOf(units[i]));
+    return parts.join("");
+  }
+
+  function origTextOf(u) {
+    if (u.type === "plain") return u.text;
+    var parts = [];
+    for (var i = 0; i < u.children.length; i++) parts.push(origTextOf(u.children[i]));
+    return parts.join("");
+  }
+
+  function origTextOfUnits(units) {
+    var parts = [];
+    for (var i = 0; i < units.length; i++) parts.push(origTextOf(units[i]));
+    return parts.join("");
+  }
+
+  // 把 plain leaf 依 boundSet 指定的（組出文字的）絕對位置切開，
+  // 讓後續的候選區間盡量對齊 unit 邊界。op node 不可切，由 runStage 向外擴張處理。
+  function splitPlainLeaves(units, boundSet) {
+    var out = [];
+    var pos = 0;
+    for (var i = 0; i < units.length; i++) {
+      var u = units[i];
+      var len = effTextOf(u).length;
+      if (u.type === "plain" && len > 0) {
+        var prev = 0;
+        for (var p = 1; p < len; p++) {
+          if (boundSet[pos + p]) {
+            out.push({ type: "plain", text: u.text.slice(prev, p) });
+            prev = p;
+          }
+        }
+        out.push({ type: "plain", text: u.text.slice(prev) });
+      } else {
+        out.push(u);
+      }
+      pos += len;
+    }
+    return out;
+  }
+
+  var candSeq = 0;
+
+  // 🔴 v1 的教訓：每個 stage 都必須在「完整、未被前一 stage 切碎的文字」上重新掃描，
+  // 否則跨階段的詞（軟+件 → 軟件）永遠比對不到。這裡先 composeUnits() 還原完整文字再掃描。
+  function runStage(units, dict, maxLen, stageKey) {
+    if (maxLen <= 0) return units;
+    var text = composeUnits(units);
+    if (text.length === 0) return units;
+
+    // 1. 在完整文字上逐字元找最長比對
+    var matches = [];
+    var i = 0;
+    while (i < text.length) {
+      var matchedKey = null;
+      var matchedVal = null;
+      var upper = Math.min(maxLen, text.length - i);
+      for (var len = upper; len >= 1; len--) {
+        var sub = text.substr(i, len);
+        if (Object.prototype.hasOwnProperty.call(dict, sub)) {
+          matchedKey = sub;
+          matchedVal = dict[sub];
+          break;
+        }
+      }
+      if (matchedKey !== null) {
+        if (matchedVal !== matchedKey) {
+          matches.push({ start: i, end: i + matchedKey.length, after: matchedVal });
+        }
+        i += matchedKey.length;
+      } else {
+        i++;
+      }
+    }
+    if (matches.length === 0) return units;
+
+    // 2. 切開 plain leaf，讓候選區間對齊 unit 邊界
+    var bounds = {};
+    for (var mi = 0; mi < matches.length; mi++) {
+      bounds[matches[mi].start] = true;
+      bounds[matches[mi].end] = true;
+    }
+    units = splitPlainLeaves(units, bounds);
+
+    // 3. 依序把覆蓋到的 unit 包成 op node（巢狀，保留前一 stage 的候選可獨立勾選）
+    var starts = [];
+    var lens = [];
+    var acc = 0;
+    for (var u = 0; u < units.length; u++) {
+      var l = effTextOf(units[u]).length;
+      starts.push(acc);
+      lens.push(l);
+      acc += l;
+    }
+
+    var out = [];
+    var ui = 0;
+    var consumedEnd = 0;
+    for (var k = 0; k < matches.length; k++) {
+      var m = matches[k];
+      if (m.start < consumedEnd) continue; // 前一筆候選向外擴張後已吃掉，跳過
+      while (ui < units.length && starts[ui] + lens[ui] <= m.start) {
+        out.push(units[ui]);
+        ui++;
+      }
+      if (ui >= units.length) break;
+      var regionStart = starts[ui];
+      var children = [];
+      while (ui < units.length && starts[ui] < m.end) {
+        children.push(units[ui]);
+        ui++;
+      }
+      var regionEnd = ui < units.length ? starts[ui] : text.length;
+      var beforeStr = text.slice(regionStart, regionEnd);
+      var afterStr = text.slice(regionStart, m.start) + m.after + text.slice(m.end, regionEnd);
+      candSeq++;
+      out.push({
+        type: "op",
+        id: "c" + candSeq,
+        stage: stageKey,
+        before: beforeStr,
+        after: afterStr,
+        accepted: true,
+        children: children
+      });
+      consumedEnd = regionEnd;
+    }
+    while (ui < units.length) {
+      out.push(units[ui]);
+      ui++;
+    }
+    return out;
+  }
+
+  function collectCandidates(units, list) {
+    for (var i = 0; i < units.length; i++) {
+      var u = units[i];
+      if (u.type === "op") {
+        list.push(u);
+        collectCandidates(u.children, list);
+      }
+    }
+    return list;
+  }
+
+  // ---- 渲染 ----
+  function isApplied(u) {
+    return u.accepted && composeUnits(u.children) === u.before;
+  }
+
+  function renderOriginal(units) {
+    var html = "";
+    for (var i = 0; i < units.length; i++) {
+      var u = units[i];
+      if (u.type === "plain") {
+        html += escapeHtml(u.text);
+      } else if (isApplied(u)) {
+        html += '<mark class="cand cand-' + u.stage + '" data-cand-id="' + escapeHtml(u.id) + '">' +
+          escapeHtml(origTextOf(u)) + "</mark>";
+      } else {
+        html += renderOriginal(u.children);
+      }
+    }
+    return html;
+  }
+
+  function renderResult(units) {
+    var html = "";
+    for (var i = 0; i < units.length; i++) {
+      var u = units[i];
+      if (u.type === "plain") {
+        html += escapeHtml(u.text);
+      } else if (isApplied(u)) {
+        html += '<mark class="cand cand-' + u.stage + '" data-cand-id="' + escapeHtml(u.id) + '">' +
+          escapeHtml(u.after) + "</mark>";
+      } else {
+        html += renderResult(u.children);
+      }
+    }
+    return html;
+  }
+
+  // ---- DOM ----
+  var textInput = document.getElementById("text-input");
+  var dropzone = document.getElementById("dropzone");
+  var viewOriginal = document.getElementById("view-original");
+  var viewResult = document.getElementById("view-result");
+  var candidateList = document.getElementById("candidate-list");
+  var candidateCount = document.getElementById("candidate-count");
+  var twTbody = document.getElementById("tw-dict-tbody");
+  var twDictCount = document.getElementById("tw-dict-count");
+  var customStatus = document.getElementById("custom-dict-status");
+
+  var rootUnits = [];
+  var candidates = [];
+  var candById = {};
+  var customDict = {};
+
+  function renderTwDictRows(dict, tbody) {
+    var keys = [];
+    for (var k in dict) {
+      if (Object.prototype.hasOwnProperty.call(dict, k)) keys.push(k);
+    }
+    keys.sort();
+    var parts = [];
+    for (var i = 0; i < keys.length; i++) {
+      parts.push(twRowHtml(keys[i], dict[keys[i]]));
+    }
+    tbody.innerHTML = parts.join("");
+  }
+
+  function twRowHtml(key, val) {
+    return '<tr><td><input type="text" class="tw-key" value="' + escapeHtml(key) +
+      '" aria-label="原詞"></td><td><input type="text" class="tw-val" value="' + escapeHtml(val) +
+      '" aria-label="替換詞"></td><td><button type="button" class="tw-del">刪除</button></td></tr>';
+  }
+
+  function readTwDict() {
+    var dict = {};
+    var rows = twTbody.querySelectorAll("tr");
+    for (var i = 0; i < rows.length; i++) {
+      var keyEl = rows[i].querySelector(".tw-key");
+      var valEl = rows[i].querySelector(".tw-val");
+      if (!keyEl || !valEl) continue;
+      var key = keyEl.value;
+      var val = valEl.value;
+      if (key !== "" && val !== "") dict[key] = val;
+    }
+    return dict;
+  }
+
+  function updateTwCount() {
+    twDictCount.textContent = "目前 " + twTbody.querySelectorAll("tr").length + " 筆";
+  }
+
+  renderTwDictRows(BUILTIN_TW, twTbody);
+  updateTwCount();
+
+  twTbody.addEventListener("click", function (e) {
+    var target = e.target;
+    if (target && target.className === "tw-del") {
+      var tr = target.parentNode.parentNode;
+      tr.parentNode.removeChild(tr);
+      updateTwCount();
+    }
+  });
+
+  document.getElementById("btn-tw-add").addEventListener("click", function () {
+    var keyEl = document.getElementById("tw-new-key");
+    var valEl = document.getElementById("tw-new-val");
+    var key = keyEl.value.trim();
+    var val = valEl.value.trim();
+    if (key === "" || val === "") {
+      showToast("原詞與替換詞都要填");
+      return;
+    }
+    twTbody.insertAdjacentHTML("afterbegin", twRowHtml(key, val));
+    keyEl.value = "";
+    valEl.value = "";
+    updateTwCount();
+    showToast("已新增，按「產生候選」後生效");
+  });
+
+  // ---- 產生候選（按鈕觸發）----
+  function generate() {
+    var text = textInput.value;
+    candSeq = 0;
+    rootUnits = text.length === 0 ? [] : [{ type: "plain", text: text }];
+
+    var twDict = readTwDict();
+    var stages = [
+      { key: "s2t", dict: DICT_S2T },
+      { key: "variant", dict: DICT_VARIANT },
+      { key: "twphrase", dict: twDict },
+      { key: "custom", dict: customDict }
+    ];
+    for (var s = 0; s < stages.length; s++) {
+      rootUnits = runStage(rootUnits, stages[s].dict, maxKeyLen(stages[s].dict), stages[s].key);
+    }
+
+    candidates = collectCandidates(rootUnits, []);
+    candById = {};
+    for (var i = 0; i < candidates.length; i++) candById[candidates[i].id] = candidates[i];
+
+    renderCandidateList();
+    renderPanes();
+  }
+
+  function renderCandidateList() {
+    if (candidates.length === 0) {
+      candidateList.innerHTML = '<li class="muted">（無候選替換）</li>';
+      candidateCount.textContent = "（0 筆）";
+      return;
+    }
+    var parts = [];
+    for (var i = 0; i < candidates.length; i++) {
+      var c = candidates[i];
+      parts.push(
+        "<li><label>" +
+        '<input type="checkbox" data-cand-id="' + escapeHtml(c.id) + '"' + (c.accepted ? " checked" : "") + "> " +
+        '<span class="badge badge-' + c.stage + '">' + escapeHtml(STAGE_LABEL[c.stage]) + "</span>" +
+        '<span class="cand-before">' + escapeHtml(c.before) + "</span> → " +
+        '<span class="cand-after">' + escapeHtml(c.after) + "</span>" +
+        "</label></li>"
+      );
+    }
+    candidateList.innerHTML = parts.join("");
+    candidateCount.textContent = "（" + candidates.length + " 筆）";
+  }
+
+  // 勾選切換：純本地重組，不重新掃描（候選範圍與順序都不會變動）
+  candidateList.addEventListener("change", function (e) {
+    var target = e.target;
+    if (!target || target.type !== "checkbox") return;
+    var id = target.getAttribute("data-cand-id");
+    var node = candById[id];
+    if (!node) return;
+    node.accepted = target.checked;
+    renderPanes();
+  });
+
+  function renderPanes() {
+    if (rootUnits.length === 0) {
+      viewOriginal.innerHTML = '<span class="empty">（無內容）</span>';
+      viewResult.innerHTML = '<span class="empty">（無內容）</span>';
+      return;
+    }
+    viewOriginal.innerHTML = renderOriginal(rootUnits);
+    viewResult.innerHTML = renderResult(rootUnits);
+  }
+
+  function currentResultText() {
+    return composeUnits(rootUnits);
+  }
+
+  document.getElementById("btn-generate").addEventListener("click", generate);
+
+  setupDropZone(dropzone, function (text) {
+    textInput.value = text;
+    showToast("已載入檔案，按「產生候選」開始轉換");
+  }, {
+    accept: [".txt", ".md"],
+    onError: function (msg) {
+      showToast(msg);
+    }
+  });
+
+  // ---- 自訂詞庫匯入／匯出 ----
+  function validateCustomDict(parsed) {
+    if (parsed === null || typeof parsed !== "object") {
+      return "格式錯誤：自訂詞庫必須是 JSON 物件（鍵值對）。";
+    }
+    if (Object.prototype.toString.call(parsed) === "[object Array]") {
+      return "格式錯誤：自訂詞庫必須是 JSON 物件（鍵值對），不接受 JSON 陣列。";
+    }
+    for (var k in parsed) {
+      if (!Object.prototype.hasOwnProperty.call(parsed, k)) continue;
+      if (typeof k !== "string" || k === "") {
+        return "格式錯誤：詞庫的鍵必須是非空字串。";
+      }
+      if (typeof parsed[k] !== "string" || parsed[k] === "") {
+        return "格式錯誤：鍵「" + k + "」的值必須是非空字串。";
+      }
+    }
+    return null;
+  }
+
+  function setCustomStatus(msg, isError) {
+    customStatus.textContent = msg;
+    customStatus.className = isError ? "error-text" : "muted";
+  }
+
+  document.getElementById("custom-dict-file").addEventListener("change", function (e) {
+    var files = e.target.files;
+    if (!files || files.length === 0) return;
+    var file = files[0];
+    var reader = new FileReader();
+    reader.onload = function () {
+      var parsed;
+      try {
+        parsed = JSON.parse(reader.result);
+      } catch (err) {
+        setCustomStatus("格式錯誤：不是合法的 JSON 檔案。既有內建詞庫不受影響。", true);
+        showToast("自訂詞庫匯入失敗");
+        return;
+      }
+      var errMsg = validateCustomDict(parsed);
+      if (errMsg) {
+        setCustomStatus(errMsg + "既有內建詞庫不受影響。", true);
+        showToast("自訂詞庫匯入失敗");
+        return;
+      }
+      customDict = parsed;
+      var n = 0;
+      for (var k in customDict) {
+        if (Object.prototype.hasOwnProperty.call(customDict, k)) n++;
+      }
+      setCustomStatus("已匯入自訂詞庫 " + n + " 筆，按「產生候選」後生效。", false);
+      showToast("已匯入自訂詞庫 " + n + " 筆");
+    };
+    reader.onerror = function () {
+      setCustomStatus("讀取檔案失敗。既有內建詞庫不受影響。", true);
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });
+
+  document.getElementById("btn-custom-export").addEventListener("click", function () {
+    downloadFile("zh-tw-localizer-custom-dict.json", JSON.stringify(customDict, null, 2), "application/json;charset=utf-8");
+  });
+
+  document.getElementById("btn-custom-clear").addEventListener("click", function () {
+    customDict = {};
+    setCustomStatus("尚未匯入自訂詞庫。", false);
+    showToast("已清除自訂詞庫");
+  });
+
+  // ---- 輸出 ----
+  document.getElementById("btn-copy").addEventListener("click", function () {
+    copyToClipboard(currentResultText()).then(function (ok) {
+      showToast(ok ? "已複製轉換結果" : "複製失敗，請手動選取");
+    });
+  });
+
+  document.getElementById("btn-download-txt").addEventListener("click", function () {
+    downloadFile("zh-tw-localizer-result.txt", currentResultText(), "text/plain;charset=utf-8");
+  });
+
+  document.getElementById("btn-download-md").addEventListener("click", function () {
+    downloadFile("zh-tw-localizer-result.md", currentResultText(), "text/markdown;charset=utf-8");
+  });
+
+  function buildCleanHtmlCopy() {
+    var clone = document.documentElement.cloneNode(true);
+
+    var ta = clone.querySelector("#text-input");
+    if (ta) {
+      ta.value = "";
+      ta.textContent = "";
+      ta.removeAttribute("value");
+    }
+
+    var vo = clone.querySelector("#view-original");
+    if (vo) vo.innerHTML = '<span class="empty">（尚未產生候選）</span>';
+    var vr = clone.querySelector("#view-result");
+    if (vr) vr.innerHTML = '<span class="empty">（尚未產生候選）</span>';
+
+    var cl = clone.querySelector("#candidate-list");
+    if (cl) cl.innerHTML = '<li class="muted">（尚未產生候選）</li>';
+    var cc = clone.querySelector("#candidate-count");
+    if (cc) cc.textContent = "（0 筆）";
+
+    var cs = clone.querySelector("#custom-dict-status");
+    if (cs) {
+      cs.textContent = "尚未匯入自訂詞庫。";
+      cs.className = "muted";
+    }
+
+    var newKey = clone.querySelector("#tw-new-key");
+    if (newKey) { newKey.value = ""; newKey.removeAttribute("value"); }
+    var newVal = clone.querySelector("#tw-new-val");
+    if (newVal) { newVal.value = ""; newVal.removeAttribute("value"); }
+
+    // 詞庫表格還原成內建詞庫（使用者新增／修改的列會被序列化進 value 屬性，必須清掉）
+    var tbody = clone.querySelector("#tw-dict-tbody");
+    if (tbody) renderTwDictRows(BUILTIN_TW, tbody);
+    var tc = clone.querySelector("#tw-dict-count");
+    if (tc) tc.textContent = "";
+
+    // showToast() 動態注入的元素會被序列化，訊息可能含使用者內容
+    var toastEl = clone.querySelector("#__shared_toast");
+    if (toastEl && toastEl.parentNode) toastEl.parentNode.removeChild(toastEl);
+
+    var navBack = clone.querySelector(".nav-back");
+    if (navBack && navBack.parentNode) navBack.parentNode.removeChild(navBack);
+
+    var htmlStr = "<!DOCTYPE html>\n" + clone.outerHTML;
+    downloadFile("zh-tw-localizer-offline.html", htmlStr, "text/html;charset=utf-8");
+  }
+
+  document.getElementById("btn-download-offline").addEventListener("click", buildCleanHtmlCopy);
+})();
+</script>
+</body>
+</html>

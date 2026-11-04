@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>使用手冊 - Excel 轉 PDF 工具</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --bg: #f8fafc;
+    --card-bg: #ffffff;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 24px;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.875rem;
+    margin-bottom: 16px;
+  }
+  .back-link:hover { color: var(--primary); }
+  header { text-align: center; margin-bottom: 32px; }
+  header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  header p { color: var(--text-muted); margin-top: 6px; font-size: 0.95rem; }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .card h2 {
+    font-size: 1.2rem;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #ffffff;
+    background: var(--primary);
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .card .desc { color: var(--text-muted); font-size: 0.9rem; margin: 6px 0 18px; }
+  .card ol {
+    margin-left: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .card ol li::marker { color: var(--primary); font-weight: 700; }
+  code {
+    background: #eff6ff;
+    color: var(--primary-hover);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  .note {
+    margin-top: 16px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 0.85rem;
+    color: #92400e;
+  }
+  .note strong { color: #78350f; }
+  .platform-tag {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: #f1f5f9;
+    padding: 2px 10px;
+    border-radius: 999px;
+    margin-left: auto;
+  }
+  .card h2 { justify-content: space-between; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <a class="back-link" href="index.html">← 回到專案首頁</a>
+    <header>
+      <h1>📖 使用手冊</h1>
+      <p>三種轉檔方式，依你的環境挑一種即可</p>
+    </header>
+
+    <div class="card">
+      <h2><span>🌐 方案 A：線上轉檔網頁版</span><span class="platform-tag">任何瀏覽器</span></h2>
+      <p class="desc">純前端運作，不需要安裝 Office，適合只需要表格數值、不需要 100% 還原統計圖表/流程圖的情境。</p>
+      <ol>
+        <li>直接以任一瀏覽器雙擊開啟 <code>converter.html</code>（或從<a href="index.html">首頁</a>點「線上試用」）。</li>
+        <li>將 Excel 檔案（<code>.xlsx</code> / <code>.xls</code> / <code>.csv</code>）拖曳至網頁放置區，或點擊放置區選檔。</li>
+        <li>系統會自動修剪無效空白邊界，並預設載入「📑 全部工作表」。</li>
+        <li>點選「🖨️ 列印 / 另存為 PDF」，在瀏覽器列印對話框中選擇「另存為 PDF」即可完成。</li>
+      </ol>
+      <div class="note"><strong>限制：</strong>純前端解析無法重繪 Excel 原生的統計圖表 (Charts) 與 SmartArt 流程圖，這兩種內容需要用方案 B。</div>
+    </div>
+
+    <div class="card">
+      <h2><span>🪟 方案 B-1：Windows 原生腳本</span><span class="platform-tag">Windows</span></h2>
+      <p class="desc">呼叫本機已安裝的 Excel 引擎匯出，100% 還原圖表與流程圖，零安裝、免系統管理員權限。</p>
+      <ol>
+        <li>下載 <code>拖曳Excel至此轉PDF_Windows版.zip</code>，<strong>解壓縮</strong>後會得到 <code>拖曳Excel至此轉PDF.bat</code>，放到桌面或放有 Excel 檔案的資料夾。</li>
+        <li><strong>選取一個或多個 Excel 檔案，直接拖曳放到該 <code>.bat</code> 圖示上方</strong>。</li>
+        <li>系統會在背景靜默呼叫 Excel 原生引擎，自動於同目錄產出標準 PDF。</li>
+        <li>沒有東西可拖曳時，直接雙擊執行：若當前目錄找不到任何 Excel 檔案，會自動跳出 Windows 的「開啟檔案」對話框，讓你直接選檔（可一次選多個）。</li>
+      </ol>
+      <div class="note"><strong>需求：</strong>這台電腦要已安裝 Microsoft Excel（腳本是呼叫本機既有的 Excel，不會另外下載安裝任何東西）。</div>
+      <div class="note"><strong>若跳出「Windows 已保護您的電腦」提示：</strong>這是 SmartScreen 對「不常見下載」的正常警示（因為這是全新、下載次數少的檔案），不是病毒偵測。點選視窗中的<strong>「其他資訊」</strong>，再點<strong>「仍要執行」</strong>即可繼續。若檔案圖示上有鎖頭符號、或直接被瀏覽器擋下無法下載，可在檔案上按右鍵 →「內容」→ 勾選最下方的「<strong>解除封鎖</strong>」→ 確定，再重新執行。</div>
+    </div>
+
+    <div class="card">
+      <h2><span>🍎 方案 B-2：macOS 原生腳本</span><span class="platform-tag">macOS</span></h2>
+      <p class="desc">呼叫本機已安裝的 Excel（透過 AppleScript）匯出，100% 還原圖表與流程圖，零安裝、免系統管理員權限。</p>
+      <ol>
+        <li>下載 <code>拖曳Excel至此轉PDF.command</code>，放到桌面或放有 Excel 檔案的資料夾。</li>
+        <li>雙擊執行，會自動轉換同目錄下的 Excel 檔案；或直接把 Excel 檔案拖到程式圖示上執行。</li>
+        <li>系統會呼叫 macOS 上的 Excel 原生引擎，於同目錄產出標準 PDF。</li>
+        <li>若當前目錄找不到任何 Excel 檔案，會自動跳出 Finder 的「選擇檔案」對話框，讓你選檔（可一次選多個）。</li>
+      </ol>
+      <div class="note"><strong>首次執行提醒：</strong>macOS 會跳出「是否允許控制 Microsoft Excel」的系統對話框，請點選「允許」，之後就不會再問。</div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "assets": {
+    "stMerged": {
+      "path": "simplified-to-traditional.json",
+      "version": "OpenCC STPhrases+STCharacters (opencc-python-reimplemented 0.1.7)",
+      "license": "Apache License 2.0",
+      "escape_mode": "json_string"
+    },
+    "twVariants": {
+      "path": "tw-variants.json",
+      "version": "OpenCC TWVariants (opencc-python-reimplemented 0.1.7)",
+      "license": "Apache License 2.0",
+      "escape_mode": "json_string"
+    },
+    "twPhrases": {
+      "path": "tw-phrases.json",
+      "version": "OpenCC TWPhrases (opencc-python-reimplemented 0.1.7)",
+      "license": "Apache License 2.0",
+      "escape_mode": "json_string"
+    }
+  }
+}

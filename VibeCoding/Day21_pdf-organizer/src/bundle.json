@@ -1,0 +1,28 @@
+{
+  "assets": {
+    "pdfjs": {
+      "path": "../../shared/vendor/pdf.min.js",
+      "license": "Apache-2.0",
+      "version": "3.11.174",
+      "escape_mode": "raw_js"
+    },
+    "pdfjs_worker": {
+      "path": "../../shared/vendor/pdf.worker.min.js",
+      "license": "Apache-2.0",
+      "version": "3.11.174",
+      "escape_mode": "json_string"
+    },
+    "cantoo_pdf_lib": {
+      "path": "../../shared/vendor/cantoo-pdf-lib.min.js",
+      "license": "MIT",
+      "version": "2.9.1",
+      "escape_mode": "raw_js"
+    },
+    "fflate": {
+      "path": "../../shared/vendor/fflate.umd.js",
+      "license": "MIT",
+      "version": "0.8.3",
+      "escape_mode": "raw_js"
+    }
+  }
+}

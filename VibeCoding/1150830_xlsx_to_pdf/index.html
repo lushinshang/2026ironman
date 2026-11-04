@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Excel 轉 PDF 離線工具集</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --bg: #f8fafc;
+    --card-bg: #ffffff;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 24px;
+  }
+  .container { max-width: 1080px; margin: 0 auto; }
+
+  .hero {
+    text-align: center;
+    padding: 48px 24px 40px;
+  }
+  .hero h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 12px;
+  }
+  .hero p.lead {
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    max-width: 620px;
+    margin: 0 auto 20px;
+  }
+  .badges {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  .badge {
+    background: #eff6ff;
+    color: var(--primary-hover);
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: 999px;
+  }
+  .cta-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--primary);
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 14px 28px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(37,99,235,0.25);
+    transition: background 0.15s ease;
+  }
+  .cta-primary:hover { background: var(--primary-hover); }
+
+  section { margin-bottom: 40px; }
+  section > h2 {
+    font-size: 1.15rem;
+    color: #0f172a;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+  }
+
+  .doc-card {
+    display: block;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px;
+    text-decoration: none;
+    color: inherit;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+  .doc-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary);
+    box-shadow: 0 8px 16px rgba(37,99,235,0.12);
+  }
+  .doc-card .icon { font-size: 1.8rem; margin-bottom: 10px; display: block; }
+  .doc-card h3 { font-size: 1rem; color: #0f172a; margin-bottom: 6px; }
+  .doc-card p { font-size: 0.85rem; color: var(--text-muted); }
+
+  .download-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
+  }
+  .download-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .download-card h3 {
+    font-size: 1rem;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .download-card p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px; }
+  .download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f1f5f9;
+    color: #334155;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 9px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .download-btn:hover { background: #e2e8f0; }
+
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .feature {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    text-align: center;
+  }
+  .feature .icon { font-size: 1.5rem; margin-bottom: 8px; }
+  .feature h4 { font-size: 0.9rem; color: #0f172a; margin-bottom: 4px; }
+  .feature p { font-size: 0.8rem; color: var(--text-muted); }
+
+  footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    padding: 24px 0;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <h1>📊 Excel 轉 PDF 離線工具集</h1>
+      <p class="lead">
+        給機密資料管制環境的完整解決方案：<strong>100% 不連網</strong>、<strong>零安裝</strong>、<strong>免系統管理員權限</strong>，
+        並且能完整保留 Excel 的統計圖表與 SmartArt 流程圖。
+      </p>
+      <div class="badges">
+        <span class="badge">🔒 完全離線</span>
+        <span class="badge">⚙️ 零安裝</span>
+        <span class="badge">🛡️ 免管理員權限</span>
+        <span class="badge">📈 100% 還原圖表</span>
+      </div>
+      <a class="cta-primary" href="converter.html">🌐 線上試用網頁版 →</a>
+    </div>
+
+    <section>
+      <h2>三大核心優勢</h2>
+      <div class="features">
+        <div class="feature">
+          <div class="icon">🔒</div>
+          <h4>資料不外流</h4>
+          <p>不上傳雲端，全程在本機處理，適合醫院、企業等機密資料環境。</p>
+        </div>
+        <div class="feature">
+          <div class="icon">⚙️</div>
+          <h4>零安裝免權限</h4>
+          <p>不需要 Python、Node.js 或 LibreOffice，一般使用者帳號就能執行。</p>
+        </div>
+        <div class="feature">
+          <div class="icon">📈</div>
+          <h4>圖表完美還原</h4>
+          <p>原生腳本呼叫本機 Excel 引擎，統計圖表、PDCA 流程圖 100% 一致。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>怎麼用</h2>
+      <div class="grid">
+        <a class="doc-card" href="converter.html">
+          <span class="icon">🌐</span>
+          <h3>線上轉檔工具</h3>
+          <p>直接在瀏覽器裡拖曳 Excel 檔案，轉出 PDF。不需下載任何東西。</p>
+        </a>
+        <a class="doc-card" href="manual.html">
+          <span class="icon">📖</span>
+          <h3>使用手冊</h3>
+          <p>三種轉檔方式的詳細操作步驟：網頁版、Windows、macOS。</p>
+        </a>
+        <a class="doc-card" href="security-report.html">
+          <span class="icon">🛡️</span>
+          <h3>資安檢測報告</h3>
+          <p>滲透測試視角的原始碼審查結果與修補紀錄。</p>
+        </a>
+        <a class="doc-card" href="spec.html">
+          <span class="icon">📐</span>
+          <h3>系統規格文件</h3>
+          <p>開發演進歷程、雙軌架構決策流程圖與核心實作邏輯。</p>
+        </a>
+      </div>
+    </section>
+
+    <section>
+      <h2>下載零安裝原生腳本</h2>
+      <div class="download-grid">
+        <div class="download-card">
+          <h3>🪟 Windows 版</h3>
+          <p>呼叫本機 Excel COM 元件，100% 還原圖表與流程圖。下載為 .zip，請先解壓縮再使用（避免瀏覽器直接攔截 .bat 下載）。</p>
+          <a class="download-btn" href="拖曳Excel至此轉PDF_Windows版.zip" download>⬇️ 下載 .zip</a>
+        </div>
+        <div class="download-card">
+          <h3>🍎 macOS 版</h3>
+          <p>呼叫本機 Excel 原生引擎（AppleScript），100% 還原圖表與流程圖。</p>
+          <a class="download-btn" href="拖曳Excel至此轉PDF.command" download>⬇️ 下載 .command</a>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Excel 轉 PDF 離線工具集 ‧ 純前端 / 原生腳本雙軌架構 ‧ 完全不連網
+    </footer>
+  </div>
+</body>
+</html>

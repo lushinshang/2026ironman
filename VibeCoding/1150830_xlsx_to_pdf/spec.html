@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>系統規格文件 - Excel 轉 PDF 工具</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --bg: #f8fafc;
+    --card-bg: #ffffff;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 24px;
+  }
+  .container { max-width: 1080px; margin: 0 auto; }
+  .back-link {
+    display: inline-flex; align-items: center; gap: 4px;
+    color: var(--text-muted); text-decoration: none; font-size: 0.875rem; margin-bottom: 16px;
+  }
+  .back-link:hover { color: var(--primary); }
+  header { text-align: center; margin-bottom: 24px; }
+  header h1 { font-size: 1.75rem; font-weight: 700; color: #0f172a; }
+  header p { color: var(--text-muted); margin-top: 6px; font-size: 0.9rem; }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .card h2 { font-size: 1.2rem; color: #0f172a; margin-bottom: 14px; }
+  .card p { font-size: 0.9rem; margin-bottom: 10px; }
+  .diagram-wrap { overflow-x: auto; }
+  .diagram-wrap svg { display: block; margin: 0 auto; min-width: 640px; }
+
+  table.compare {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  table.compare th, table.compare td {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    text-align: left;
+  }
+  table.compare th { background: #f1f5f9; color: #334155; }
+  table.compare td.yes { color: #16a34a; font-weight: 600; }
+  table.compare td.no { color: #dc2626; }
+
+  code {
+    background: #eff6ff;
+    color: var(--primary-hover);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <a class="back-link" href="index.html">← 回到專案首頁</a>
+    <header>
+      <h1>📐 系統規格文件</h1>
+      <p>開發演進歷程與雙軌架構決策</p>
+    </header>
+
+    <div class="card">
+      <h2>開發演進歷程（五階段）</h2>
+      <p>從純前端可行性研究，到發現 DrawingML 瓶頸，最終走向「零安裝原生腳本」雙軌架構。</p>
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 1220 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="開發五階段演進圖">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+            </marker>
+          </defs>
+          <!-- 連接線 -->
+          <line x1="220" y1="70" x2="260" y2="70" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+          <line x1="460" y1="70" x2="500" y2="70" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+          <line x1="700" y1="70" x2="740" y2="70" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+          <line x1="940" y1="70" x2="980" y2="70" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <!-- 階段 1 -->
+          <rect x="0" y="20" width="220" height="100" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+          <text x="110" y="45" text-anchor="middle" font-size="13" font-weight="700" fill="#1d4ed8">Phase 1</text>
+          <text x="110" y="68" text-anchor="middle" font-size="11" fill="#1e293b">純前端可行性研究</text>
+          <text x="110" y="88" text-anchor="middle" font-size="10" fill="#64748b">SheetJS + Print CSS</text>
+          <text x="110" y="103" text-anchor="middle" font-size="10" fill="#64748b">vs jsPDF 截圖</text>
+
+          <!-- 階段 2 -->
+          <rect x="260" y="20" width="240" height="100" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+          <text x="380" y="45" text-anchor="middle" font-size="13" font-weight="700" fill="#1d4ed8">Phase 2</text>
+          <text x="380" y="68" text-anchor="middle" font-size="11" fill="#1e293b">單檔 HTML 實作</text>
+          <text x="380" y="88" text-anchor="middle" font-size="10" fill="#64748b">內嵌 SheetJS 核心</text>
+          <text x="380" y="103" text-anchor="middle" font-size="10" fill="#64748b">多工作表分頁整合</text>
+
+          <!-- 階段 3 -->
+          <rect x="500" y="20" width="240" height="100" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
+          <text x="620" y="45" text-anchor="middle" font-size="13" font-weight="700" fill="#c2410c">Phase 3</text>
+          <text x="620" y="68" text-anchor="middle" font-size="11" fill="#1e293b">真實文件比對</text>
+          <text x="620" y="88" text-anchor="middle" font-size="10" fill="#64748b">發現 DrawingML 瓶頸</text>
+          <text x="620" y="103" text-anchor="middle" font-size="10" fill="#64748b">純 JS 無法重繪圖表</text>
+
+          <!-- 階段 4 -->
+          <rect x="740" y="20" width="240" height="100" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+          <text x="860" y="45" text-anchor="middle" font-size="13" font-weight="700" fill="#15803d">Phase 4</text>
+          <text x="860" y="68" text-anchor="middle" font-size="11" fill="#1e293b">雙軌方案成型</text>
+          <text x="860" y="88" text-anchor="middle" font-size="10" fill="#64748b">原生拖曳腳本</text>
+          <text x="860" y="103" text-anchor="middle" font-size="10" fill="#64748b">零安裝調用本機 Office</text>
+
+          <!-- 階段 5 -->
+          <rect x="980" y="20" width="240" height="100" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+          <text x="1100" y="45" text-anchor="middle" font-size="13" font-weight="700" fill="#15803d">Phase 5</text>
+          <text x="1100" y="68" text-anchor="middle" font-size="11" fill="#1e293b">HTML 智慧裁切</text>
+          <text x="1100" y="88" text-anchor="middle" font-size="10" fill="#64748b">trimWorksheetBounds</text>
+          <text x="1100" y="103" text-anchor="middle" font-size="10" fill="#64748b">動態邊界計算</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>雙軌架構決策流程</h2>
+      <p>依使用者環境（有無 Office、是否需要 100% 還原圖表）決定走哪一條路徑。</p>
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 1050 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="雙軌架構決策流程圖">
+          <defs>
+            <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+            </marker>
+          </defs>
+
+          <!-- Start -->
+          <rect x="320" y="10" width="260" height="50" rx="25" fill="#2563eb"/>
+          <text x="450" y="40" text-anchor="middle" font-size="12" fill="#ffffff" font-weight="600">使用者收到 Excel 檔案</text>
+          <line x1="450" y1="60" x2="450" y2="95" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow2)"/>
+
+          <!-- Decision diamond -->
+          <polygon points="450,95 610,175 450,255 290,175" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+          <text x="450" y="170" text-anchor="middle" font-size="12" font-weight="700" fill="#92400e">使用者環境</text>
+          <text x="450" y="188" text-anchor="middle" font-size="12" font-weight="700" fill="#92400e">與需求</text>
+
+          <!-- 分支到 A -->
+          <line x1="290" y1="175" x2="170" y2="175" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="170" y1="175" x2="170" y2="270" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow2)"/>
+          <text x="80" y="230" font-size="10" fill="#64748b">無 Office / 僅需表格數據</text>
+
+          <!-- 分支到 B -->
+          <line x1="610" y1="175" x2="730" y2="175" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="730" y1="175" x2="730" y2="270" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow2)"/>
+          <text x="655" y="230" font-size="10" fill="#64748b">有 Office / 需 100% 還原</text>
+
+          <!-- Path A box -->
+          <rect x="40" y="270" width="260" height="60" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+          <text x="170" y="295" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">方案 A：純 HTML 網頁版</text>
+          <text x="170" y="313" text-anchor="middle" font-size="10" fill="#475569">converter.html</text>
+
+          <!-- Path B box -->
+          <rect x="600" y="270" width="260" height="60" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+          <text x="730" y="295" text-anchor="middle" font-size="12" font-weight="700" fill="#15803d">方案 B：零安裝拖曳小腳本</text>
+          <text x="730" y="313" text-anchor="middle" font-size="10" fill="#475569">.bat / .command</text>
+
+          <!-- A -> OutA -->
+          <line x1="170" y1="330" x2="170" y2="480" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow2)"/>
+
+          <!-- B -> Windows / macOS -->
+          <line x1="700" y1="330" x2="650" y2="390" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow2)"/>
+          <line x1="760" y1="330" x2="810" y2="390" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow2)"/>
+
+          <rect x="530" y="390" width="240" height="50" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+          <text x="650" y="420" text-anchor="middle" font-size="11" fill="#15803d">拖曳Excel至此轉PDF.bat（Windows）</text>
+
+          <rect x="770" y="390" width="240" height="50" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+          <text x="890" y="420" text-anchor="middle" font-size="10.5" fill="#15803d">拖曳Excel至此轉PDF.command（macOS）</text>
+
+          <line x1="650" y1="440" x2="700" y2="480" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow2)"/>
+          <line x1="890" y1="440" x2="760" y2="480" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow2)"/>
+
+          <!-- Out A -->
+          <rect x="30" y="480" width="280" height="80" rx="10" fill="#ffffff" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <text x="170" y="508" text-anchor="middle" font-size="11" font-weight="700" fill="#1d4ed8">純前端向量列印 PDF</text>
+          <text x="170" y="526" text-anchor="middle" font-size="10" fill="#475569">含多工作表、去除多餘空白</text>
+          <text x="170" y="542" text-anchor="middle" font-size="10" fill="#dc2626">❌ 不含圖表 / SmartArt</text>
+
+          <!-- Out B -->
+          <rect x="480" y="480" width="380" height="80" rx="10" fill="#ffffff" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <text x="670" y="508" text-anchor="middle" font-size="11" font-weight="700" fill="#15803d">100% 原廠標準 PDF</text>
+          <text x="670" y="526" text-anchor="middle" font-size="10" fill="#475569">含統計圖表、SmartArt、原版邊界</text>
+          <text x="670" y="542" text-anchor="middle" font-size="10" fill="#16a34a">✅ 100% 完整還原</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>方案比較表</h2>
+      <table class="compare">
+        <thead>
+          <tr><th>比較項目</th><th>方案 A：converter.html</th><th>方案 B：.bat / .command</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>執行環境</td><td>任何瀏覽器</td><td>Windows（內建 PowerShell）/ macOS（內建環境）</td></tr>
+          <tr><td>安裝/權限</td><td class="yes">零安裝、免管理員權限</td><td class="yes">零安裝、免管理員權限（利用現有 Office）</td></tr>
+          <tr><td>聯網需求</td><td class="yes">100% 不聯網</td><td class="yes">100% 不聯網</td></tr>
+          <tr><td>空白行列修剪</td><td class="yes">自動裁切無效空白</td><td class="yes">遵循 Excel 原廠列印區域</td></tr>
+          <tr><td>統計圖表 (Charts)</td><td class="no">❌ 純 JS 無法解析 DrawingML</td><td class="yes">✅ 100% 完美還原</td></tr>
+          <tr><td>流程圖 (SmartArt)</td><td class="no">❌ 純 JS 無法解析 DrawingML</td><td class="yes">✅ 100% 完美還原</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>核心實作邏輯</h2>
+      <p><code>trimWorksheetBounds()</code>：遍歷工作表非 meta 鍵值，動態計算含值儲存格的最小/最大行列，重寫 <code>ws['!ref']</code>，避免 Excel 虛標的 256 欄位產生大量無效空白 <code>&lt;td&gt;</code>。</p>
+      <p><code>sanitizeSheetHtml()</code>：用 <code>DOMParser</code> 惰性解析 <code>sheet_to_html()</code> 輸出，以標籤/屬性白名單過濾後才掛進真正 DOM，防止惡意 xlsx 夾帶的標籤/事件屬性被執行（詳見<a href="security-report.html">資安檢測報告</a>）。</p>
+      <p>Windows 端用 PowerShell 呼叫 <code>Excel.Application</code> COM 物件的 <code>ExportAsFixedFormat</code>；macOS 端用 <code>osascript</code> 呼叫 AppleScript 操作 Microsoft Excel 的 <code>save workbook as ... file format PDF file format</code>。</p>
+    </div>
+  </div>
+</body>
+</html>

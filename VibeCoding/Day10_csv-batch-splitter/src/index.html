@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>總表 → 分單位批次拆檔</title>
+<style>
+/* shared/base.css — 共用樣式基底，逐字複製，勿手動修改（改請去 shared/base.css 源頭並重新複製） */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 {
+  line-height: 1.3;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+textarea,
+input[type="text"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 160px;
+}
+
+button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--color-bg);
+}
+
+button.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover {
+  background: var(--color-primary-hover);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover {
+  text-decoration: underline;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+/* --- Day10 專屬樣式 --- */
+
+.section-gap {
+  margin-top: 20px;
+}
+
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  align-items: flex-start;
+}
+
+.field-row .field-label {
+  font-weight: 600;
+  min-width: 80px;
+}
+
+#exclude-cols-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+
+#exclude-cols-container label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+#file-picker-label {
+  display: inline-block;
+  margin-top: 10px;
+  cursor: pointer;
+  color: var(--color-primary);
+  text-decoration: underline;
+  font-size: 0.9rem;
+}
+
+#file-picker-input {
+  display: none;
+}
+
+#upload-msg {
+  margin-top: 8px;
+  font-size: 0.88rem;
+}
+
+#upload-msg.warn {
+  color: #b45309;
+}
+
+#upload-msg.reject {
+  color: var(--color-danger);
+}
+
+.hidden {
+  display: none !important;
+}
+
+button.small {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+#encoding-fallback {
+  margin-top: 8px;
+  font-size: 0.88rem;
+  color: #b45309;
+}
+
+#unique-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.group-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.group-row .group-value {
+  font-family: var(--font-mono);
+  min-width: 120px;
+  word-break: break-all;
+}
+
+.group-row .group-count {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.group-row .group-filename {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  flex: 1;
+  word-break: break-all;
+}
+
+#totals-info {
+  margin-top: 12px;
+  font-size: 0.92rem;
+}
+
+#totals-info .totals-ok {
+  color: #15803d;
+  font-weight: 600;
+}
+
+#totals-info .totals-excluded {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.about-box {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.empty-hint {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="nav-back" href="../index.html">← 返回作品集</a>
+
+  <div class="page-header">
+    <h1>總表 → 分單位批次拆檔</h1>
+  </div>
+
+  <p class="section-gap" style="color: var(--color-text-muted); font-size: 0.9rem; margin-top: 0;">
+    上傳一份 CSV 總表，選定拆分依據欄位後，依欄位值自動分組，逐組可單獨下載，也可一次打包成 ZIP。
+    全程在瀏覽器本機執行，不上傳任何內容。
+  </p>
+
+  <div id="dropzone" class="dropzone">拖曳 CSV 檔案到此，或點擊下方連結選擇檔案</div>
+  <label id="file-picker-label" for="file-picker-input">選擇 CSV 檔案…</label>
+  <input type="file" id="file-picker-input" accept=".csv">
+  <div id="upload-msg"></div>
+  <div id="encoding-fallback" class="hidden"></div>
+
+  <div class="section-gap card">
+    <div class="field-row">
+      <span class="field-label">拆分欄位：</span>
+      <select id="split-col-select" disabled>
+        <option value="">（請先上傳 CSV）</option>
+      </select>
+    </div>
+    <div class="section-gap field-row">
+      <span class="field-label">排除欄位：</span>
+      <div id="exclude-cols-container"><span class="empty-hint">（請先上傳 CSV）</span></div>
+    </div>
+  </div>
+
+  <div class="section-gap card">
+    <h3>Unique Values（依原表出現順序）</h3>
+    <div id="unique-list-container"><span class="empty-hint">尚未上傳或尚未選定拆分欄位</span></div>
+    <div id="totals-info"></div>
+  </div>
+
+  <div class="section-gap button-row">
+    <button type="button" id="btn-copy">複製拆分摘要</button>
+    <button type="button" id="btn-zip" class="primary">全部下載 ZIP</button>
+    <button type="button" id="btn-offline">下載本工具離線版</button>
+  </div>
+
+  <div class="about-box" id="about-box">
+    <p style="margin: 0 0 8px;">本工具全程在瀏覽器本機執行，不上傳任何內容。上傳的 CSV 檔案僅用於在本機解析與拆分，不會被儲存或送出。</p>
+    <!--{{LICENSES}}-->
+  </div>
+</div>
+
+<!--{{SHARED:util-escape}}-->
+<!--{{SHARED:ui-toast}}-->
+<!--{{SHARED:io-download}}-->
+<!--{{SHARED:io-clipboard}}-->
+<!--{{SHARED:io-dropzone}}-->
+<!--{{ASSET:papaparse}}-->
+<!--{{SHARED:csv-decode}}-->
+<!--{{SHARED:csv-parse}}-->
+<!--{{SHARED:csv-write}}-->
+<!--{{SHARED:csv-types}}-->
+<!--{{ASSET:fflate}}-->
+<!--{{SHARED:io-zip}}-->
+
+<script>
+(function () {
+  "use strict";
+
+  // ---- 純函式：檔名生成規則（proposal.md「檔名生成規則」Step 0–7） ----
+
+  var WINDOWS_ILLEGAL_RE = /[<>:"/\\|?*]/g;
+  var CONTROL_CHAR_RE = /[\x00-\x1F]/g;
+  var RESERVED_NAMES = [
+    'CON', 'PRN', 'AUX', 'NUL',
+    'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
+    'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'
+  ];
+  var MAX_BASENAME_LEN = 100;
+
+  function sanitizeFilename(groupValue) {
+    var base;
+    if (groupValue === '') {
+      base = '(空值)';
+    } else {
+      base = String(groupValue);
+      base = base.replace(WINDOWS_ILLEGAL_RE, '_');
+      base = base.replace(CONTROL_CHAR_RE, '_');
+      base = base.replace(/^\s+|\s+$/g, '');
+      base = base.replace(/\.+$/, '');
+      // proposal.md Step 7 範例（"///" 這種全部由非法字元組成 → 未命名）：
+      // Step 1 是逐字元置換為 "_"，不是移除，所以 "///" 這種輸入照 Step 1–4
+      // 字面上會變成 "___"，不是空字串。若不視為「等同空」，Step 7 的兜底永遠
+      // 不會對這類輸入生效，與範例矛盾。因此這裡把「全部由底線組成」視同空字串，
+      // 讓它落入 Step 7 的 "未命名" 兜底。
+      if (/^_+$/.test(base)) base = '';
+    }
+
+    if (RESERVED_NAMES.indexOf(base.toUpperCase()) !== -1) {
+      base = base + '_group';
+    }
+
+    if (base.length > MAX_BASENAME_LEN) {
+      base = base.slice(0, MAX_BASENAME_LEN);
+    }
+
+    if (base === '') {
+      base = '未命名';
+    }
+
+    return base;
+  }
+
+  // ---- 純函式：撞名去重（proposal.md「撞名處理」） ----
+
+  function dedupeFilenames(baseNames) {
+    var used = {};
+    var results = [];
+
+    baseNames.forEach(function (base) {
+      var candidate = base;
+      var lowerKey = candidate.toLowerCase();
+
+      if (Object.prototype.hasOwnProperty.call(used, lowerKey)) {
+        var n = 2;
+        var final = null;
+        while (final === null) {
+          var suffix = '_' + n;
+          var maxBaseLen = MAX_BASENAME_LEN - suffix.length;
+          var truncatedBase = base.length > maxBaseLen ? base.slice(0, maxBaseLen) : base;
+          var attempt = truncatedBase + suffix;
+          var attemptKey = attempt.toLowerCase();
+          if (!Object.prototype.hasOwnProperty.call(used, attemptKey)) {
+            final = attempt;
+          } else {
+            n += 1;
+          }
+        }
+        candidate = final;
+        lowerKey = candidate.toLowerCase();
+      }
+
+      used[lowerKey] = true;
+      results.push(candidate);
+    });
+
+    return results;
+  }
+
+  // ---- 純函式：依欄位分組（proposal.md「分組比對規則」——逐字元完全相等） ----
+
+  function computeGroups(table, colIndex) {
+    var order = [];
+    var indexByValue = {};
+
+    table.rows.forEach(function (row) {
+      var value = cellAt(row, colIndex);
+      var key = 'v:' + value;
+      if (!Object.prototype.hasOwnProperty.call(indexByValue, key)) {
+        indexByValue[key] = order.length;
+        order.push({ value: value, rows: [] });
+      }
+      order[indexByValue[key]].rows.push(row);
+    });
+
+    return order;
+  }
+
+  // ---- 狀態 ----
+
+  var state = {
+    table: null,
+    groups: [],       // [{ value, rows, filename, checked }]
+    splitColIndex: -1,
+    arrayBuffer: null
+  };
+
+  // ---- DOM ----
+
+  var dropzoneEl = document.getElementById('dropzone');
+  var filePickerInput = document.getElementById('file-picker-input');
+  var uploadMsgEl = document.getElementById('upload-msg');
+  var encodingFallbackEl = document.getElementById('encoding-fallback');
+  var splitColSelect = document.getElementById('split-col-select');
+  var excludeColsContainer = document.getElementById('exclude-cols-container');
+  var uniqueListContainer = document.getElementById('unique-list-container');
+  var totalsInfoEl = document.getElementById('totals-info');
+
+  // ---- 上傳與解析 ----
+
+  function onUploadError(message) {
+    uploadMsgEl.textContent = message;
+    uploadMsgEl.className = 'reject';
+  }
+
+  function renderEncodingFallback(confidence, encoding) {
+    if (confidence !== 'fallback' && confidence !== 'manual') {
+      encodingFallbackEl.classList.add('hidden');
+      encodingFallbackEl.innerHTML = '';
+      return;
+    }
+    var label = confidence === 'fallback'
+      ? '偵測為 Big5，若顯示為亂碼請手動切換編碼：'
+      : '已手動切換為 ' + encoding.toUpperCase() + '，如仍為亂碼可再切換：';
+    encodingFallbackEl.classList.remove('hidden');
+    encodingFallbackEl.innerHTML = label +
+      '<button type="button" class="small" id="btn-switch-utf8">切換為 UTF-8</button> ' +
+      '<button type="button" class="small" id="btn-switch-big5">切換為 Big5</button>';
+    document.getElementById('btn-switch-utf8').addEventListener('click', function () {
+      loadTableFromArrayBuffer(state.arrayBuffer, 'utf-8');
+    });
+    document.getElementById('btn-switch-big5').addEventListener('click', function () {
+      loadTableFromArrayBuffer(state.arrayBuffer, 'big5');
+    });
+  }
+
+  // forcedEncoding 非空時代表使用者手動切換編碼，重新解碼同一份 arrayBuffer。
+  // 切換後拆分欄位、unique values、勾選狀態一律依新解碼結果重新計算並重設
+  // （splitColIndex 重置回第一欄、群組全部重新勾選）：因為欄位標頭與內容都
+  // 隨編碼改變而不同，舊選擇（欄位 index、欄位值）在新內容下可能已無意義，
+  // 保留舊狀態反而可能對到錯的欄位或群組，靜默出錯比要求使用者重選更危險。
+  function loadTableFromArrayBuffer(arrayBuffer, forcedEncoding) {
+    state.arrayBuffer = arrayBuffer;
+    var decoded;
+    if (forcedEncoding) {
+      decoded = {
+        text: new TextDecoder(forcedEncoding).decode(arrayBuffer),
+        encoding: forcedEncoding,
+        hadBom: false,
+        confidence: 'manual'
+      };
+    } else {
+      decoded = decodeCsvBytes(arrayBuffer);
+    }
+    var table = parseCsv(decoded.text, { encoding: decoded.encoding, hadBom: decoded.hadBom });
+
+    state.table = table;
+    state.splitColIndex = table.headers.length > 0 ? 0 : -1;
+    renderColumnControls();
+    recomputeGroups();
+
+    // 編碼偵測為 fallback（猜的）或使用者手動切換後，都持續顯示切換橫幅，
+    // 讓使用者可在 UTF-8／Big5 間來回切換以救回猜錯的情形（CSV_CONTRACT.md 第 7.2 節）。
+    renderEncodingFallback(decoded.confidence, decoded.encoding);
+  }
+
+  function onUploadData(arrayBuffer) {
+    // 不在此重設 uploadMsgEl 的 class/text：gate 已依大小門檻設定過（'ok' 清空、
+    // 'warn' 顯示提示），編碼相關提示改由 #encoding-fallback 獨立顯示，不覆蓋 upload-msg。
+    loadTableFromArrayBuffer(arrayBuffer, null);
+  }
+
+  var uploadOpts = {
+    mode: 'bytes',
+    accept: ['.csv'],
+    gate: function (file) {
+      var result = checkCsvFileSize(file.size);
+      if (result.ok && result.level === 'warn') {
+        uploadMsgEl.textContent = result.message;
+        uploadMsgEl.className = 'warn';
+      } else if (result.ok) {
+        uploadMsgEl.textContent = '';
+        uploadMsgEl.className = '';
+      }
+      return result;
+    },
+    onError: onUploadError
+  };
+
+  setupDropZone(dropzoneEl, onUploadData, uploadOpts);
+  setupFilePicker(filePickerInput, onUploadData, uploadOpts);
+
+  // ---- 欄位控制項渲染 ----
+
+  function renderColumnControls() {
+    var headers = state.table.headers;
+
+    splitColSelect.innerHTML = '';
+    headers.forEach(function (header, i) {
+      var opt = document.createElement('option');
+      opt.value = String(i);
+      opt.textContent = header;
+      splitColSelect.appendChild(opt);
+    });
+    splitColSelect.disabled = headers.length === 0;
+    splitColSelect.value = String(state.splitColIndex);
+
+    excludeColsContainer.innerHTML = '';
+    if (headers.length === 0) {
+      excludeColsContainer.innerHTML = '<span class="empty-hint">（無欄位）</span>';
+    } else {
+      headers.forEach(function (header, i) {
+        var label = document.createElement('label');
+        var checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'exclude-col-checkbox';
+        checkbox.value = String(i);
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(header));
+        excludeColsContainer.appendChild(label);
+      });
+    }
+  }
+
+  splitColSelect.addEventListener('input', function () {
+    state.splitColIndex = Number(splitColSelect.value);
+    recomputeGroups();
+  });
+
+  // ---- 分組、檔名、渲染 ----
+
+  function recomputeGroups() {
+    if (!state.table || state.splitColIndex < 0) {
+      state.groups = [];
+      renderUniqueList();
+      return;
+    }
+
+    var rawGroups = computeGroups(state.table, state.splitColIndex);
+    var baseNames = rawGroups.map(function (g) {
+      return sanitizeFilename(g.value);
+    });
+    var finalNames = dedupeFilenames(baseNames);
+
+    state.groups = rawGroups.map(function (g, i) {
+      return {
+        value: g.value,
+        rows: g.rows,
+        filename: finalNames[i] + '.csv',
+        checked: true
+      };
+    });
+
+    renderUniqueList();
+  }
+
+  function getExcludedColumnIndexes() {
+    var excluded = {};
+    var checkboxes = excludeColsContainer.querySelectorAll('.exclude-col-checkbox:checked');
+    for (var i = 0; i < checkboxes.length; i++) {
+      excluded[Number(checkboxes[i].value)] = true;
+    }
+    return excluded;
+  }
+
+  function buildOutputColumns() {
+    var excluded = getExcludedColumnIndexes();
+    var columns = [];
+    for (var i = 0; i < state.table.headers.length; i++) {
+      if (!excluded[i]) columns.push(i);
+    }
+    return columns;
+  }
+
+  function groupCsvContent(group) {
+    var columns = buildOutputColumns();
+    var subTable = {
+      headers: state.table.headers,
+      rows: group.rows,
+      meta: { headerCount: state.table.headers.length }
+    };
+    return toCsv(subTable, { columns: columns });
+  }
+
+  function renderUniqueList() {
+    uniqueListContainer.innerHTML = '';
+
+    if (state.groups.length === 0) {
+      uniqueListContainer.innerHTML = '<span class="empty-hint">尚未上傳或尚未選定拆分欄位</span>';
+      renderTotals();
+      return;
+    }
+
+    state.groups.forEach(function (group, index) {
+      var row = document.createElement('div');
+      row.className = 'group-row';
+      row.setAttribute('data-group-index', String(index));
+
+      var checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'group-checkbox';
+      checkbox.checked = group.checked;
+      checkbox.addEventListener('input', function () {
+        state.groups[index].checked = checkbox.checked;
+        renderTotals();
+      });
+      row.appendChild(checkbox);
+
+      var valueSpan = document.createElement('span');
+      valueSpan.className = 'group-value';
+      valueSpan.textContent = group.value === '' ? '(空值)' : group.value;
+      row.appendChild(valueSpan);
+
+      var countSpan = document.createElement('span');
+      countSpan.className = 'group-count';
+      countSpan.textContent = group.rows.length + ' 筆';
+      row.appendChild(countSpan);
+
+      var filenameSpan = document.createElement('span');
+      filenameSpan.className = 'group-filename';
+      filenameSpan.textContent = '檔名：' + group.filename;
+      row.appendChild(filenameSpan);
+
+      var downloadBtn = document.createElement('button');
+      downloadBtn.type = 'button';
+      downloadBtn.textContent = '下載此份';
+      downloadBtn.addEventListener('click', function () {
+        var content = groupCsvContent(group);
+        downloadFile(group.filename, content, 'text/csv;charset=utf-8');
+      });
+      row.appendChild(downloadBtn);
+
+      uniqueListContainer.appendChild(row);
+    });
+
+    renderTotals();
+  }
+
+  function renderTotals() {
+    if (!state.table) {
+      totalsInfoEl.textContent = '';
+      return;
+    }
+
+    var originalTotal = state.table.rows.length;
+    var checkedGroups = state.groups.filter(function (g) { return g.checked; });
+    var selectedTotal = checkedGroups.reduce(function (sum, g) { return sum + g.rows.length; }, 0);
+    var excludedGroups = state.groups.filter(function (g) { return !g.checked; });
+    var excludedTotal = excludedGroups.reduce(function (sum, g) { return sum + g.rows.length; }, 0);
+
+    var html = '原表總筆數：' + originalTotal + '　|　目前已選 ' + checkedGroups.length +
+      ' 組，合計 ' + selectedTotal + ' 筆';
+
+    if (excludedGroups.length === 0) {
+      html += '　<span class="totals-ok">（已包含全部群組，筆數一致）</span>';
+    } else {
+      html += '　<span class="totals-excluded">（已排除 ' + excludedGroups.length +
+        ' 組，合計 ' + excludedTotal + ' 筆未輸出）</span>';
+    }
+
+    totalsInfoEl.innerHTML = html;
+  }
+
+  // 排除欄位只影響輸出內容（下載時即時讀取勾選狀態），不影響分組與筆數，
+  // 不需要監聽其變化。
+
+  // ---- 複製拆分摘要 ----
+
+  function buildSummaryText() {
+    if (!state.table || state.groups.length === 0) return '尚未產生拆分結果。';
+
+    var originalTotal = state.table.rows.length;
+    var checkedGroups = state.groups.filter(function (g) { return g.checked; });
+    var selectedTotal = checkedGroups.reduce(function (sum, g) { return sum + g.rows.length; }, 0);
+
+    var lines = [];
+    lines.push('原表總筆數：' + originalTotal);
+    lines.push('已選 ' + checkedGroups.length + ' 組，合計 ' + selectedTotal + ' 筆');
+    lines.push('');
+    state.groups.forEach(function (g) {
+      var label = g.value === '' ? '(空值)' : g.value;
+      var suffix = g.checked ? '' : '（未勾選）';
+      lines.push(label + '：' + g.rows.length + ' 筆' + suffix);
+    });
+
+    return lines.join('\n');
+  }
+
+  document.getElementById('btn-copy').addEventListener('click', function () {
+    copyToClipboard(buildSummaryText()).then(function (ok) {
+      showToast(ok ? '已複製拆分摘要' : '複製失敗');
+    });
+  });
+
+  // ---- 全部下載 ZIP ----
+
+  document.getElementById('btn-zip').addEventListener('click', function () {
+    if (!state.table || state.groups.length === 0) {
+      showToast('尚無可下載的內容');
+      return;
+    }
+    var checkedGroups = state.groups.filter(function (g) { return g.checked; });
+    if (checkedGroups.length === 0) {
+      showToast('目前沒有勾選任何群組');
+      return;
+    }
+    var files = checkedGroups.map(function (g) {
+      return { name: g.filename, text: groupCsvContent(g) };
+    });
+    var blob = createZipBlob(files);
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '拆分結果.zip';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+    showToast('已下載 ' + files.length + ' 份檔案的 ZIP');
+  });
+
+  // ---- 下載本工具離線版 ----
+
+  function buildCleanHtmlCopy() {
+    var clone = document.documentElement.cloneNode(true);
+
+    var uploadMsg = clone.querySelector('#upload-msg');
+    if (uploadMsg) { uploadMsg.textContent = ''; uploadMsg.className = ''; }
+
+    var encFallback = clone.querySelector('#encoding-fallback');
+    if (encFallback) { encFallback.innerHTML = ''; encFallback.classList.add('hidden'); }
+
+    var splitSelect = clone.querySelector('#split-col-select');
+    if (splitSelect) {
+      splitSelect.innerHTML = '<option value="">（請先上傳 CSV）</option>';
+      splitSelect.disabled = true;
+    }
+
+    var excludeCols = clone.querySelector('#exclude-cols-container');
+    if (excludeCols) excludeCols.innerHTML = '<span class="empty-hint">（請先上傳 CSV）</span>';
+
+    var uniqueList = clone.querySelector('#unique-list-container');
+    if (uniqueList) uniqueList.innerHTML = '<span class="empty-hint">尚未上傳或尚未選定拆分欄位</span>';
+
+    var totals = clone.querySelector('#totals-info');
+    if (totals) totals.innerHTML = '';
+
+    var filePicker = clone.querySelector('#file-picker-input');
+    if (filePicker) filePicker.value = '';
+
+    var toastEl = clone.querySelector('#__shared_toast');
+    if (toastEl && toastEl.parentNode) toastEl.parentNode.removeChild(toastEl);
+
+    var navBack = clone.querySelector('.nav-back');
+    if (navBack && navBack.parentNode) navBack.parentNode.removeChild(navBack);
+
+    var htmlStr = '<!DOCTYPE html>\n' + clone.outerHTML;
+    downloadFile('csv-batch-splitter-offline.html', htmlStr, 'text/html;charset=utf-8');
+  }
+
+  document.getElementById('btn-offline').addEventListener('click', buildCleanHtmlCopy);
+})();
+</script>
+</body>
+</html>

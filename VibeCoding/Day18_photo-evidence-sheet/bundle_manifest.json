@@ -1,0 +1,56 @@
+{
+  "util-escape": {
+    "source": "shared/util-escape.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "75d81be0a09695ceb071f7c338ae6b2b8e23fc660f2dffa2bf209cc8a480c231"
+  },
+  "ui-toast": {
+    "source": "shared/ui-toast.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "ae3a7ec34ac21b9d78809bc91300ec372d0443f4f668b5d9543c5c931f4bb9a4"
+  },
+  "ui-debounce": {
+    "source": "shared/ui-debounce.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "7cfcafe8e57332df65e77fb1dc58a783e3887cef0fb755cb292fd6ccf22345d6"
+  },
+  "io-download": {
+    "source": "shared/io-download.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "3da6c61784b1dd4b9b096cfa5e676b55efe56af706729865c0dd33aaa4a50ae1"
+  },
+  "io-clipboard": {
+    "source": "shared/io-clipboard.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "afa2866517ff6f41c92e5b7d9b1bd7b5a4b07c389d766ef5980711ff5841465a"
+  },
+  "io-dropzone": {
+    "source": "shared/io-dropzone.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "85732c4d7a5eea7a4a6113594da171ea166eee15c4682821c9788e6fa324aced"
+  },
+  "img-file-size": {
+    "source": "shared/img-file-size.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "929e0eb0798c901daa723d389e8e99104f462fd79a6049e766ce37d092b05a40"
+  },
+  "img-decode": {
+    "source": "shared/img-decode.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "3f133fa8a5b4a6abde0b79095f4f5eeb35509f1c466432e520fe0be56f29e91e"
+  },
+  "img-canvas": {
+    "source": "shared/img-canvas.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "d46d1922fd0cc0fc99da80d0d81b5a97a0201cf114ac84f93f1a19246e8b50d2"
+  }
+}

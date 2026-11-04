@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏆 2026 iThome 鐵人賽故事型技術連載規劃書</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #ffffff;
+      --fg: #1f2328;
+      --muted: #59636e;
+      --border: #d0d7de;
+      --soft: #f6f8fa;
+      --link: #0969da;
+      --quote: #656d76;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC",
+        "PingFang TC", "Microsoft JhengHei", sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+      overflow-wrap: break-word;
+    }
+    main { width: min(100% - 40px, 880px); margin: 0 auto; padding: 48px 0 80px; }
+    h1, h2, h3, h4, h5, h6 {
+      margin: 1.5em 0 0.65em;
+      line-height: 1.3;
+      font-weight: 650;
+      text-wrap: balance;
+    }
+    h1 { margin-top: 0; padding-bottom: 0.3em; border-bottom: 1px solid var(--border); font-size: 2em; }
+    h2 { padding-bottom: 0.3em; border-bottom: 1px solid var(--border); font-size: 1.5em; }
+    h3 { font-size: 1.25em; }
+    p, ul, ol, blockquote, pre, table { margin: 0 0 1em; }
+    ul, ol { padding-left: 2em; }
+    li + li { margin-top: 0.25em; }
+    a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
+    a:hover { text-decoration-thickness: 2px; }
+    img { max-width: 100%; height: auto; border-radius: 6px; }
+    code {
+      padding: 0.15em 0.35em;
+      border-radius: 5px;
+      background: var(--soft);
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-size: 0.88em;
+    }
+    pre {
+      max-width: 100%;
+      padding: 16px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--soft);
+      line-height: 1.5;
+    }
+    pre code { padding: 0; border-radius: 0; background: transparent; font-size: 0.875em; }
+    blockquote {
+      margin-left: 0;
+      padding: 0.15em 1em;
+      border-left: 4px solid var(--border);
+      color: var(--quote);
+    }
+    blockquote > :last-child { margin-bottom: 0; }
+    .table-wrap { max-width: 100%; overflow-x: auto; margin-bottom: 1em; }
+    table { width: 100%; border-spacing: 0; border-collapse: collapse; }
+    th, td { padding: 8px 12px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+    th { background: var(--soft); font-weight: 650; }
+    tr:nth-child(even) td { background: color-mix(in srgb, var(--soft) 55%, transparent); }
+    hr { height: 1px; margin: 2em 0; border: 0; background: var(--border); }
+    @media (max-width: 640px) {
+      main { width: min(100% - 28px, 880px); padding: 28px 0 56px; }
+      body { font-size: 15.5px; line-height: 1.68; }
+      h1 { font-size: 1.75em; }
+      h2 { font-size: 1.35em; }
+      ul, ol { padding-left: 1.5em; }
+      pre { padding: 12px; }
+      th, td { min-width: 9rem; padding: 7px 10px; }
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117;
+        --fg: #e6edf3;
+        --muted: #8d96a0;
+        --border: #30363d;
+        --soft: #161b22;
+        --link: #58a6ff;
+        --quote: #8b949e;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+<h1 id="2026-ithome">🏆 2026 iThome 鐵人賽故事型技術連載規劃書</h1>
+<h2 id="vibe-coding-31">《斷網辦公室的瑞士刀工匠：用 Vibe Coding 打造 31 款純前端離線救命神器》</h2>
+<hr>
+<h2 id="ithome-2026">一、 🎯 賽事調研與風格定位（iThome 2026 現場情報）</h2>
+<p>依據對 <code>2026 iThome 鐵人賽</code> 現場專區（包含 <code>Vibe Coding</code>、<code>ChatGPT &amp; Codex</code>、<code>SideProject30</code> 等主題）的深度調研與歷屆得獎作品剖析，社群最受歡迎、完讀率最高且評審高度認可的寫作風格具備以下三大特質：</p>
+<pre><code class="language-mermaid">flowchart TD
+    subgraph S1[&quot;1. 職場痛點共鳴 (Empathy)&quot;]
+        A1[&quot;真實窒息場景&lt;br/&gt;（沒權限/斷網/主管急件）&quot;] --&gt; A2[&quot;拒絕憑空炫技&lt;br/&gt;（交代『為什麼非做不可』）&quot;]
+    end
+    subgraph S2[&quot;2. 單篇小故事 × 30天冒險主線 (Narrative)&quot;]
+        B1[&quot;單篇五幕劇&lt;br/&gt;（摩擦→念頭→踩坑→交付→伏筆）&quot;] --&gt; B2[&quot;環環相扣因果鏈&lt;br/&gt;（昨天的成果引發今天的新危機）&quot;]
+    end
+    subgraph S3[&quot;3. 工程嚴謹與零上傳 (Verifiability)&quot;]
+        C1[&quot;零伺服器/零上傳&lt;br/&gt;（純前端單檔 HTML 離線承諾）&quot;] --&gt; C2[&quot;雙重審查/不瞎猜&lt;br/&gt;（真實 DOM、二進位檔頭檢驗）&quot;]
+    end
+
+    S1 --&gt; CORE[&quot;🏆 2026 鐵人賽爆款公式&quot;]
+    S2 --&gt; CORE
+    S3 --&gt; CORE
+</code></pre>
+<h3 id="vs">🚫 避坑指引（社群毒藥 vs 讀者買單）</h3>
+<ul>
+<li><strong>❌ 讀者最排斥</strong>：</li>
+<li>「今天我們來介紹什麼是 Canvas API...」（教科書式複製貼上）</li>
+<li>「AI 太神了，一下指令就全部寫好了」（神化 AI、毫無資訊增量的假爽文）</li>
+<li>毫無前後關聯的「工具大雜燴」（散落各處，讀者看不到成長與累積）。</li>
+<li><strong>✅ 讀者買單且會收藏轉發</strong>：</li>
+<li><strong>「這情境太真實了吧！我上週在辦公室也遇到過！」</strong>（強烈職場共鳴）</li>
+<li><strong>「單檔 HTML 下載就能用？而且資料完全不離開電腦？這拿去我們公司可以用！」</strong>（實用度爆表）</li>
+<li><strong>「從單一專注工具到最後的瑞士刀整合，架構思維進化的過程很精彩！」</strong>（技術深度）。</li>
+</ul>
+<hr>
+<h2 id="30">二、 🗺️ 30 天中型主線故事全景地圖</h2>
+<h3 id="_1">🎭 主角設定與世界觀（嚴禁虛構真實性宣告）</h3>
+<blockquote>
+<p><strong>真實性邊界</strong>：故事角色「阿星」與特定機關單位名稱為保護商業與個人隱私之去識別化代稱；但文中所有的<strong>業務摩擦、DLP 資安限制、資料髒亂慘狀與工程踩坑實錄，100% 來自真實職場血淚現場</strong>。</p>
+<p><strong>阿星（Lanss）</strong>：某大型高度資安管制企業（金融/公部門外包）的邊緣工程師。<br>
+電腦<strong>無 Admin 管理員權限</strong>、內部網路受 DLP（資料防洩漏）系統嚴格監控、<strong>禁止安裝 Python / Node.js</strong>、外網連線全被防火牆擋下。<br>
+<strong>物理前提補正（解開斷網矛盾）</strong>：
+1. 內部資安稽核僅放行審查過的<strong>靜態 GitHub Pages 白名單網域</strong>（供同仁查閱技術文件），阿星藉由白名單載入純前端工具，或於<strong>下班後在家用個人電腦以 Vibe Coding 封裝為單檔 HTML</strong>，經公司檔案攜入審核程序帶入辦公室使用。
+2. 他在辦公室唯一的自由之窗，是<strong>每台作業系統都內建、永遠不被禁止開啟的「瀏覽器」</strong>。</p>
+<p>📱 <strong>載體發布降階律（依據 ITHELP_MARKDOWN.md &amp; PERSONA 3.17 / 3.21）</strong>：
+- <strong>HackMD 衝刺筆記</strong>：保留下方原生高清 <code>flowchart TD</code> 直式架構圖。
+- <strong>iThome 連載文章</strong>：因平台 SimpleMDE 不支援 Mermaid，發布時請降階為<strong>寬度 ≤ 20 字元的簡約 ASCII / 文字清單</strong>（見各階段附錄），杜絕代碼裸露。</p>
+</blockquote>
+<hr>
+<h3 id="day-01-day-07">階段一：手無寸鐵的雜役期【文字的整肅】（Day 01 - Day 07）</h3>
+<p><em>核心主線：新人報到接下最繁瑣的公文與文件整理雜工，在嚴苛限制下建立第一批文字武器庫。</em></p>
+<pre><code class="language-mermaid">flowchart TD
+    D01[&quot;Day 01 文字健檢工作台&lt;br/&gt;（長官挑剔排版，立下共用模組地基）&quot;] --&gt; D02[&quot;Day 02 AI 文字脫水機&lt;br/&gt;（同仁貼內網 AI 吐出的一堆 Markdown 被痛罵）&quot;]
+    D02 --&gt; D03[&quot;Day 03 贅詞與 AI 味雷達&lt;br/&gt;（公文充滿『深化、賦能』罐頭詞，建立過濾器）&quot;]
+    D03 --&gt; D04[&quot;Day 04 繁簡在地化轉譯&lt;br/&gt;（廠商交簡體字與大陸用語，內嵌 OpenCC 字典）&quot;]
+    D04 --&gt; D05[&quot;Day 05 可逆式去識別化&lt;br/&gt;【重大危機】同仁私開手機熱點想貼個資給外部 AI！&quot;]
+    D05 --&gt; D06[&quot;Day 06 Python 離線排版&lt;br/&gt;（無 Python 環境下用 WASM Black 整理外包腳本）&quot;]
+    D06 --&gt; D07[&quot;Day 07 文字差異比對器&lt;br/&gt;（合約簽署前夕長官臨時暗改條款，雙欄抓鬼）&quot;]
+</code></pre>
+<blockquote>
+<p><strong>iThome 發布用極簡 ASCII 地圖（寬度 ≤ 20 字元）</strong>：
+<code>text
+Day01 文字健檢 ── 長官挑公文格式
+Day02 AI文字脫水 ── 剝離Markdown符號
+Day03 贅詞雷達 ── 清理AI公文空話
+Day04 繁簡轉譯 ── 內嵌OpenCC字典
+Day05 去識別化 ── 阻斷外部AI洩密
+Day06 Python排版 ── 離線WASM Black
+Day07 文字比對 ── 抓出合約偷改條款</code></p>
+</blockquote>
+<hr>
+<h3 id="day-08-day-13">階段二：髒資料的泥淖【表格攻防戰】（Day 08 - Day 13）</h3>
+<p><em>核心主線：文字過關後，財務與業務部門丟來幾萬筆編碼錯亂、欄位噴飛的機密報表，手動整理必然引發重大帳務錯誤與稽核缺失。</em></p>
+<pre><code class="language-mermaid">flowchart TD
+    D08[&quot;Day 08 CSV 急診室&lt;br/&gt;（Big5 亂碼、未閉合引號、防禦試算表公式注入）&quot;] --&gt; D09[&quot;Day 09 兩期清冊異動報告&lt;br/&gt;（兩萬筆人事薪資清冊到底動了誰？主鍵比對）&quot;]
+    D09 --&gt; D10[&quot;Day 10 總表批次拆檔器&lt;br/&gt;（10 萬列大總表限時 10 分鐘依分店拆成 50 份 ZIP）&quot;]
+    D10 --&gt; D11[&quot;Day 11 零依賴 SVG 樞紐圖表&lt;br/&gt;（沒 Tableau 授權，手寫 SVG 在瀏覽器畫出主管要的圖）&quot;]
+    D11 --&gt; D12[&quot;Day 12 Excel 轉 PDF 離線版&lt;br/&gt;（SheetJS 掃描最小邊界，精準剔除無效空白格）&quot;]
+    D12 --&gt; D13[&quot;Day 13 一頁式 A4 管理報告&lt;br/&gt;（高層不看玩具圖表，自適應 A4 單頁列印報表）&quot;]
+</code></pre>
+<blockquote>
+<p><strong>iThome 發布用極簡 ASCII 地圖（寬度 ≤ 20 字元）</strong>：
+<code>text
+Day08 CSV急診室 ── 修復Big5與公式注入
+Day09 兩期異動 ── 萬筆清冊主鍵對照
+Day10 批次拆檔 ── 依分店瞬間打ZIP
+Day11 SVG圖表 ── 零依賴樞紐儀表板
+Day12 Excel轉PDF ── SheetJS邊界列印
+Day13 一頁報告 ── A4自適應主管報表</code></p>
+</blockquote>
+<hr>
+<h3 id="day-14-day-18">階段三：像素與現場的謊言【影像鑑識與隱私】（Day 14 - Day 18）</h3>
+<p><em>核心主線：專案稽核查核降臨！外勤人員回傳的成果照片差點外洩機敏經緯度與客戶隱私。</em></p>
+<pre><code class="language-mermaid">flowchart TD
+    D14[&quot;Day 14 圖片批次瘦身機&lt;br/&gt;（一張照片 15MB 塞爆系統，二分逼近純前端壓縮）&quot;] --&gt; D15[&quot;Day 15 EXIF 隱私拆彈手&lt;br/&gt;【稽核危機】現場照竟含 GPS 經緯度，二進位抹除）&quot;]
+    D15 --&gt; D16[&quot;Day 16 截圖真・像素遮蔽&lt;br/&gt;（破除前端 CSS 假遮蔽漏洞，直接燒結進像素）&quot;]
+    D16 --&gt; D17[&quot;Day 17 文件照片透視拉直&lt;br/&gt;（現場人員斜拍簽呈變梯形，四點單應性矩陣校正）&quot;]
+    D17 --&gt; D18[&quot;Day 18 工作成果附件清冊&lt;br/&gt;（百張驗收照片自動排版成 2x3 含浮水印 A4 清冊）&quot;]
+</code></pre>
+<blockquote>
+<p><strong>iThome 發布用極簡 ASCII 地圖（寬度 ≤ 20 字元）</strong>：
+<code>text
+Day14 圖片瘦身 ── 二分逼近本機壓縮
+Day15 EXIF拆彈 ── 二進位抹除GPS經緯
+Day16 截圖真遮蔽 ── 像素燒結杜絕反白
+Day17 透視拉直 ── 單應性矩陣校正
+Day18 成果清冊 ── 2x3含水印A4排版</code></p>
+</blockquote>
+<hr>
+<h3 id="pdf-day-19-day-25">階段四：最後防線【PDF 攻堅與送件大作戰】（Day 19 - Day 25）</h3>
+<p><em>核心主線：投標與結案送件倒數 48 小時，面對格式各異的 PDF 檔案展開精密加工。</em></p>
+<pre><code class="language-mermaid">flowchart TD
+    D19[&quot;Day 19 PDF 轉高解析圖片&lt;br/&gt;（政府古老系統只吃 JPG，pdf.js 高 DPI 批次封裝）&quot;] --&gt; D20[&quot;Day 20 PDF 深度文字檢索&lt;br/&gt;（五百頁無目錄規範書，全文正規搜尋與結構分析）&quot;]
+    D20 --&gt; D21[&quot;Day 21 PDF 視覺化頁面重排&lt;br/&gt;（沒 Acrobat 授權，卡片拖曳旋轉/抽換/重新分割）&quot;]
+    D21 --&gt; D22[&quot;Day 22 PDF 中文審查蓋章機&lt;br/&gt;（內嵌思源黑體，精準加蓋核可騎縫章與頁碼）&quot;]
+    D22 --&gt; D23[&quot;Day 23 PDF 權限與密碼管理器&lt;br/&gt;（解鎖廠商密碼/送件前重新設定唯讀權限）&quot;]
+    D23 --&gt; D24[&quot;Day 24 PDF 物理級文字抹除&lt;br/&gt;【血淚教訓】反白複製破除黑條？真正剔除底層文字流）&quot;]
+    D24 --&gt; D25[&quot;Day 25 PDF 送件大掃除&lt;br/&gt;（一鍵剝離歷史註解、表單暫存與軟體作者隱私）&quot;]
+</code></pre>
+<blockquote>
+<p><strong>iThome 發布用極簡 ASCII 地圖（寬度 ≤ 20 字元）</strong>：
+<code>text
+Day19 PDF轉圖 ── pdf.js逐頁高DPI
+Day20 深度檢索 ── 500頁結構正規搜尋
+Day21 視覺重排 ── 卡片拖曳旋轉抽換
+Day22 中文蓋章 ── 內嵌黑體騎縫章
+Day23 密碼管理 ── 權限解鎖與再加密
+Day24 物理文字抹除 ── 剔除底層文字流
+Day25 送件大掃除 ── 剝離歷史註解隱私</code></p>
+</blockquote>
+<hr>
+<h3 id="day-26-day-31">階段五：從單兵作戰到全能兵工廠【瑞士刀的誕生與收斂】（Day 26 - Day 31）</h3>
+<p><em>核心主線：同仁桌面塞了 20 幾個 html 工具，切換頻繁引發嚴重摩擦。主角面臨「單一功能（直覺）vs 多功能（瑞士刀）」的架構抉擇。</em></p>
+<pre><code class="language-mermaid">flowchart TD
+    D26[&quot;Day 26 Office 內容發布排版器&lt;br/&gt;（打通 Markdown 與 Word 富文字排版橋樑）&quot;] --&gt; D27[&quot;Day 27 文件處理整合工作台 (瑞士刀)&lt;br/&gt;【核心哲學】單一專注 vs 多合一整合的架構抉擇&quot;]
+    D27 --&gt; D28[&quot;Day 28 Office 隱私安全清除器&lt;br/&gt;（深入 DOCX/XLSX/PPTX 容器層，清除內嵌縮圖與路徑）&quot;]
+    D28 --&gt; D29[&quot;Day 29 ZIP 密碼封裝加密器&lt;br/&gt;（Web Crypto 離線 PBKDF2 + AES-256-GCM 安全封裝）&quot;]
+    D29 --&gt; D30[&quot;Day 30 變更雷達與自動化儀表板&lt;br/&gt;（從手動救急邁向持續監控的 Level 2 產品）&quot;]
+    D30 --&gt; D31[&quot;完賽篇：Vibe Coding 煉金術&lt;br/&gt;（想・說・對・做：高度資安受限下的零成本自主開發學）&quot;]
+</code></pre>
+<blockquote>
+<p><strong>iThome 發布用極簡 ASCII 地圖（寬度 ≤ 20 字元）</strong>：
+<code>text
+Day26 內容發布 ── Markdown/Word排版
+Day27 瑞士刀工作台 ── 單一vs複合架構
+Day28 Office隱私 ── 容器層清縮圖路徑
+Day29 ZIP加密 ── WebCrypto安全封裝
+Day30 變更雷達 ── 下班SideProject排程
+Day31 完賽總結 ── VibeCoding方法論</code></p>
+<p>⚖️ <strong>雙軌座標誠實揭露（依據 PERSONA 3.7）</strong>：
+<code>document-tools</code> 在原始企劃 <code>參考資料.md</code> 中其實是「PRD 01」，但在此連載中刻意安排在第 27 天揭露。這是<strong>為服務讀者心智模型而做的「敘事重排」</strong>——唯有先經歷前 26 天各司其職的單檔工具與繁瑣切換，讀者才能深切體會「多合一工作台」在狀態隔離與記憶體管理上的架構價值。同時，原始 PRD 僅規劃圖片/PDF/Markdown 三區，是在實際辦公室工作流中發現 PDF 處理嚴重缺乏文字搜尋，後續才補上第 20 天的文字檢索模組，非一次到位。</p>
+</blockquote>
+<hr>
+<h2 id="_2">三、 📝 單篇五幕劇寫作標準模板（小說化技術連載）</h2>
+<p>每篇文章嚴格落實以下 <strong>5 幕結構</strong>，確保 3 分鐘內抓住讀者眼球，兼具情緒張力與硬核技術：</p>
+<pre><code class="language-text">┌────────────────────────────────────────────────────────┐
+│ 第一幕：【職場警報】（The Friction）                  │
+│ 具體時間點、令人啼笑皆非或冷汗直流的真實需求，引發危機。 │
+├────────────────────────────────────────────────────────┤
+│ 第二幕：【動念與心智模型】（The Spark &amp; Blueprint）   │
+│ 為什麼不用現成軟體（因為沒權限/不能上網）？            │
+│ 如何用純前端瀏覽器 API（Canvas/WASM/DOM）解題？       │
+├────────────────────────────────────────────────────────┤
+│ 第三幕：【Vibe 碰撞與踩坑實錄】（The Battle &amp; Pitfalls）│
+│ 人與 AI 協作時的破綻。不是一帆風順，而是遇到了邊界地雷 │
+│ （如：反白選取漏洞、字元編碼截斷、記憶體外洩）。      │
+├────────────────────────────────────────────────────────┤
+│ 第四幕：【交付與驗證成果】（The Deliverable）          │
+│ 單檔 HTML 實體展示、零外部請求證明日誌、DOM 驗收。    │
+├────────────────────────────────────────────────────────┤
+│ 第五幕：【危機暫解，明日伏筆】（The Cliffhanger）      │
+│ 今日工具交給同事，同事讚嘆後卻說：『欸等一下，那這個...』│
+│ 順理成章引導讀者期待明天的下一款工具！                │
+└────────────────────────────────────────────────────────┘
+</code></pre>
+<hr>
+<h2 id="3">四、 🎬 前 3 天示範劇本與銜接因果鏈</h2>
+<h3 id="day-01">Day 01：《第一天沒有做工具，我先在無人荒島打了地基》</h3>
+<ul>
+<li><strong>引發動念</strong>：剛進這家神秘機關，被分配到一張連外網都被切斷的孤島電腦。長官丟來一份長達 20 頁的公告草稿，要求「10 分鐘內挑出所有格式錯誤、過長段落與連續空白」。</li>
+<li><strong>解題思路</strong>：既然這 30 天要寫 30 個單檔 HTML 工具，如果第一天各自瞎寫，之後一定會 drift 到死！今天不只做文字健檢，先打造 <code>shared/</code> 契約模組與離線打包腳本。</li>
+<li><strong>踩坑實錄</strong>：<code>buildCleanHtmlCopy()</code> 產出離線版時，竟然把動態注入的 toast 元素 id 留在 DOM 裡，若是機密文件轉發出去就會被看光！</li>
+<li><strong>明日伏筆</strong>：公文格式過關了，長官很高興。下午隔壁座位的同仁跑來哭訴：「阿星，長官叫我用內網 AI 摘要會議紀錄，結果 AI 吐了一大堆 <code>###</code>、粗體、清單符號，我直接貼進簽呈，長官以為我在罵他！救我！」</li>
+</ul>
+<h3 id="day-02ai">Day 02：《AI 吐出的不是公文，是符號地雷：文字脫水清洗器》</h3>
+<ul>
+<li><strong>引發動念</strong>：承接 Day 01 伏筆，同仁被 Markdown 語法整慘，手工刪除 <code>**</code>、<code>#</code> 和表格分隔線刪到眼花。</li>
+<li><strong>解題思路</strong>：打造一鍵「脫水機」，利用正規表示式逐層剝離 Markdown 裝飾，保留最純粹乾淨的縮排與條列。</li>
+<li><strong>踩坑實錄</strong>：程式碼區塊裡剛好有 <code>#</code> 註解，脫水機直接把它當成 Markdown 標題清掉，造成程式碼語意崩壞！緊急加入程式碼區塊保留邊界。</li>
+<li><strong>明日伏筆</strong>：符號全拔掉了，同仁開心地貼上公文送出。半小時後長官把公文摔在桌上：「這寫的是人話嗎？什麼『全方位賦能、深化治理、構建新生態』？全部給我改掉！」</li>
+</ul>
+<h3 id="day-03-ai-ai">Day 03：《公文裡的 AI 罐頭空話：贅詞與 AI 味雷達》</h3>
+<ul>
+<li><strong>引發動念</strong>：雖然文字格式乾淨了，但內文充斥著 AI 標誌性的對稱排比與空洞形容詞，長官一眼看穿是偷懶產物。</li>
+<li><strong>解題思路</strong>：建立繁體中文「贅詞與 AI 腔特徵庫」，在瀏覽器端即時標註高空詞彙，並給出替代方案。</li>
+<li><strong>踩坑實錄</strong>：一開始字典把「全面」誤殺成贅詞，導致「全面啟動資安演練」被圈紅字引發誤會。</li>
+<li><strong>明日伏筆</strong>：AI 味去除了，公文看起來像專業人類寫的了。但此時外包廠商送來一批軟體手冊，打開一看……滿滿的「內存、高清、默認、項目」，長官下令：「下班前全部換成台灣用語，否則扣驗收款！」</li>
+</ul>
+<hr>
+<h2 id="_3">五、 ⚖️ 產品演進哲學：從「單一專注」到「多功能瑞士刀」</h2>
+<p>在系列文章第 27 天前後，特別闢出專題探討：
+1. <strong>單一工具的優勢</strong>：直覺、零載入負擔、打開就能用、心智模型極簡（做一件事做到極致）。
+2. <strong>多功能瑞士刀的誕生契機</strong>：當同仁的工作流需要在「PDF 抽頁 → 轉圖 → 文字搜尋 → 排版」連續切換時，反覆開啟 4 個分頁會產生嚴重的切換摩擦（Context Switching）。
+3. <strong>整合架構的代價與防線</strong>：
+   - 如何在單一 HTML 內管理多個工具的狀態，避免全域變數污染？
+   - 記憶體釋放：避免處理完 50MB PDF 後記憶體未釋放，導致瀏覽器分頁當掉。
+   - 結論：<strong>「單一專注利於即開即用，工作台整合利於連續作業」</strong>。</p>
+<hr>
+<h2 id="31">六、 📋 31 款工具與篇章完整對應索引</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">篇章</th>
+<th>檔案名稱</th>
+<th>工具名稱</th>
+<th>核心職場危機與技術亮點</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><strong>Day 01</strong></td>
+<td><a href="text-health-check.html"><code>text-health-check.html</code></a></td>
+<td>文字健檢工作台</td>
+<td>長官挑剔公文格式，建立共用契約與打包基礎設施。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 02</strong></td>
+<td><a href="ai-text-cleaner.html"><code>ai-text-cleaner.html</code></a></td>
+<td>AI 回答文字清理器</td>
+<td>內網 AI 吐出 Markdown 符號地雷，純前端正規剝離脫水。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 03</strong></td>
+<td><a href="filler-word-checker.html"><code>filler-word-checker.html</code></a></td>
+<td>贅詞與 AI 味檢查器</td>
+<td>標註「賦能/深化」等空洞空話，提升公文專業度。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 04</strong></td>
+<td><a href="zh-tw-localizer.html"><code>zh-tw-localizer.html</code></a></td>
+<td>繁簡在地化轉換器</td>
+<td>內嵌 OpenCC 繁簡詞典，批次清洗簡體字與大陸術語。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 05</strong></td>
+<td><a href="reversible-deidentifier.html"><code>reversible-deidentifier.html</code></a></td>
+<td>可逆式去識別化工具</td>
+<td>遮蔽客戶身分證與電話以送審，支援本機 100% 雙向還原。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 06</strong></td>
+<td><a href="python-code-formatter.html"><code>python-code-formatter.html</code></a></td>
+<td>Python 離線排版器</td>
+<td>無 Python 環境下，利用 WASM (Pyodide+Black) 整理外包腳本。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 07</strong></td>
+<td><a href="text-diff.html"><code>text-diff.html</code></a></td>
+<td>文字差異比對器</td>
+<td>雙欄視覺化抓出合約臨時偷改條款，jsdiff 純前端比對。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 08</strong></td>
+<td><a href="csv-doctor.html"><code>csv-doctor.html</code></a></td>
+<td>CSV 健檢與修復器</td>
+<td>解決 Big5 亂碼、未閉合引號與防禦 Excel 公式注入攻擊。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 09</strong></td>
+<td><a href="csv-period-diff.html"><code>csv-period-diff.html</code></a></td>
+<td>兩期清冊異動報告</td>
+<td>萬筆人事薪資清冊主鍵對照，精確抓出偷改資料。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 10</strong></td>
+<td><a href="csv-batch-splitter.html"><code>csv-batch-splitter.html</code></a></td>
+<td>總表批次拆檔器</td>
+<td>10 萬列大表限時 10 分鐘依分店拆檔，fflate 即時打 ZIP。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 11</strong></td>
+<td><a href="csv-pivot-dashboard.html"><code>csv-pivot-dashboard.html</code></a></td>
+<td>CSV 樞紐圖表儀表板</td>
+<td>無 Tableau 授權下，純手寫 SVG 在瀏覽器畫出統計圖表。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 12</strong></td>
+<td><a href="xlsx-to-pdf-converter.html"><code>xlsx-to-pdf-converter.html</code></a></td>
+<td>Excel 轉 PDF 離線工具</td>
+<td>SheetJS 計算最小邊界矩陣，剔除無效空白格向量列印。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 13</strong></td>
+<td><a href="csv-one-page-report.html"><code>csv-one-page-report.html</code></a></td>
+<td>CSV 一頁式管理報告</td>
+<td>A4 自適應版型，將龐雜數據收斂為主管專用的 Summary。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 14</strong></td>
+<td><a href="image-batch-optimizer.html"><code>image-batch-optimizer.html</code></a></td>
+<td>圖片批次最佳化工作台</td>
+<td>現場照片 15MB 塞爆系統，二分逼近演算法純本機壓縮。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 15</strong></td>
+<td><a href="exif-privacy-cleaner.html"><code>exif-privacy-cleaner.html</code></a></td>
+<td>EXIF 隱私清除器</td>
+<td>二進位層級拆解 JPEG/TIFF，徹底抹除機密大樓 GPS 與型號。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 16</strong></td>
+<td><a href="screenshot-sanitizer.html"><code>screenshot-sanitizer.html</code></a></td>
+<td>截圖個資遮蔽工具</td>
+<td>杜絕前端 CSS 假遮蔽，將馬賽克直接燒結（Rasterize）進像素。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 17</strong></td>
+<td><a href="document-perspective-corrector.html"><code>document-perspective-corrector.html</code></a></td>
+<td>文件照片透視校正器</td>
+<td>斜拍簽收單變梯形，四點單應性矩陣（Homography）拉直校正。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 18</strong></td>
+<td><a href="photo-evidence-sheet.html"><code>photo-evidence-sheet.html</code></a></td>
+<td>工作成果附件產生器</td>
+<td>百張施工現場照片自動排版為 2x3 含浮水印 A4 清冊。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 19</strong></td>
+<td><a href="pdf-to-jpg.html"><code>pdf-to-jpg.html</code></a></td>
+<td>PDF 轉圖工作台</td>
+<td>應付古老系統只吃 JPG，pdf.js 高解析逐頁解碼並打 ZIP。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 20</strong></td>
+<td><a href="pdf-text-search.html"><code>pdf-text-search.html</code></a></td>
+<td>PDF 文字擷取與搜尋</td>
+<td>500 頁無目錄規格書全文正規檢索與關鍵字結構化分析。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 21</strong></td>
+<td><a href="pdf-organizer.html"><code>pdf-organizer.html</code></a></td>
+<td>PDF 頁面重排與分割</td>
+<td>無 Acrobat Pro 下，視覺化拖曳卡片旋轉、抽換與分割頁面。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 22</strong></td>
+<td><a href="pdf-review-stamper.html"><code>pdf-review-stamper.html</code></a></td>
+<td>PDF 審查章與浮水印</td>
+<td>內嵌思源黑體，精準加蓋核可騎縫章與專案浮水印。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 23</strong></td>
+<td><a href="pdf-password-manager.html"><code>pdf-password-manager.html</code></a></td>
+<td>PDF 密碼管理器</td>
+<td>解鎖已知密碼/送件前重新設定 User &amp; Owner 權限密碼。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 24</strong></td>
+<td><a href="pdf-secure-redactor.html"><code>pdf-secure-redactor.html</code></a></td>
+<td>PDF 安全文字遮蔽</td>
+<td>物理移除底層文字流物件，徹底杜絕「反白複製」洩密漏洞。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 25</strong></td>
+<td><a href="pdf-delivery-cleaner.html"><code>pdf-delivery-cleaner.html</code></a></td>
+<td>PDF 送件清理器</td>
+<td>送件前一鍵剝離歷史註解、表單輸入暫存與作者隱私。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 26</strong></td>
+<td><a href="office-content-publisher.html"><code>office-content-publisher.html</code></a></td>
+<td>Office 內容發布排版器</td>
+<td>打通 Markdown、CSV 與 Word 富文字格式之間的排版橋樑。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 27</strong></td>
+<td><a href="document-tools.html"><code>document-tools.html</code></a></td>
+<td>文件處理整合工作台</td>
+<td><strong>【瑞士刀大合體】</strong> 多合一工作台，探討單一 vs 複合架構權衡。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 28</strong></td>
+<td><a href="ooxml-privacy-cleaner.html"><code>ooxml-privacy-cleaner.html</code></a></td>
+<td>Office 文件隱私清除器</td>
+<td>深入 DOCX/XLSX/PPTX 容器層，清除內嵌縮圖與本機路徑。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 29</strong></td>
+<td><a href="zip-encrypt-decrypt.html"><code>zip-encrypt-decrypt.html</code></a></td>
+<td>ZIP 密碼封裝加密器</td>
+<td>Web Crypto PBKDF2(百萬次) + AES-256-GCM 離線封裝。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 30</strong></td>
+<td><a href="scheduled-work-dashboard.html"><code>scheduled-work-dashboard.html</code></a><br><a href="public-data-snapshot.html"><code>public-data-snapshot.html</code></a></td>
+<td>變更雷達與排程儀表板</td>
+<td>從手動救急邁向持續監控的 Level 2 產品與自動化演繹。</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Day 31</strong></td>
+<td>完賽總結</td>
+<td>Vibe Coding 煉金術</td>
+<td>「想・說・對・做」人機協作方法論與零外洩自主開發學總結。</td>
+</tr>
+</tbody>
+</table>
+  </main>
+  <script>
+    document.querySelectorAll("table").forEach(function (table) {
+      var wrapper = document.createElement("div");
+      wrapper.className = "table-wrap";
+      table.parentNode.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+    });
+  </script>
+</body>
+</html>

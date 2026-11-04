@@ -1,0 +1,34 @@
+{
+  "assets": {
+    "pdfjs": {
+      "path": "../../shared/vendor/pdf.min.js",
+      "license": "Apache-2.0",
+      "version": "3.11.174",
+      "escape_mode": "raw_js"
+    },
+    "pdfjs_worker": {
+      "path": "../../shared/vendor/pdf.worker.min.js",
+      "license": "Apache-2.0",
+      "version": "3.11.174",
+      "escape_mode": "json_string"
+    },
+    "cantoo_pdf_lib": {
+      "path": "../../shared/vendor/cantoo-pdf-lib.min.js",
+      "license": "MIT",
+      "version": "2.9.1",
+      "escape_mode": "raw_js"
+    },
+    "fontkit": {
+      "path": "../../shared/vendor/fontkit.umd.min.js",
+      "license": "MIT",
+      "version": "1.1.1",
+      "escape_mode": "raw_js"
+    },
+    "noto_sans_tc": {
+      "path": "../../shared/vendor/NotoSansTC-base64.js",
+      "license": "OFL-1.1",
+      "version": "Regular",
+      "escape_mode": "raw_js"
+    }
+  }
+}

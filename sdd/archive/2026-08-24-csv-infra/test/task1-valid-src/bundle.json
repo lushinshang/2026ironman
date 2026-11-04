@@ -1,0 +1,16 @@
+{
+  "assets": {
+    "papaparse": {
+      "path": "../../../../VibeCoding/shared/vendor/papaparse-5.6.0.min.js",
+      "version": "5.6.0",
+      "license": "MIT",
+      "escape_mode": "raw_js"
+    },
+    "fflate": {
+      "path": "../../../../VibeCoding/shared/vendor/fflate.umd.js",
+      "version": "0.8.3",
+      "license": "MIT",
+      "escape_mode": "raw_js"
+    }
+  }
+}

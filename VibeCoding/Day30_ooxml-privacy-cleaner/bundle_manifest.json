@@ -1,0 +1,56 @@
+{
+  "fflate": {
+    "source": "../../shared/vendor/fflate.umd.js",
+    "version": "0.8.3",
+    "license": "MIT",
+    "sha256": "462ef8041fc970e3615a20a9dd2b2e3047a073b2da729ef4f02b634bba8b7b83"
+  },
+  "util-escape": {
+    "source": "shared/util-escape.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "75d81be0a09695ceb071f7c338ae6b2b8e23fc660f2dffa2bf209cc8a480c231"
+  },
+  "ui-toast": {
+    "source": "shared/ui-toast.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "ae3a7ec34ac21b9d78809bc91300ec372d0443f4f668b5d9543c5c931f4bb9a4"
+  },
+  "io-download": {
+    "source": "shared/io-download.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "3da6c61784b1dd4b9b096cfa5e676b55efe56af706729865c0dd33aaa4a50ae1"
+  },
+  "io-clipboard": {
+    "source": "shared/io-clipboard.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "afa2866517ff6f41c92e5b7d9b1bd7b5a4b07c389d766ef5980711ff5841465a"
+  },
+  "io-zip": {
+    "source": "shared/io-zip.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "a92c6728189374111510fdc1f4edc6c03dc07e234773ff1447e40a5618269925"
+  },
+  "docx-meta": {
+    "source": "docx-meta.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "ff0cabcd1b2f8cb37c8cdd66ef92b5a4d217795a13a07517eea067db80538904"
+  },
+  "xlsx-meta": {
+    "source": "xlsx-meta.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "2a69ba27f0ea9c687da99e1d723b0bd317e3cf5fcae641e6c4b2a2e8848cd193"
+  },
+  "pptx-meta": {
+    "source": "pptx-meta.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "2165ea1560185af9711245e4a622d2dcf59ac1f178a93a24f9a93488be408917"
+  }
+}

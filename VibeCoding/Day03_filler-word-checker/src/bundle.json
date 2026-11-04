@@ -1,0 +1,16 @@
+{
+  "assets": {
+    "mainDictAsset": {
+      "path": "main-dict.json",
+      "version": "1.0",
+      "license": "project-internal",
+      "escape_mode": "json_string"
+    },
+    "freqDictAsset": {
+      "path": "freq-dict.json",
+      "version": "1.0",
+      "license": "project-internal",
+      "escape_mode": "json_string"
+    }
+  }
+}

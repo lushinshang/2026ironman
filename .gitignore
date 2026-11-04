@@ -1,0 +1,20 @@
+# Python 快取
+__pycache__/
+*.py[cod]
+*$py.class
+*.ipynb_checkpoints/
+
+# 系統暫存與垃圾檔案
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Playwright MCP 除錯輸出
+.playwright-mcp/
+
+# 去識別化名單（含真實帳號，不得進版控）
+scripts/.deident_names

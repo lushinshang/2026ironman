@@ -1,0 +1,22 @@
+/* shared/print.css — 共用列印樣式基底 */
+/* 依據 sdd/LEVEL1D_RULINGS.md 裁示 19 建立 */
+
+@page {
+  size: A4 portrait;
+  margin: 10mm;
+}
+
+@media print {
+  body {
+    background: #fff !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-page-break {
+    page-break-after: always;
+    break-inside: avoid;
+  }
+}

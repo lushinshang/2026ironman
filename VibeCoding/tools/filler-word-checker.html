@@ -1,0 +1,1085 @@
+<!-- BUNDLED: util-escape@internal (project-internal) sha256:75d81be0a09695ce built 2026-08-24 -->
+<!-- BUNDLED: ui-toast@internal (project-internal) sha256:ae3a7ec34ac21b9d built 2026-08-24 -->
+<!-- BUNDLED: io-download@internal (project-internal) sha256:3da6c61784b1dd4b built 2026-08-24 -->
+<!-- BUNDLED: io-clipboard@internal (project-internal) sha256:afa2866517ff6f41 built 2026-08-24 -->
+<!-- BUNDLED: io-dropzone@internal (project-internal) sha256:85732c4d7a5eea7a built 2026-08-24 -->
+<!-- BUNDLED: mainDictAsset@1.0 (project-internal) sha256:5bfac9cb5d07970a built 2026-08-24 -->
+<!-- BUNDLED: freqDictAsset@1.0 (project-internal) sha256:b82df4fa58345dd4 built 2026-08-24 -->
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>贅詞與 AI 味檢查器</title>
+<style>
+/* shared/base.css — 共用樣式基底，逐字複製，勿手動修改（改請去 shared/base.css 源頭並重新複製） */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 {
+  line-height: 1.3;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+textarea,
+input[type="text"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 160px;
+}
+
+button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--color-bg);
+}
+
+button.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover {
+  background: var(--color-primary-hover);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover {
+  text-decoration: underline;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+/* ---- 本題（filler-word-checker）專屬樣式 ---- */
+:root {
+  --filler-bg: #fbe9e7;
+  --filler-border: #e6b3ac;
+  --ai-bg: #e7f0fb;
+  --ai-border: #a9c6e8;
+  --abstract-bg: #fdf3e0;
+  --abstract-border: #e8c99a;
+  --freq-bg: #fde2e2;
+  --freq-border: #f0a3a3;
+  --para-bg: #eee7fb;
+  --para-border: #c8b3e8;
+}
+
+.page-header {
+  margin-bottom: 8px;
+}
+
+.page-header h1 {
+  font-size: 1.4rem;
+  margin: 0 0 4px;
+}
+
+.page-header p {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.section-gap {
+  margin-top: 16px;
+}
+
+.file-hint {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.file-name {
+  font-size: 0.85rem;
+  color: var(--color-primary);
+  margin-top: 4px;
+  min-height: 18px;
+}
+
+.dict-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .dict-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+.settings-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-row input[type="number"] {
+  width: 64px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+details.card summary {
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: bold;
+}
+
+details.card[open] summary {
+  margin-bottom: 12px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+button.small {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  display: inline-block;
+}
+
+.legend-swatch.filler { background: var(--filler-bg); border-color: var(--filler-border); }
+.legend-swatch.ai { background: var(--ai-bg); border-color: var(--ai-border); }
+.legend-swatch.abstract { background: var(--abstract-bg); border-color: var(--abstract-border); }
+.legend-swatch.freq { background: var(--freq-bg); border-color: var(--freq-border); box-shadow: 0 0 0 2px var(--freq-border) inset; }
+.legend-swatch.para { background: var(--para-bg); border-color: var(--para-border); }
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+}
+
+.stats .stat-item b {
+  font-size: 1rem;
+}
+
+.preview {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 14px;
+  font-size: 0.95rem;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #fffdfa;
+  min-height: 80px;
+}
+
+.hit {
+  border-radius: 4px;
+  padding: 1px 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.hit.type-filler { background: var(--filler-bg); border: 1px solid var(--filler-border); }
+.hit.type-ai { background: var(--ai-bg); border: 1px solid var(--ai-border); }
+.hit.type-abstract { background: var(--abstract-bg); border: 1px solid var(--abstract-border); }
+.hit.unselected { opacity: .45; text-decoration: line-through; }
+.hit.freq-overlay { box-shadow: 0 0 0 2px var(--freq-border) inset; }
+.hit input[type="checkbox"] { margin: 0; cursor: pointer; }
+.hit .hit-label {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  border-left: 1px solid rgba(0,0,0,.15);
+  padding-left: 4px;
+  margin-left: 2px;
+}
+
+.warn-list {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.warn-list.freq li { color: #a13a3a; }
+.warn-list.para li { color: #5f4a92; }
+
+.bundled-licenses {
+  margin-top: 24px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.bundled-licenses ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="nav-back" href="../index.html">← 返回作品集</a>
+
+  <div class="page-header">
+    <h1>贅詞與 AI 味檢查器</h1>
+    <p>貼上或拖曳文字，依可編輯詞庫標出贅詞、AI 慣用語、抽象名詞（可勾選後刪除），並統計高頻用詞與段落開頭重複（僅提示）。所有處理都在瀏覽器本機完成，不上傳任何內容。</p>
+  </div>
+
+  <div id="dropzone" class="dropzone">拖曳 .txt / .md 檔案到此，或直接在下方貼上文字</div>
+
+  <div class="section-gap">
+    <textarea id="text-input" placeholder="在這裡貼上或輸入文字…" aria-label="輸入文字"></textarea>
+    <div class="file-name" id="file-name"></div>
+  </div>
+
+  <details class="card section-gap" id="dict-settings">
+    <summary>詞庫與偵測設定（可展開編輯）</summary>
+    <div class="dict-grid">
+      <div>
+        <h3>主詞庫（每行「詞彙,分類」，分類為 贅詞／AI 慣用語／抽象名詞）</h3>
+        <textarea id="main-dict-input" aria-label="主詞庫"></textarea>
+        <div class="button-row">
+          <button type="button" class="small" id="btn-export-main-dict">匯出主詞庫 JSON</button>
+          <label class="small" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+            匯入主詞庫 JSON
+            <input type="file" id="import-main-dict" accept="application/json" style="display:none;">
+          </label>
+        </div>
+      </div>
+      <div>
+        <h3>高頻監測詞庫（每行一個詞，AI 慣用過渡語）</h3>
+        <textarea id="freq-dict-input" aria-label="高頻監測詞庫"></textarea>
+        <div class="button-row">
+          <button type="button" class="small" id="btn-export-freq-dict">匯出高頻詞庫 JSON</button>
+          <label class="small" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+            匯入高頻詞庫 JSON
+            <input type="file" id="import-freq-dict" accept="application/json" style="display:none;">
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="settings-row">
+      <label>高頻詞門檻（全文出現達此次數才標紅）
+        <input type="number" id="freq-threshold" min="1" value="3">
+      </label>
+      <label>段落開頭比對字數
+        <input type="number" id="para-chars" min="2" value="5">
+      </label>
+    </div>
+  </details>
+
+  <div class="section-gap button-row">
+    <button type="button" id="btn-detect" class="primary">開始偵測</button>
+  </div>
+
+  <div class="section-gap card hidden" id="result-section">
+    <div class="stats" id="detect-stats"></div>
+    <div class="legend">
+      <span class="legend-item"><span class="legend-swatch filler"></span>贅詞（可勾選刪除）</span>
+      <span class="legend-item"><span class="legend-swatch ai"></span>AI 慣用語（可勾選刪除）</span>
+      <span class="legend-item"><span class="legend-swatch abstract"></span>抽象名詞（可勾選刪除）</span>
+      <span class="legend-item"><span class="legend-swatch freq"></span>高頻詞警示（疊加提示，僅提示）</span>
+      <span class="legend-item"><span class="legend-swatch para"></span>段落開頭重複（僅提示）</span>
+    </div>
+    <p class="file-hint">贅詞／AI 慣用語／抽象名詞可點擊勾選框個別取消／恢復，按「執行刪除」才會真正從輸入區文字移除；高頻詞警示與段落開頭重複僅供提示，不提供一鍵刪除。</p>
+    <div class="preview" id="detect-preview"></div>
+    <ul class="warn-list freq hidden" id="freq-warn-list"></ul>
+    <ul class="warn-list para hidden" id="para-warn-list"></ul>
+    <div class="button-row section-gap">
+      <button type="button" id="btn-delete" class="primary">執行刪除</button>
+      <button type="button" id="btn-copy-result">複製處理後文字</button>
+      <button type="button" id="btn-download-result">下載處理後 .txt</button>
+      <button type="button" id="btn-download-offline">下載本工具離線版</button>
+    </div>
+  </div>
+
+  <div class="bundled-licenses"><p>內嵌資源與授權：</p><ul><li>mainDictAsset 1.0 — project-internal</li><li>freqDictAsset 1.0 — project-internal</li></ul></div>
+</div>
+
+<script>
+// shared/util-escape.js
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+</script>
+<script>
+// shared/ui-toast.js
+function showToast(msg, ms) {
+  if (ms === undefined) ms = 2000;
+  var el = document.getElementById('__shared_toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '__shared_toast';
+    el.className = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  if (el.__hideTimer) {
+    clearTimeout(el.__hideTimer);
+  }
+  el.__hideTimer = setTimeout(function () {
+    el.classList.remove('show');
+  }, ms);
+}
+
+</script>
+<script>
+// shared/io-download.js
+function downloadFile(filename, content, mime) {
+  if (mime === undefined) mime = 'text/plain;charset=utf-8';
+  var blob = new Blob([content], { type: mime });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () {
+    URL.revokeObjectURL(url);
+  }, 0);
+}
+
+</script>
+<script>
+// shared/io-clipboard.js
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).then(function () {
+      return true;
+    }).catch(function () {
+      return false;
+    });
+  }
+  return new Promise(function (resolve) {
+    var textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    var ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch (e) {
+      ok = false;
+    }
+    document.body.removeChild(textarea);
+    resolve(ok);
+  });
+}
+
+function pasteImageFromClipboard() {
+  if (!navigator.clipboard || !navigator.clipboard.read) {
+    return Promise.resolve(null);
+  }
+  return navigator.clipboard.read().then(function (items) {
+    if (!items || items.length === 0) return null;
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (item && item.types) {
+        for (var t = 0; t < item.types.length; t++) {
+          if (item.types[t].indexOf('image/') === 0) {
+            return item.getType(item.types[t]);
+          }
+        }
+      }
+    }
+    return null;
+  }).catch(function () {
+    return null;
+  });
+}
+
+
+</script>
+<script>
+// shared/io-dropzone.js
+function ioDropzoneHandleFile(file, onData, opts) {
+  opts = opts || {};
+  // 預設只收 .txt / .md（契約第 3 節）。不要改成 [] ——那會變成靜默全收。
+  var accept = opts.accept || ['.txt', '.md'];
+  var onError = opts.onError || function () {};
+
+  function isAccepted(fileName) {
+    if (accept.length === 0) return true;
+    var lower = fileName.toLowerCase();
+    for (var i = 0; i < accept.length; i++) {
+      if (lower.indexOf(accept[i].toLowerCase(), lower.length - accept[i].length) !== -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  if (!isAccepted(file.name)) {
+    onError('不支援的檔案類型：' + file.name);
+    return;
+  }
+
+  if (opts.gate) {
+    var gateResult = opts.gate(file);
+    if (!gateResult.ok) {
+      onError(gateResult.message);
+      return;
+    }
+  }
+
+  var reader = new FileReader();
+  reader.onload = function () {
+    onData(reader.result, file.name);
+  };
+  reader.onerror = function () {
+    onError('讀取檔案失敗：' + file.name);
+  };
+  if (opts.mode === 'bytes') {
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.readAsText(file);
+  }
+}
+
+function setupDropZone(dropEl, onData, opts) {
+  opts = opts || {};
+
+  dropEl.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    dropEl.classList.add('dragover');
+  });
+
+  dropEl.addEventListener('dragleave', function () {
+    dropEl.classList.remove('dragover');
+  });
+
+  dropEl.addEventListener('drop', function (e) {
+    e.preventDefault();
+    dropEl.classList.remove('dragover');
+    var files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    if (opts.multiple === true) {
+      if (opts.gateBatch) {
+        var batchResult = opts.gateBatch(files);
+        if (!batchResult.ok) {
+          (opts.onError || function () {})(batchResult.message);
+          return;
+        }
+      }
+      var total = files.length;
+      for (var i = 0; i < total; i++) {
+        (function (idx) {
+          var meta = { index: idx, total: total };
+          var wrappedOnData = function (result, fileName) {
+            onData(result, fileName, meta);
+          };
+          ioDropzoneHandleFile(files[idx], wrappedOnData, opts);
+        })(i);
+      }
+    } else {
+      ioDropzoneHandleFile(files[0], onData, opts);
+    }
+  });
+}
+
+function setupFilePicker(inputEl, onData, opts) {
+  opts = opts || {};
+
+  inputEl.addEventListener('change', function () {
+    var files = inputEl.files;
+    if (!files || files.length === 0) return;
+
+    if (opts.multiple === true) {
+      if (opts.gateBatch) {
+        var batchResult = opts.gateBatch(files);
+        if (!batchResult.ok) {
+          (opts.onError || function () {})(batchResult.message);
+          return;
+        }
+      }
+      var total = files.length;
+      for (var i = 0; i < total; i++) {
+        (function (idx) {
+          var meta = { index: idx, total: total };
+          var wrappedOnData = function (result, fileName) {
+            onData(result, fileName, meta);
+          };
+          ioDropzoneHandleFile(files[idx], wrappedOnData, opts);
+        })(i);
+      }
+    } else {
+      ioDropzoneHandleFile(files[0], onData, opts);
+    }
+  });
+}
+
+
+</script>
+<script>
+var mainDictAsset = "[\n  { \"word\": \"基本上\", \"type\": \"贅詞\" },\n  { \"word\": \"其實\", \"type\": \"贅詞\" },\n  { \"word\": \"就是說\", \"type\": \"贅詞\" },\n  { \"word\": \"說真的\", \"type\": \"贅詞\" },\n  { \"word\": \"老實說\", \"type\": \"贅詞\" },\n  { \"word\": \"不僅如此\", \"type\": \"AI 慣用語\" },\n  { \"word\": \"值得一提的是\", \"type\": \"AI 慣用語\" },\n  { \"word\": \"值得注意的是\", \"type\": \"AI 慣用語\" },\n  { \"word\": \"總而言之\", \"type\": \"AI 慣用語\" },\n  { \"word\": \"換句話說\", \"type\": \"AI 慣用語\" },\n  { \"word\": \"不僅僅是\", \"type\": \"AI 慣用語\" },\n  { \"word\": \"更是\", \"type\": \"AI 慣用語\" },\n  { \"word\": \"賦能\", \"type\": \"抽象名詞\" },\n  { \"word\": \"賦予\", \"type\": \"抽象名詞\" },\n  { \"word\": \"打造\", \"type\": \"抽象名詞\" },\n  { \"word\": \"呈現\", \"type\": \"抽象名詞\" },\n  { \"word\": \"展現\", \"type\": \"抽象名詞\" }\n]\n";
+</script>
+<script>
+var freqDictAsset = "[\n  { \"word\": \"不僅如此\" },\n  { \"word\": \"值得一提的是\" },\n  { \"word\": \"值得注意的是\" },\n  { \"word\": \"總而言之\" },\n  { \"word\": \"換句話說\" }\n]\n";
+</script>
+
+<script>
+(function(){
+  'use strict';
+
+  var MAIN_TYPES = ['贅詞', 'AI 慣用語', '抽象名詞'];
+  var TYPE_TO_CLASS = { '贅詞': 'filler', 'AI 慣用語': 'ai', '抽象名詞': 'abstract' };
+
+  var DEFAULT_MAIN_DICT = JSON.parse(mainDictAsset);
+  var DEFAULT_FREQ_DICT = JSON.parse(freqDictAsset);
+
+  function mainDictToLines(arr){
+    return arr.map(function(e){ return e.word + ',' + e.type; }).join('\n');
+  }
+
+  function freqDictToLines(arr){
+    return arr.map(function(e){ return e.word; }).join('\n');
+  }
+
+  function parseMainDict(raw){
+    var out = [];
+    raw.split('\n').forEach(function(line){
+      var trimmed = line.trim();
+      if (!trimmed) return;
+      var idx = trimmed.lastIndexOf(',');
+      if (idx === -1) return;
+      var word = trimmed.slice(0, idx).trim();
+      var type = trimmed.slice(idx + 1).trim();
+      if (!word || MAIN_TYPES.indexOf(type) === -1) return;
+      out.push({ word: word, type: type });
+    });
+    return out;
+  }
+
+  function parseFreqDict(raw){
+    return raw.split('\n').map(function(l){ return l.trim(); }).filter(Boolean).map(function(w){ return { word: w }; });
+  }
+
+  // 引號排除範圍：「」『』""與彎引號 "  " 共四組成對符號。
+  // 未閉合引號（只有開頭符號、找不到對應結尾）不成對，正則本身不會產生 match，
+  // 其後文字自然照常參與偵測，不需額外分支處理。
+  function findQuoteRanges(text){
+    var ranges = [];
+    var re = /「[^」]*」|『[^』]*』|"[^"]*"|“[^”]*”/g;
+    var m;
+    while ((m = re.exec(text)) !== null){
+      ranges.push([m.index, m.index + m[0].length]);
+      if (m[0].length === 0) re.lastIndex++;
+    }
+    return ranges;
+  }
+
+  function isInsideRanges(start, end, ranges){
+    for (var i = 0; i < ranges.length; i++){
+      if (start >= ranges[i][0] && end <= ranges[i][1]) return true;
+    }
+    return false;
+  }
+
+  function findDictMatches(text, dict, quoteRanges){
+    var all = [];
+    dict.forEach(function(entry){
+      if (!entry.word) return;
+      var searchIdx = 0;
+      while (true){
+        var found = text.indexOf(entry.word, searchIdx);
+        if (found === -1) break;
+        var end = found + entry.word.length;
+        searchIdx = end;
+        if (isInsideRanges(found, end, quoteRanges)) continue;
+        all.push({ start: found, end: end, text: entry.word, type: entry.type });
+      }
+    });
+    all.sort(function(a, b){
+      if (a.start !== b.start) return a.start - b.start;
+      return (b.end - b.start) - (a.end - a.start);
+    });
+    var result = [];
+    var lastEnd = -1;
+    all.forEach(function(m){
+      if (m.start >= lastEnd){
+        result.push(m);
+        lastEnd = m.end;
+      }
+    });
+    result.forEach(function(m, i){ m.id = i; m.selected = true; });
+    return result;
+  }
+
+  function computeFreqWarnings(text, freqWords, threshold, quoteRanges){
+    var warnings = [];
+    freqWords.forEach(function(entry){
+      var word = entry.word;
+      if (!word) return;
+      var count = 0;
+      var searchIdx = 0;
+      while (true){
+        var found = text.indexOf(word, searchIdx);
+        if (found === -1) break;
+        var end = found + word.length;
+        searchIdx = end;
+        if (isInsideRanges(found, end, quoteRanges)) continue;
+        count++;
+      }
+      if (count >= threshold) warnings.push({ word: word, count: count });
+    });
+    return warnings;
+  }
+
+  function stripQuotes(text, quoteRanges){
+    var out = '';
+    var cursor = 0;
+    quoteRanges.forEach(function(r){
+      out += text.slice(cursor, r[0]);
+      cursor = r[1];
+    });
+    out += text.slice(cursor);
+    return out;
+  }
+
+  function computeParaWarnings(text, quoteRanges, paraChars){
+    var stripped = stripQuotes(text, quoteRanges);
+    var paras = stripped.split(/\n\s*\n/).map(function(p){ return p.trim(); }).filter(Boolean);
+    var groups = {};
+    paras.forEach(function(p, i){
+      var head = p.slice(0, paraChars);
+      if (head.length < paraChars) return;
+      if (!groups[head]) groups[head] = [];
+      groups[head].push(i + 1);
+    });
+    var warnings = [];
+    Object.keys(groups).forEach(function(head){
+      if (groups[head].length >= 2){
+        warnings.push({ head: head, paragraphs: groups[head] });
+      }
+    });
+    return warnings;
+  }
+
+  function buildDeletedText(text, matches){
+    var out = '';
+    var cursor = 0;
+    matches.forEach(function(m){
+      out += text.slice(cursor, m.start);
+      if (!m.selected) out += m.text;
+      cursor = m.end;
+    });
+    out += text.slice(cursor);
+    return out;
+  }
+
+  function renderPreview(text, matches, freqWordSet, containerEl){
+    if (!text){
+      containerEl.textContent = '（尚無內容）';
+      return;
+    }
+    var html = '';
+    var cursor = 0;
+    matches.forEach(function(m){
+      html += escapeHtml(text.slice(cursor, m.start));
+      var cls = 'hit type-' + TYPE_TO_CLASS[m.type] + (m.selected ? '' : ' unselected');
+      if (freqWordSet[m.text]) cls += ' freq-overlay';
+      html += '<span class="' + cls + '" data-hit-id="' + m.id + '">' +
+        '<input type="checkbox" data-hit-id="' + m.id + '"' + (m.selected ? ' checked' : '') + '>' +
+        '<span class="hit-text">' + escapeHtml(m.text) + '</span>' +
+        '<span class="hit-label">' + escapeHtml(m.type) + '</span>' +
+        '</span>';
+      cursor = m.end;
+    });
+    html += escapeHtml(text.slice(cursor));
+    containerEl.innerHTML = html;
+  }
+
+  function renderWarnList(warnings, listEl, formatter){
+    if (!warnings.length){
+      listEl.classList.add('hidden');
+      listEl.innerHTML = '';
+      return;
+    }
+    listEl.classList.remove('hidden');
+    listEl.innerHTML = warnings.map(function(w){ return '<li>' + escapeHtml(formatter(w)) + '</li>'; }).join('');
+  }
+
+  function renderStats(matches, freqWarnings, paraWarnings, deletedCount, containerEl){
+    var counts = { filler: 0, ai: 0, abstract: 0 };
+    matches.forEach(function(m){ counts[TYPE_TO_CLASS[m.type]]++; });
+    containerEl.innerHTML =
+      '<span class="stat-item">贅詞命中 <b>' + counts.filler + '</b> 筆</span>' +
+      '<span class="stat-item">AI 慣用語命中 <b>' + counts.ai + '</b> 筆</span>' +
+      '<span class="stat-item">抽象名詞命中 <b>' + counts.abstract + '</b> 筆</span>' +
+      '<span class="stat-item">高頻詞警示 <b>' + freqWarnings.length + '</b> 組</span>' +
+      '<span class="stat-item">段落開頭重複 <b>' + paraWarnings.length + '</b> 組</span>' +
+      '<span class="stat-item">已刪除 <b>' + deletedCount + '</b> 筆</span>';
+  }
+
+  var textInput = document.getElementById('text-input');
+  var dropzone = document.getElementById('dropzone');
+  var fileNameEl = document.getElementById('file-name');
+  var mainDictInput = document.getElementById('main-dict-input');
+  var freqDictInput = document.getElementById('freq-dict-input');
+  var resultSection = document.getElementById('result-section');
+  var statsEl = document.getElementById('detect-stats');
+  var previewEl = document.getElementById('detect-preview');
+  var freqWarnListEl = document.getElementById('freq-warn-list');
+  var paraWarnListEl = document.getElementById('para-warn-list');
+
+  mainDictInput.value = mainDictToLines(DEFAULT_MAIN_DICT);
+  freqDictInput.value = freqDictToLines(DEFAULT_FREQ_DICT);
+
+  var state = { text: '', matches: [], freqWarnings: [], paraWarnings: [], deletedCount: 0, hasDetected: false };
+
+  function detectAndRender(text, deletedCount){
+    var mainDict = parseMainDict(mainDictInput.value);
+    var freqWords = parseFreqDict(freqDictInput.value);
+    var threshold = parseInt(document.getElementById('freq-threshold').value, 10) || 1;
+    var paraChars = parseInt(document.getElementById('para-chars').value, 10) || 1;
+    var quoteRanges = findQuoteRanges(text);
+    var matches = findDictMatches(text, mainDict, quoteRanges);
+    var freqWarnings = computeFreqWarnings(text, freqWords, threshold, quoteRanges);
+    var paraWarnings = computeParaWarnings(text, quoteRanges, paraChars);
+    var freqWordSet = {};
+    freqWarnings.forEach(function(w){ freqWordSet[w.word] = true; });
+
+    state.text = text;
+    state.matches = matches;
+    state.freqWarnings = freqWarnings;
+    state.paraWarnings = paraWarnings;
+    state.deletedCount = deletedCount || 0;
+    state.hasDetected = true;
+
+    renderPreview(text, matches, freqWordSet, previewEl);
+    renderWarnList(freqWarnings, freqWarnListEl, function(w){ return '高頻詞警示：「' + w.word + '」全文出現 ' + w.count + ' 次'; });
+    renderWarnList(paraWarnings, paraWarnListEl, function(w){ return '段落開頭重複：「' + w.head + '」出現於第 ' + w.paragraphs.join('、') + ' 段'; });
+    renderStats(matches, freqWarnings, paraWarnings, state.deletedCount, statsEl);
+    resultSection.classList.remove('hidden');
+  }
+
+  document.getElementById('btn-detect').addEventListener('click', function(){
+    detectAndRender(textInput.value, 0);
+  });
+
+  previewEl.addEventListener('click', function(e){
+    var target = e.target;
+    if (target.tagName !== 'INPUT' || target.type !== 'checkbox') return;
+    var id = Number(target.getAttribute('data-hit-id'));
+    var match = state.matches.filter(function(m){ return m.id === id; })[0];
+    if (!match) return;
+    match.selected = target.checked;
+    var freqWordSet = {};
+    state.freqWarnings.forEach(function(w){ freqWordSet[w.word] = true; });
+    renderPreview(state.text, state.matches, freqWordSet, previewEl);
+    renderStats(state.matches, state.freqWarnings, state.paraWarnings, state.deletedCount, statsEl);
+  });
+
+  document.getElementById('btn-delete').addEventListener('click', function(){
+    if (!state.hasDetected){ showToast('請先執行偵測'); return; }
+    var selectedCount = state.matches.filter(function(m){ return m.selected; }).length;
+    var resultText = buildDeletedText(state.text, state.matches);
+    textInput.value = resultText;
+    detectAndRender(resultText, state.deletedCount + selectedCount);
+    showToast('已刪除 ' + selectedCount + ' 筆');
+  });
+
+  document.getElementById('btn-copy-result').addEventListener('click', function(){
+    var text = textInput.value;
+    copyToClipboard(text).then(function(ok){
+      showToast(ok ? '已複製處理後文字' : '複製失敗，請手動選取');
+    });
+  });
+
+  document.getElementById('btn-download-result').addEventListener('click', function(){
+    downloadFile('處理後文字.txt', textInput.value, 'text/plain;charset=utf-8');
+  });
+
+  document.getElementById('btn-export-main-dict').addEventListener('click', function(){
+    var dict = parseMainDict(mainDictInput.value);
+    downloadFile('主詞庫.json', JSON.stringify(dict, null, 2), 'application/json;charset=utf-8');
+  });
+
+  document.getElementById('btn-export-freq-dict').addEventListener('click', function(){
+    var dict = parseFreqDict(freqDictInput.value);
+    downloadFile('高頻監測詞庫.json', JSON.stringify(dict, null, 2), 'application/json;charset=utf-8');
+  });
+
+  // 匯入 JSON 詞庫：逐筆驗證結構。缺欄位／型別不符的項目忽略；
+  // 若整包都是合法陣列但有效項目為 0（例如整包項目都缺欄位），視為格式錯誤整包擋下，
+  // 既有詞庫內容不被清空或污染。
+  function importDict(jsonText, validator){
+    var data;
+    try {
+      data = JSON.parse(jsonText);
+    } catch (e){
+      return { ok: false };
+    }
+    if (!Array.isArray(data)) return { ok: false };
+    var valid = [];
+    var skipped = 0;
+    data.forEach(function(item){
+      var v = validator(item);
+      if (v) valid.push(v); else skipped++;
+    });
+    if (data.length > 0 && valid.length === 0) return { ok: false };
+    return { ok: true, valid: valid, skipped: skipped };
+  }
+
+  function mainDictValidator(item){
+    if (!item || typeof item.word !== 'string' || !item.word.trim()) return null;
+    if (MAIN_TYPES.indexOf(item.type) === -1) return null;
+    return { word: item.word.trim(), type: item.type };
+  }
+
+  function freqDictValidator(item){
+    if (!item || typeof item.word !== 'string' || !item.word.trim()) return null;
+    return { word: item.word.trim() };
+  }
+
+  function handleImportFile(file, validator, toLines, targetTextarea, label){
+    var reader = new FileReader();
+    reader.onload = function(evt){
+      var result = importDict(evt.target.result, validator);
+      if (!result.ok){
+        showToast('匯入失敗：檔案格式錯誤');
+        return;
+      }
+      targetTextarea.value = toLines(result.valid);
+      if (result.skipped > 0){
+        showToast('已略過 ' + result.skipped + ' 筆格式錯誤');
+      } else {
+        showToast('已匯入' + label);
+      }
+    };
+    reader.onerror = function(){
+      showToast('匯入失敗：檔案格式錯誤');
+    };
+    reader.readAsText(file, 'utf-8');
+  }
+
+  document.getElementById('import-main-dict').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    handleImportFile(file, mainDictValidator, mainDictToLines, mainDictInput, '主詞庫');
+  });
+
+  document.getElementById('import-freq-dict').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    handleImportFile(file, freqDictValidator, freqDictToLines, freqDictInput, '高頻監測詞庫');
+  });
+
+  setupDropZone(dropzone, function(text, fileName){
+    textInput.value = text;
+    fileNameEl.textContent = '已載入：' + fileName;
+  }, {
+    accept: ['.txt', '.md'],
+    onError: function(msg){
+      showToast(msg);
+    }
+  });
+
+  function buildCleanHtmlCopy(){
+    var clone = document.documentElement.cloneNode(true);
+
+    var ta = clone.querySelector('#text-input');
+    if (ta) ta.value = '';
+
+    var fn = clone.querySelector('#file-name');
+    if (fn) fn.textContent = '';
+
+    var mdi = clone.querySelector('#main-dict-input');
+    if (mdi) mdi.value = mainDictToLines(DEFAULT_MAIN_DICT);
+
+    var fdi = clone.querySelector('#freq-dict-input');
+    if (fdi) fdi.value = freqDictToLines(DEFAULT_FREQ_DICT);
+
+    var thr = clone.querySelector('#freq-threshold');
+    if (thr) thr.value = '3';
+
+    var pc = clone.querySelector('#para-chars');
+    if (pc) pc.value = '5';
+
+    var details = clone.querySelector('#dict-settings');
+    if (details) details.removeAttribute('open');
+
+    var rs = clone.querySelector('#result-section');
+    if (rs) rs.classList.add('hidden');
+
+    var stats = clone.querySelector('#detect-stats');
+    if (stats) stats.innerHTML = '';
+
+    var preview = clone.querySelector('#detect-preview');
+    if (preview) preview.innerHTML = '';
+
+    var freqList = clone.querySelector('#freq-warn-list');
+    if (freqList){ freqList.innerHTML = ''; freqList.classList.add('hidden'); }
+
+    var paraList = clone.querySelector('#para-warn-list');
+    if (paraList){ paraList.innerHTML = ''; paraList.classList.add('hidden'); }
+
+    // showToast() 動態注入的 #__shared_toast 會被序列化進 outerHTML，
+    // 若殘留使用者提示文字（例如含輸入內容的錯誤訊息）會外洩到離線分享檔，直接移除整個節點。
+    var toastEl = clone.querySelector('#__shared_toast');
+    if (toastEl && toastEl.parentNode) toastEl.parentNode.removeChild(toastEl);
+
+    var navBack = clone.querySelector('.nav-back');
+    if (navBack && navBack.parentNode) navBack.parentNode.removeChild(navBack);
+
+    var htmlStr = '<!DOCTYPE html>\n' + clone.outerHTML;
+    downloadFile('filler-word-checker-offline.html', htmlStr, 'text/html;charset=utf-8');
+  }
+
+  document.getElementById('btn-download-offline').addEventListener('click', buildCleanHtmlCopy);
+})();
+</script>
+</body>
+</html>

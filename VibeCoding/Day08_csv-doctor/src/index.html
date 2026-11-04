@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSV Doctor &amp; Cleaner</title>
+<style>
+/* shared/base.css — 共用樣式基底，逐字複製，勿手動修改（改請去 shared/base.css 源頭並重新複製） */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 {
+  line-height: 1.3;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+textarea,
+input[type="text"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 160px;
+}
+
+button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--color-bg);
+}
+
+button.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover {
+  background: var(--color-primary-hover);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover {
+  text-decoration: underline;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+/* ---- 本題（csv-doctor）專屬樣式 ---- */
+.page-header {
+  margin-bottom: 8px;
+}
+
+.page-header h1 {
+  font-size: 1.4rem;
+  margin: 0 0 4px;
+}
+
+.page-header p {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.section-gap {
+  margin-top: 16px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.file-hint {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.file-meta {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  margin-top: 8px;
+}
+
+.file-meta span {
+  margin-right: 14px;
+}
+
+.msg {
+  font-size: 0.85rem;
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  margin-top: 8px;
+}
+
+.msg.warn {
+  background: #fdf3e0;
+  color: #8a5a00;
+  border: 1px solid #e8c99a;
+}
+
+.msg.error {
+  background: #fdeaea;
+  color: #a13a3a;
+  border: 1px solid #f0a3a3;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 10px;
+}
+
+button.small {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.doctor-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-top: 10px;
+}
+
+.doctor-item h4 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+}
+
+.doctor-item .count {
+  font-weight: bold;
+  color: var(--color-primary);
+}
+
+.doctor-item ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 0.82rem;
+  color: var(--color-text);
+}
+
+.doctor-item .empty {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.cleaner-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .cleaner-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cleaner-grid label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+
+.sub-option {
+  margin-left: 22px;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.col-checklist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.85rem;
+  margin-top: 8px;
+}
+
+.col-checklist label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+select {
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.preview-box {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-top: 10px;
+  font-size: 0.85rem;
+}
+
+.line-list {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  word-break: break-all;
+  margin-top: 6px;
+}
+
+.bundled-licenses {
+  margin-top: 24px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.bundled-licenses ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="nav-back" href="../index.html">← 返回作品集</a>
+
+  <div class="page-header">
+    <h1>CSV Doctor &amp; Cleaner</h1>
+    <p>上傳 CSV，先做健檢找出空值、重複、型別與格式問題，確認後再用 Cleaner 清理。刪除前一律先預覽受影響筆數，所有處理都在瀏覽器本機完成，不上傳任何內容。</p>
+  </div>
+
+  <div id="dropzone" class="dropzone">拖曳 .csv 檔案到此，或使用下方按鈕選取檔案</div>
+  <div class="button-row">
+    <label class="small" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+      <button type="button" class="small" id="btn-pick-file">選取 CSV 檔案</button>
+      <input type="file" id="file-input" accept=".csv" style="display:none;">
+    </label>
+  </div>
+  <div id="size-msg"></div>
+  <div id="file-meta" class="file-meta"></div>
+  <div id="encoding-fallback" class="msg warn hidden"></div>
+
+  <div class="card section-gap">
+    <div class="button-row">
+      <button type="button" class="primary" id="btn-doctor" disabled>開始健檢</button>
+    </div>
+    <div id="doctor-status" class="file-hint"></div>
+    <div id="doctor-results"></div>
+  </div>
+
+  <div class="card section-gap">
+    <h3>Cleaner 操作</h3>
+    <div class="cleaner-grid">
+      <div>
+        <label><input type="checkbox" id="opt-trim"> Trim（去除前後空白）</label>
+        <div class="sub-option">
+          <label><input type="checkbox" id="opt-trim-header" checked> 連同欄名一起清理</label>
+        </div>
+        <label><input type="checkbox" id="opt-blank-rows"> 移除空白列</label>
+        <label><input type="checkbox" id="opt-date-normalize"> 日期基本正規化</label>
+        <label><input type="checkbox" id="opt-fullwidth"> 全半形正規化</label>
+      </div>
+      <div>
+        <label>去重複模式
+          <select id="opt-dedupe-mode">
+            <option value="none">不去重</option>
+            <option value="rows">整列去重</option>
+            <option value="key">依指定 Key 去重</option>
+          </select>
+        </label>
+        <label>保留規則
+          <select id="opt-dedupe-keep">
+            <option value="first">保留第一筆</option>
+            <option value="last">保留最後一筆</option>
+            <option value="mark">只標記</option>
+          </select>
+        </label>
+        <div id="groupby-columns" class="col-checklist"></div>
+      </div>
+    </div>
+    <div class="button-row">
+      <button type="button" id="btn-preview">預覽</button>
+      <button type="button" id="btn-apply" disabled>確認套用</button>
+      <button type="button" id="btn-groupby-detect">Group By 找重複（D10）</button>
+    </div>
+    <div id="preview-results" class="preview-box hidden"></div>
+    <div id="groupby-results" class="preview-box hidden"></div>
+  </div>
+
+  <div class="card section-gap">
+    <h3>結果</h3>
+    <div class="button-row">
+      <button type="button" id="btn-copy">複製健檢摘要</button>
+      <button type="button" id="btn-download-cleaned">下載清理後 CSV</button>
+      <button type="button" id="btn-download-issues">下載問題資料報告</button>
+      <button type="button" id="btn-download-offline">下載本工具離線版</button>
+    </div>
+  </div>
+
+  <!--{{LICENSES}}-->
+</div>
+
+<!--{{SHARED:util-escape}}-->
+<!--{{SHARED:ui-toast}}-->
+<!--{{SHARED:io-download}}-->
+<!--{{SHARED:io-clipboard}}-->
+<!--{{SHARED:io-dropzone}}-->
+<!--{{ASSET:papaparse}}-->
+<!--{{SHARED:csv-parse}}-->
+<!--{{SHARED:csv-decode}}-->
+<!--{{SHARED:csv-write}}-->
+<!--{{SHARED:csv-types}}-->
+<script>
+(function () {
+  'use strict';
+
+  var FULLWIDTH_RE = /[！-～　]/;
+  var HALFWIDTH_ONLY_RE = /^[\x21-\x7E\x20]*$/;
+
+  var state = {
+    table: null,          // working Table
+    fileName: '',          // original uploaded file name
+    arrayBuffer: null,     // raw bytes, kept for manual encoding switch
+    doctorResult: null,    // last "開始健檢" result (all-issues array + summary)
+    preview: null,         // { settingsKey, affected: [...], count }
+  };
+
+  // ---------- utility ----------
+
+  function baseName(name) {
+    var idx = name.lastIndexOf('.');
+    return idx > 0 ? name.slice(0, idx) : name;
+  }
+
+  function rowByLine(table, line) {
+    for (var i = 0; i < table.rows.length; i++) {
+      if (table.rows[i].line === line) return table.rows[i];
+    }
+    return null;
+  }
+
+  function cloneTable(table) {
+    return {
+      headers: table.headers.slice(),
+      rows: table.rows.map(function (r) {
+        return { line: r.line, cells: r.cells.slice() };
+      }),
+      meta: JSON.parse(JSON.stringify(table.meta))
+    };
+  }
+
+  function fullWidthToHalfWidth(s) {
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var code = s.codePointAt(i);
+      if (code === 0x3000) {
+        out += ' ';
+      } else if (code >= 0xff01 && code <= 0xff5e) {
+        out += String.fromCharCode(code - 0xfee0);
+      } else {
+        out += s[i];
+      }
+    }
+    return out;
+  }
+
+  // ---------- date style classification (shares dateParts()'s branch shape) ----------
+
+  function dateStyle(s) {
+    if (!isDateLike(s)) return null;
+    if (/^\d{4}[-/]\d{2}[-/]\d{2}$/.test(s)) return 'padded';       // YYYY-MM-DD / YYYY/MM/DD
+    if (/^\d{4}[-/]\d[-/]\d$/.test(s)) return 'nonpadded';          // YYYY-M-D / YYYY/M/D
+    if (/^\d{8}$/.test(s)) return 'compact';                        // YYYYMMDD
+    if (/^\d{4}[-/]\d{2}$/.test(s)) return 'yearmonth';             // YYYY-MM / YYYY/MM
+    if (/^\d{4}$/.test(s)) return 'year';                           // YYYY
+    return null;
+  }
+
+  // ---------- Doctor ----------
+
+  function runDoctor(table) {
+    var issues = []; // { type, label, line, column, value, note }
+    var headerCount = table.headers.length;
+    var types = inferColumnTypes(table);
+
+    // D1 空值
+    var d1 = [];
+    for (var c = 0; c < headerCount; c++) {
+      table.rows.forEach(function (row) {
+        var v = cellAt(row, c);
+        if (v === '') {
+          d1.push({ line: row.line, column: c });
+        }
+      });
+    }
+    d1.forEach(function (hit) {
+      issues.push({ type: 'D1', label: '空值', line: hit.line, column: table.headers[hit.column], value: '', note: '' });
+    });
+
+    // D2 空白列
+    var d2 = [];
+    table.rows.forEach(function (row) {
+      if (row.cells.length >= 1 && row.cells.every(function (c) { return c.trim() === ''; })) {
+        d2.push(row.line);
+      }
+    });
+    d2.forEach(function (line) {
+      issues.push({ type: 'D2', label: '空白列', line: line, column: '', value: '', note: '' });
+    });
+
+    // D2b 空白欄
+    var d2b = [];
+    for (var c2 = 0; c2 < headerCount; c2++) {
+      if (table.rows.length > 0 && table.rows.every(function (row) { return cellAt(row, c2).trim() === ''; })) {
+        d2b.push(c2);
+      }
+    }
+    d2b.forEach(function (c) {
+      issues.push({ type: 'D2b', label: '空白欄', line: '', column: table.headers[c], value: '', note: '' });
+    });
+
+    // D3 欄數不一致
+    var d3 = table.meta.raggedRows.slice();
+    d3.forEach(function (line) {
+      var row = rowByLine(table, line);
+      issues.push({ type: 'D3', label: '欄數不一致', line: line, column: '', value: '', note: '實際欄數 ' + (row ? row.cells.length : '?') + '，表頭欄數 ' + headerCount });
+    });
+
+    // D4 欄名重複
+    var nameToCols = {};
+    table.headers.forEach(function (h, i) {
+      if (!nameToCols[h]) nameToCols[h] = [];
+      nameToCols[h].push(i);
+    });
+    var d4 = [];
+    Object.keys(nameToCols).forEach(function (name) {
+      if (nameToCols[name].length >= 2) {
+        d4.push({ name: name, cols: nameToCols[name] });
+      }
+    });
+    d4.forEach(function (grp) {
+      grp.cols.forEach(function (c) {
+        issues.push({ type: 'D4', label: '欄名重複', line: '', column: grp.name, value: String(c), note: '重複欄名於欄位索引 ' + c + '（共 ' + grp.cols.length + ' 欄）' });
+      });
+    });
+
+    // D5 數值欄混入文字
+    var d5 = [];
+    types.forEach(function (t, c) {
+      if (t.kind === 'number' && t.mismatchLines.length > 0) {
+        t.mismatchLines.forEach(function (line) {
+          var row = rowByLine(table, line);
+          d5.push({ column: c, line: line, value: row ? cellAt(row, c) : '' });
+        });
+      }
+    });
+    d5.forEach(function (hit) {
+      issues.push({ type: 'D5', label: '數值欄混入文字', line: hit.line, column: table.headers[hit.column], value: hit.value, note: '' });
+    });
+
+    // D8 日期格式異常（非日期值 + 格式異常）
+    var d8a = [];
+    var d8b = [];
+    types.forEach(function (t, c) {
+      if (t.kind !== 'date') return;
+      t.mismatchLines.forEach(function (line) {
+        var row = rowByLine(table, line);
+        d8a.push({ column: c, line: line, value: row ? cellAt(row, c) : '' });
+      });
+      // gather matched (whitelist) samples with their style
+      var styleCounts = {};
+      var styled = [];
+      table.rows.forEach(function (row) {
+        var v = cellAt(row, c);
+        if (v === '') return;
+        var st = dateStyle(v);
+        if (st === null) return; // not on whitelist, handled by mismatchLines above
+        styled.push({ line: row.line, value: v, style: st });
+        styleCounts[st] = (styleCounts[st] || 0) + 1;
+      });
+      var styleKeys = Object.keys(styleCounts);
+      if (styleKeys.length >= 2) {
+        var majority = styleKeys[0];
+        styleKeys.forEach(function (k) {
+          if (styleCounts[k] > styleCounts[majority]) majority = k;
+        });
+        // majority = first-seen style among those with max count (ties -> first occurrence order already preserved by Object.keys insertion order)
+        var maxCount = styleCounts[majority];
+        var majorityKey = null;
+        for (var i = 0; i < styled.length; i++) {
+          if (styleCounts[styled[i].style] === maxCount) { majorityKey = styled[i].style; break; }
+        }
+        styled.forEach(function (s) {
+          if (s.style !== majorityKey) {
+            d8b.push({ column: c, line: s.line, value: s.value });
+          }
+        });
+      }
+    });
+    d8a.forEach(function (hit) {
+      issues.push({ type: 'D8a', label: '日期欄非日期值', line: hit.line, column: table.headers[hit.column], value: hit.value, note: '' });
+    });
+    d8b.forEach(function (hit) {
+      issues.push({ type: 'D8b', label: '日期格式異常', line: hit.line, column: table.headers[hit.column], value: hit.value, note: '與欄內多數樣式不一致' });
+    });
+
+    // D6 前後空白（含 header 與資料格）
+    var d6 = [];
+    table.headers.forEach(function (h, c) {
+      if (h.trim() !== h) d6.push({ line: '', column: c, value: h, isHeader: true });
+    });
+    table.rows.forEach(function (row) {
+      for (var c = 0; c < headerCount; c++) {
+        var v = cellAt(row, c);
+        if (v.trim() !== v) d6.push({ line: row.line, column: c, value: v, isHeader: false });
+      }
+    });
+    d6.forEach(function (hit) {
+      issues.push({ type: 'D6', label: '前後空白', line: hit.line, column: hit.isHeader ? ('[header] ' + table.headers[hit.column]) : table.headers[hit.column], value: hit.value, note: '' });
+    });
+
+    // D7 全半形差異
+    var d7 = [];
+    var mixedCols = {};
+    for (var c7 = 0; c7 < headerCount; c7++) {
+      var colCells = [{ line: '', v: table.headers[c7], isHeader: true }];
+      table.rows.forEach(function (row) {
+        colCells.push({ line: row.line, v: cellAt(row, c7), isHeader: false });
+      });
+      var hasFW = false, hasHW = false;
+      colCells.forEach(function (cell) {
+        if (FULLWIDTH_RE.test(cell.v)) {
+          hasFW = true;
+          d7.push({ line: cell.line, column: c7, value: cell.v, isHeader: cell.isHeader });
+        } else if (cell.v !== '' && HALFWIDTH_ONLY_RE.test(cell.v)) {
+          hasHW = true;
+        }
+      });
+      if (hasFW && hasHW) mixedCols[c7] = true;
+    }
+    d7.forEach(function (hit) {
+      issues.push({ type: 'D7', label: '全半形差異', line: hit.line, column: hit.isHeader ? ('[header] ' + table.headers[hit.column]) : table.headers[hit.column], value: hit.value, note: '' });
+    });
+    Object.keys(mixedCols).forEach(function (c) {
+      issues.push({ type: 'D7_mixed', label: '全半形混用（欄層級）', line: '', column: table.headers[c], value: '', note: '同一欄同時存在全形與半形內容' });
+    });
+
+    // D9 整列完全重複
+    var groups = {};
+    table.rows.forEach(function (row) {
+      var key = row.cells.join('\0');
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(row.line);
+    });
+    var d9 = [];
+    Object.keys(groups).forEach(function (key) {
+      if (groups[key].length >= 2) d9.push(groups[key]);
+    });
+    d9.forEach(function (lines) {
+      lines.forEach(function (line) {
+        issues.push({ type: 'D9', label: '整列完全重複', line: line, column: '', value: '', note: '重複群組成員（共 ' + lines.length + ' 筆），line: ' + lines.join(',') });
+      });
+    });
+
+    return {
+      issues: issues,
+      types: types,
+      byType: groupByType(issues),
+      d9groups: d9
+    };
+  }
+
+  function groupByType(issues) {
+    var map = {};
+    issues.forEach(function (it) {
+      if (!map[it.type]) map[it.type] = [];
+      map[it.type].push(it);
+    });
+    return map;
+  }
+
+  // D10 Group By 找重複（獨立於「開始健檢」，需使用者指定欄位）
+  function runGroupByDetect(table, columnIndexes) {
+    var groups = {};
+    table.rows.forEach(function (row) {
+      var key = columnIndexes.map(function (c) { return cellAt(row, c); }).join('\0');
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(row.line);
+    });
+    var result = [];
+    Object.keys(groups).forEach(function (key) {
+      if (groups[key].length >= 2) {
+        result.push({ key: key, lines: groups[key], count: groups[key].length });
+      }
+    });
+    return result;
+  }
+
+  // ---------- Doctor rendering ----------
+
+  function renderDoctorResults(result) {
+    var el = document.getElementById('doctor-results');
+    el.innerHTML = '';
+    var order = [
+      ['D1', '空值'], ['D2', '空白列'], ['D2b', '空白欄'], ['D3', '欄數不一致'],
+      ['D4', '欄名重複'], ['D5', '數值欄混入文字'], ['D8a', '日期欄非日期值'],
+      ['D8b', '日期格式異常'], ['D6', '前後空白'], ['D7', '全半形差異'],
+      ['D7_mixed', '全半形混用（欄層級）'], ['D9', '整列完全重複']
+    ];
+    order.forEach(function (pair) {
+      var type = pair[0], label = pair[1];
+      var items = result.byType[type] || [];
+      var box = document.createElement('div');
+      box.className = 'doctor-item';
+      box.setAttribute('data-doctor-type', type);
+      var h4 = document.createElement('h4');
+      h4.innerHTML = escapeHtml(label) + '：<span class="count">' + items.length + '</span> 筆';
+      box.appendChild(h4);
+      if (items.length === 0) {
+        var empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = '未偵測到問題';
+        box.appendChild(empty);
+      } else {
+        var ul = document.createElement('ul');
+        items.forEach(function (it) {
+          var li = document.createElement('li');
+          var parts = [];
+          if (it.line !== '') parts.push('line ' + it.line);
+          if (it.column) parts.push('欄位：' + it.column);
+          if (it.value !== '' && it.value !== undefined) parts.push('值：「' + it.value + '」');
+          if (it.note) parts.push(it.note);
+          li.textContent = parts.join('｜');
+          ul.appendChild(li);
+        });
+        box.appendChild(ul);
+      }
+      el.appendChild(box);
+    });
+  }
+
+  // ---------- Cleaner: preview / apply ----------
+
+  function currentCleanerSettings() {
+    return {
+      trim: document.getElementById('opt-trim').checked,
+      trimHeader: document.getElementById('opt-trim-header').checked,
+      blankRows: document.getElementById('opt-blank-rows').checked,
+      dateNormalize: document.getElementById('opt-date-normalize').checked,
+      fullwidth: document.getElementById('opt-fullwidth').checked,
+      dedupeMode: document.getElementById('opt-dedupe-mode').value,
+      dedupeKeep: document.getElementById('opt-dedupe-keep').value,
+      keyColumns: selectedGroupByColumns()
+    };
+  }
+
+  function settingsKey(s) {
+    return JSON.stringify(s);
+  }
+
+  function selectedGroupByColumns() {
+    var boxes = document.querySelectorAll('#groupby-columns input[type=checkbox]:checked');
+    return Array.prototype.map.call(boxes, function (b) { return Number(b.value); });
+  }
+
+  // Returns { table: newTable, affectedLines: number[] } — pure, no mutation of input.
+  function simulateClean(table, settings) {
+    var t = cloneTable(table);
+    var affected = {};
+
+    function markAffected(line) { affected[line] = true; }
+
+    if (settings.trim) {
+      if (settings.trimHeader) {
+        t.headers = t.headers.map(function (h) { return h.trim(); });
+      }
+      t.rows.forEach(function (row) {
+        var changed = false;
+        row.cells = row.cells.map(function (c) {
+          var trimmed = c.trim();
+          if (trimmed !== c) changed = true;
+          return trimmed;
+        });
+        if (changed) markAffected(row.line);
+      });
+    }
+
+    if (settings.fullwidth) {
+      t.headers = t.headers.map(function (h) { return fullWidthToHalfWidth(h); });
+      t.rows.forEach(function (row) {
+        var changed = false;
+        row.cells = row.cells.map(function (c) {
+          var conv = fullWidthToHalfWidth(c);
+          if (conv !== c) changed = true;
+          return conv;
+        });
+        if (changed) markAffected(row.line);
+      });
+    }
+
+    if (settings.dateNormalize) {
+      var types = inferColumnTypes(t);
+      types.forEach(function (typ, c) {
+        if (typ.kind !== 'date') return;
+        t.rows.forEach(function (row) {
+          var v = cellAt(row, c);
+          if (v === '') return;
+          var parts = dateParts(v);
+          if (parts && parts.m !== null && parts.d !== null) {
+            var normalized = parts.y + '-' + String(parts.m).padStart(2, '0') + '-' + String(parts.d).padStart(2, '0');
+            if (normalized !== v) {
+              row.cells[c] = normalized;
+              markAffected(row.line);
+            }
+          }
+          // 無法解析寬鬆格式（含不在白名單、或只有年/年月）者保留原樣，不標記為修改
+        });
+      });
+    }
+
+    if (settings.blankRows) {
+      var kept = [];
+      t.rows.forEach(function (row) {
+        var isBlank = row.cells.length >= 1 && row.cells.every(function (c) { return c.trim() === ''; });
+        if (isBlank) {
+          markAffected(row.line);
+        } else {
+          kept.push(row);
+        }
+      });
+      t.rows = kept;
+    }
+
+    if (settings.dedupeMode === 'rows' || settings.dedupeMode === 'key') {
+      var keyFn;
+      if (settings.dedupeMode === 'rows') {
+        keyFn = function (row) { return row.cells.join('\0'); };
+      } else {
+        var cols = settings.keyColumns;
+        keyFn = function (row) { return cols.map(function (c) { return cellAt(row, c); }).join('\0'); };
+      }
+      var groups = {};
+      t.rows.forEach(function (row) {
+        var k = keyFn(row);
+        if (!groups[k]) groups[k] = [];
+        groups[k].push(row);
+      });
+      if (settings.dedupeKeep === 'mark') {
+        Object.keys(groups).forEach(function (k) {
+          if (groups[k].length >= 2) {
+            groups[k].forEach(function (row) { markAffected(row.line); });
+          }
+        });
+        // working table unchanged (no rows removed)
+      } else {
+        var newRows = [];
+        Object.keys(groups).forEach(function (k) {
+          var members = groups[k];
+          if (members.length < 2) {
+            newRows.push.apply(newRows, members);
+            return;
+          }
+          var keepIndex = settings.dedupeKeep === 'last' ? members.length - 1 : 0;
+          members.forEach(function (m, i) {
+            if (i === keepIndex) {
+              newRows.push(m);
+            } else {
+              markAffected(m.line);
+            }
+          });
+        });
+        // preserve original relative order by line
+        newRows.sort(function (a, b) { return a.line - b.line; });
+        t.rows = newRows;
+      }
+    }
+
+    return { table: t, affectedLines: Object.keys(affected).map(Number).sort(function (a, b) { return a - b; }) };
+  }
+
+  function renderPreview(affectedLines) {
+    var el = document.getElementById('preview-results');
+    el.classList.remove('hidden');
+    var html = '受影響列數：<b>' + affectedLines.length + '</b> 筆';
+    var shown = affectedLines.slice(0, 50);
+    html += '<div class="line-list">line: ' + (shown.length ? shown.join(', ') : '（無）') + '</div>';
+    if (affectedLines.length > 50) {
+      var remaining = affectedLines.length - 50;
+      html += '<div class="button-row"><span>還有 ' + remaining + ' 筆</span> <button type="button" class="small" id="btn-expand-preview">展開全部</button></div>';
+    }
+    el.innerHTML = html;
+    var expandBtn = document.getElementById('btn-expand-preview');
+    if (expandBtn) {
+      expandBtn.addEventListener('click', function () {
+        el.querySelector('.line-list').textContent = 'line: ' + affectedLines.join(', ');
+        expandBtn.parentNode.removeChild(expandBtn.parentNode.querySelector('span') ? expandBtn : expandBtn);
+        el.querySelector('.button-row').remove();
+      });
+    }
+  }
+
+  function invalidatePreview() {
+    state.preview = null;
+    document.getElementById('btn-apply').disabled = true;
+  }
+
+  // ---------- wiring ----------
+
+  function updateFileMeta() {
+    var el = document.getElementById('file-meta');
+    if (!state.table) { el.textContent = ''; return; }
+    var m = state.table.meta;
+    el.innerHTML = '<span>編碼：' + escapeHtml(m.encoding) + '</span>' +
+      '<span>分隔符：' + escapeHtml(m.delimiter === '\t' ? 'Tab' : m.delimiter) + '</span>' +
+      '<span>列數：' + state.table.rows.length + '</span>' +
+      '<span>欄數：' + state.table.headers.length + '</span>';
+  }
+
+  function renderGroupByColumns() {
+    var el = document.getElementById('groupby-columns');
+    el.innerHTML = '';
+    if (!state.table) return;
+    state.table.headers.forEach(function (h, i) {
+      var label = document.createElement('label');
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = String(i);
+      cb.addEventListener('change', invalidatePreview);
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode('[' + i + '] ' + h));
+      el.appendChild(label);
+    });
+  }
+
+  function resetDoctorUI() {
+    state.doctorResult = null;
+    document.getElementById('doctor-results').innerHTML = '';
+    document.getElementById('doctor-status').textContent = '';
+  }
+
+  function loadTableFromArrayBuffer(arrayBuffer, fileName, forcedEncoding) {
+    state.arrayBuffer = arrayBuffer;
+    state.fileName = fileName;
+    var decoded;
+    if (forcedEncoding) {
+      decoded = {
+        text: new TextDecoder(forcedEncoding).decode(arrayBuffer),
+        encoding: forcedEncoding,
+        hadBom: false,
+        confidence: 'manual'
+      };
+    } else {
+      decoded = decodeCsvBytes(arrayBuffer);
+    }
+    var table = parseCsv(decoded.text, { encoding: decoded.encoding, hadBom: decoded.hadBom });
+    state.table = table;
+    invalidatePreview();
+    resetDoctorUI();
+    document.getElementById('btn-doctor').disabled = false;
+    updateFileMeta();
+    renderGroupByColumns();
+
+    var fallbackEl = document.getElementById('encoding-fallback');
+    if (decoded.confidence === 'fallback' || decoded.confidence === 'manual') {
+      var fallbackLabel = decoded.confidence === 'fallback'
+        ? '偵測為 Big5，若顯示為亂碼請手動切換編碼：'
+        : '已手動切換為 ' + decoded.encoding.toUpperCase() + '，如仍為亂碼可再切換：';
+      fallbackEl.classList.remove('hidden');
+      fallbackEl.innerHTML = fallbackLabel +
+        '<button type="button" class="small" id="btn-switch-utf8">切換為 UTF-8</button> ' +
+        '<button type="button" class="small" id="btn-switch-big5">切換為 Big5</button>';
+      document.getElementById('btn-switch-utf8').addEventListener('click', function () {
+        loadTableFromArrayBuffer(state.arrayBuffer, state.fileName, 'utf-8');
+      });
+      document.getElementById('btn-switch-big5').addEventListener('click', function () {
+        loadTableFromArrayBuffer(state.arrayBuffer, state.fileName, 'big5');
+      });
+    } else {
+      fallbackEl.classList.add('hidden');
+      fallbackEl.innerHTML = '';
+    }
+  }
+
+  function onData(arrayBuffer, fileName) {
+    // 不在此清空 #size-msg：onGate() 已先於此執行並視 level 設好訊息
+    // （warn 要保留顯示；ok 由 onGate 自己清空），這裡清空會把 warn 訊息洗掉。
+    loadTableFromArrayBuffer(arrayBuffer, fileName, null);
+  }
+
+  function onError(message) {
+    document.getElementById('size-msg').innerHTML = '<div class="msg error">' + escapeHtml(message) + '</div>';
+    document.getElementById('btn-doctor').disabled = true;
+    state.table = null;
+  }
+
+  function onGate(file) {
+    var result = checkCsvFileSize(file.size);
+    if (result.level === 'warn') {
+      document.getElementById('size-msg').innerHTML = '<div class="msg warn">' + escapeHtml(result.message) + '</div>';
+    } else if (result.level === 'ok') {
+      document.getElementById('size-msg').innerHTML = '';
+    }
+    return result;
+  }
+
+  var dropOpts = { mode: 'bytes', accept: ['.csv'], gate: onGate, onError: onError };
+
+  var dropzoneEl = document.getElementById('dropzone');
+  var fileInputEl = document.getElementById('file-input');
+  setupDropZone(dropzoneEl, onData, dropOpts);
+  setupFilePicker(fileInputEl, onData, dropOpts);
+
+  document.getElementById('btn-pick-file').addEventListener('click', function () {
+    fileInputEl.click();
+  });
+
+  document.getElementById('btn-doctor').addEventListener('click', function () {
+    if (!state.table) return;
+    var result = runDoctor(state.table);
+    state.doctorResult = result;
+    document.getElementById('doctor-status').textContent = '';
+    renderDoctorResults(result);
+  });
+
+  // Cleaner option change → invalidate preview
+  ['opt-trim', 'opt-trim-header', 'opt-blank-rows', 'opt-date-normalize', 'opt-fullwidth', 'opt-dedupe-mode', 'opt-dedupe-keep'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', invalidatePreview);
+  });
+
+  document.getElementById('btn-preview').addEventListener('click', function () {
+    if (!state.table) { showToast('請先上傳 CSV'); return; }
+    var settings = currentCleanerSettings();
+    if (settings.dedupeMode === 'key' && settings.keyColumns.length === 0) {
+      showToast('請至少選取一個欄位作為 Key');
+      return;
+    }
+    var sim = simulateClean(state.table, settings);
+    state.preview = { key: settingsKey(settings), affectedLines: sim.affectedLines };
+    renderPreview(sim.affectedLines);
+    document.getElementById('btn-apply').disabled = false;
+  });
+
+  document.getElementById('btn-apply').addEventListener('click', function () {
+    if (!state.table || !state.preview) return;
+    var settings = currentCleanerSettings();
+    if (settingsKey(settings) !== state.preview.key) {
+      showToast('設定已變更，請重新預覽');
+      document.getElementById('btn-apply').disabled = true;
+      return;
+    }
+    var sim = simulateClean(state.table, settings);
+    state.table = sim.table;
+    invalidatePreview();
+    resetDoctorUI();
+    document.getElementById('doctor-status').textContent = '已套用清理，working table 已更新。請重新偵測。';
+    updateFileMeta();
+    renderGroupByColumns();
+    showToast('已套用清理');
+  });
+
+  document.getElementById('btn-groupby-detect').addEventListener('click', function () {
+    if (!state.table) { showToast('請先上傳 CSV'); return; }
+    var cols = selectedGroupByColumns();
+    if (cols.length === 0) {
+      showToast('請至少選取一個欄位');
+      return;
+    }
+    var groups = runGroupByDetect(state.table, cols);
+    var el = document.getElementById('groupby-results');
+    el.classList.remove('hidden');
+    if (groups.length === 0) {
+      el.textContent = '未偵測到重複群組';
+    } else {
+      var html = '共 ' + groups.length + ' 組重複';
+      groups.forEach(function (g) {
+        html += '<div>重複次數 ' + g.count + '｜line: ' + g.lines.join(', ') + '</div>';
+      });
+      el.innerHTML = html;
+    }
+    state.lastGroupByColumns = cols;
+    state.lastGroupByResult = groups;
+  });
+
+  document.getElementById('btn-copy').addEventListener('click', function () {
+    if (!state.doctorResult) { showToast('請先執行健檢'); return; }
+    var lines = [];
+    Object.keys(state.doctorResult.byType).forEach(function (type) {
+      lines.push(type + '：' + state.doctorResult.byType[type].length + ' 筆');
+    });
+    var text = lines.join('\n');
+    copyToClipboard(text).then(function (ok) {
+      showToast(ok ? '已複製健檢摘要' : '複製失敗');
+    });
+  });
+
+  document.getElementById('btn-download-cleaned').addEventListener('click', function () {
+    if (!state.table) { showToast('請先上傳 CSV'); return; }
+    var csv = toCsv(state.table, { bom: true });
+    var name = (state.fileName ? baseName(state.fileName) : 'csv-doctor') + '_cleaned.csv';
+    downloadFile(name, csv, 'text/csv;charset=utf-8');
+    showToast('已下載清理後 CSV');
+  });
+
+  document.getElementById('btn-download-issues').addEventListener('click', function () {
+    if (!state.doctorResult) { showToast('請先執行健檢'); return; }
+    var issueTable = {
+      headers: ['問題類型', 'line', '欄位名稱', '原始值', '備註'],
+      rows: [],
+      meta: { headerCount: 5 }
+    };
+    state.doctorResult.issues.forEach(function (it, idx) {
+      issueTable.rows.push({
+        line: idx + 2,
+        cells: [it.label, it.line === '' ? '' : String(it.line), it.column || '', it.value === undefined ? '' : String(it.value), it.note || '']
+      });
+    });
+    var csv = toCsv(issueTable, { bom: true });
+    var name = (state.fileName ? baseName(state.fileName) : 'csv-doctor') + '_issues.csv';
+    downloadFile(name, csv, 'text/csv;charset=utf-8');
+    showToast('已下載問題資料報告');
+  });
+
+  function buildCleanHtmlCopy() {
+    var clone = document.documentElement.cloneNode(true);
+
+    var fileMeta = clone.querySelector('#file-meta');
+    if (fileMeta) fileMeta.innerHTML = '';
+
+    var sizeMsg = clone.querySelector('#size-msg');
+    if (sizeMsg) sizeMsg.innerHTML = '';
+
+    var encFallback = clone.querySelector('#encoding-fallback');
+    if (encFallback) { encFallback.innerHTML = ''; encFallback.classList.add('hidden'); }
+
+    var doctorStatus = clone.querySelector('#doctor-status');
+    if (doctorStatus) doctorStatus.textContent = '';
+
+    var doctorResults = clone.querySelector('#doctor-results');
+    if (doctorResults) doctorResults.innerHTML = '';
+
+    var btnDoctor = clone.querySelector('#btn-doctor');
+    if (btnDoctor) btnDoctor.setAttribute('disabled', 'disabled');
+
+    var previewResults = clone.querySelector('#preview-results');
+    if (previewResults) { previewResults.innerHTML = ''; previewResults.classList.add('hidden'); }
+
+    var groupbyResults = clone.querySelector('#groupby-results');
+    if (groupbyResults) { groupbyResults.innerHTML = ''; groupbyResults.classList.add('hidden'); }
+
+    var groupbyColumns = clone.querySelector('#groupby-columns');
+    if (groupbyColumns) groupbyColumns.innerHTML = '';
+
+    var btnApply = clone.querySelector('#btn-apply');
+    if (btnApply) btnApply.setAttribute('disabled', 'disabled');
+
+    ['opt-trim', 'opt-date-normalize', 'opt-fullwidth', 'opt-blank-rows'].forEach(function (id) {
+      var cb = clone.querySelector('#' + id);
+      if (cb) cb.removeAttribute('checked');
+    });
+    var trimHeader = clone.querySelector('#opt-trim-header');
+    if (trimHeader) trimHeader.setAttribute('checked', 'checked');
+    var dedupeMode = clone.querySelector('#opt-dedupe-mode');
+    if (dedupeMode) dedupeMode.value = 'none';
+    var dedupeKeep = clone.querySelector('#opt-dedupe-keep');
+    if (dedupeKeep) dedupeKeep.value = 'first';
+
+    var fileInput = clone.querySelector('#file-input');
+    if (fileInput) fileInput.value = '';
+
+    // showToast() 動態注入的 #__shared_toast 會被序列化進 outerHTML，
+    // 若殘留使用者提示文字（例如含輸入內容的訊息）會外洩到離線分享檔，直接移除整個節點。
+    var toastEl = clone.querySelector('#__shared_toast');
+    if (toastEl && toastEl.parentNode) toastEl.parentNode.removeChild(toastEl);
+
+    var navBack = clone.querySelector('.nav-back');
+    if (navBack && navBack.parentNode) navBack.parentNode.removeChild(navBack);
+
+    var htmlStr = '<!DOCTYPE html>\n' + clone.outerHTML;
+    downloadFile('csv-doctor-offline.html', htmlStr, 'text/html;charset=utf-8');
+  }
+
+  document.getElementById('btn-download-offline').addEventListener('click', buildCleanHtmlCopy);
+})();
+</script>
+</body>
+</html>

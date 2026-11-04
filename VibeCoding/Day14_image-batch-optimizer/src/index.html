@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>圖片批次最佳化工作台 — Day14</title>
+  <style>
+/* shared/base.css — 共用樣式基底 */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 { line-height: 1.3; }
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+button, .btn {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+button:hover, .btn:hover { background: var(--color-bg); }
+
+button.primary, .btn.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover, .btn.primary:hover { background: var(--color-primary-hover); }
+
+button:disabled, .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #eff6ff;
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover { text-decoration: underline; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show { opacity: 1; }
+
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+  background: #f8fafc;
+  padding: 1.25rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+.config-item label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #334155;
+}
+.config-item select, .config-item input[type="number"] {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+}
+.queue-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+}
+.queue-table th, .queue-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+.queue-table th {
+  background: #f1f5f9;
+  font-weight: 600;
+  color: #475569;
+}
+.badge-status {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.badge-pending { background: #e2e8f0; color: #475569; }
+.badge-processing { background: #dbeafe; color: #1e40af; }
+.badge-success { background: #dcfce7; color: #166534; }
+.badge-warn { background: #fef9c3; color: #854d0e; }
+.badge-error { background: #fee2e2; color: #991b1b; }
+.summary-card {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  display: none;
+}
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+.summary-item .num {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #166534;
+}
+.summary-item .label {
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+.alert-banner {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  display: none;
+}
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav-back">
+      <a href="../index.html">← 回首頁</a>
+    </nav>
+
+    <header>
+      <h1>圖片批次最佳化工作台</h1>
+      <p class="subtitle" style="color: var(--color-text-muted);">批次壓到指定容量、尺寸調整與格式轉換，全程瀏覽器端本機運算，零外部請求。</p>
+    </header>
+
+    <div class="dropzone" id="drop-zone">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">📷</div>
+      <div style="margin-bottom: 0.75rem;">拖放多張 JPG / PNG / WebP 圖片至此，或點擊選取檔案</div>
+      <input type="file" id="file-input" multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" style="display: none;">
+      <button type="button" class="btn secondary" id="btn-select-files">選擇圖片檔案</button>
+    </div>
+
+    <div class="config-grid">
+      <div class="config-item">
+        <label for="cfg-target-size">目標容量限制</label>
+        <select id="cfg-target-size">
+          <option value="1048576">目標 1 MB (1024 KB)</option>
+          <option value="2097152">目標 2 MB (2048 KB)</option>
+          <option value="524288">目標 500 KB</option>
+          <option value="custom">自訂容量 (KB)</option>
+          <option value="none">不限容量（只限長邊尺寸）</option>
+        </select>
+        <input type="number" id="cfg-custom-kb" placeholder="請輸入 KB 數（如 800）" style="display: none; margin-top: 0.5rem;" min="10" max="50000">
+      </div>
+
+      <div class="config-item">
+        <label for="cfg-max-edge">長邊像素上限</label>
+        <input type="number" id="cfg-max-edge" placeholder="留空不限（例如 1920）" min="64" max="10000">
+        <small style="color: #64748b; font-size: 0.75rem; display: block; margin-top: 0.25rem;">保持原圖比例，預設不放大縮圖</small>
+      </div>
+
+      <div class="config-item">
+        <label for="cfg-format">輸出格式</label>
+        <select id="cfg-format">
+          <option value="original">保留原格式</option>
+          <option value="image/jpeg">統一轉為 JPEG (.jpg)</option>
+          <option value="image/webp">統一轉為 WebP (.webp)</option>
+          <option value="image/png">統一轉為 PNG (.png)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="alert-banner" id="png-warn-banner">
+      <strong>⚠️ PNG 格式提醒：</strong>
+      <span>批次中包含 PNG 圖片。PNG 為無損格式不支援目標容量二分壓縮。是否將 PNG 轉檔為 JPEG 以便套用目標容量？</span>
+      <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
+        <button type="button" class="btn btn-sm primary" id="btn-png-convert">同意轉檔為 JPEG</button>
+        <button type="button" class="btn btn-sm secondary" id="btn-png-keep">維持 PNG（僅套用長邊限制）</button>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <button type="button" class="btn primary" id="btn-start" disabled>開始批次最佳化</button>
+      <button type="button" class="btn secondary" id="btn-clear">清空佇列</button>
+    </div>
+
+    <div class="summary-card" id="summary-card">
+      <h3 style="margin: 0; color: #166534; font-size: 1.1rem;">批次最佳化完成總結</h3>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="num" id="sum-total">0</div>
+          <div class="label">總張數</div>
+        </div>
+        <div class="summary-item">
+          <div class="num" id="sum-success">0</div>
+          <div class="label">成功處理</div>
+        </div>
+        <div class="summary-item">
+          <div class="num" id="sum-achieved">0</div>
+          <div class="label">達成目標容量</div>
+        </div>
+        <div class="summary-item">
+          <div class="num" id="sum-unachieved" style="color: #ca8a04;">0</div>
+          <div class="label">未達目標（已盡力）</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem;">
+      <h3 style="margin: 0;">檔案處理佇列 (<span id="queue-count">0</span>)</h3>
+      <div class="btn-group" id="batch-actions" style="display: none; margin: 0;">
+        <button type="button" class="btn primary btn-sm" id="btn-download-zip">📦 打包下載全部 ZIP</button>
+        <button type="button" class="btn secondary btn-sm" id="btn-copy-summary">📋 複製處理摘要</button>
+      </div>
+    </div>
+
+    <div style="overflow-x: auto;">
+      <table class="queue-table">
+        <thead>
+          <tr>
+            <th style="width: 40px;">#</th>
+            <th>原始檔名</th>
+            <th>原始大小</th>
+            <th>輸出格式</th>
+            <th>輸出大小</th>
+            <th>狀態</th>
+            <th style="width: 100px;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="queue-tbody">
+          <tr id="empty-row">
+            <td colspan="7" style="text-align: center; color: #94a3b8; padding: 2rem;">尚無圖片，請拖放或選取圖片加入佇列</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="btn-group" style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+      <button type="button" class="btn secondary" id="btn-download-offline">💾 下載本工具離線版</button>
+    </div>
+
+    <!--{{LICENSES}}-->
+  </div>
+
+  <!--{{ASSET:fflate}}-->
+  <!--{{SHARED:util-escape}}-->
+  <!--{{SHARED:ui-toast}}-->
+  <!--{{SHARED:ui-debounce}}-->
+  <!--{{SHARED:io-download}}-->
+  <!--{{SHARED:io-clipboard}}-->
+  <!--{{SHARED:io-dropzone}}-->
+  <!--{{SHARED:io-zip}}-->
+  <!--{{SHARED:img-file-size}}-->
+  <!--{{SHARED:img-exif}}-->
+  <!--{{SHARED:img-decode}}-->
+  <!--{{SHARED:img-canvas}}-->
+
+  <script>
+  (function () {
+    var state = {
+      queue: [],
+      pngAction: null,
+      processing: false
+    };
+
+    var dropZone = document.getElementById('drop-zone');
+    var fileInput = document.getElementById('file-input');
+    var btnSelectFiles = document.getElementById('btn-select-files');
+    var cfgTargetSize = document.getElementById('cfg-target-size');
+    var cfgCustomKb = document.getElementById('cfg-custom-kb');
+    var cfgMaxEdge = document.getElementById('cfg-max-edge');
+    var cfgFormat = document.getElementById('cfg-format');
+    var pngWarnBanner = document.getElementById('png-warn-banner');
+    var btnPngConvert = document.getElementById('btn-png-convert');
+    var btnPngKeep = document.getElementById('btn-png-keep');
+    var btnStart = document.getElementById('btn-start');
+    var btnClear = document.getElementById('btn-clear');
+    var queueTbody = document.getElementById('queue-tbody');
+    var queueCount = document.getElementById('queue-count');
+    var batchActions = document.getElementById('batch-actions');
+    var btnDownloadZip = document.getElementById('btn-download-zip');
+    var btnCopySummary = document.getElementById('btn-copy-summary');
+    var summaryCard = document.getElementById('summary-card');
+    var btnDownloadOffline = document.getElementById('btn-download-offline');
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '0 B';
+      var k = 1024;
+      var sizes = ['B', 'KB', 'MB', 'GB'];
+      var i = Math.floor(Math.log(bytes) / Math.log(k));
+      return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+    }
+
+    function renderQueue() {
+      if (queueCount) queueCount.textContent = state.queue.length;
+      if (!queueTbody) return;
+
+      if (state.queue.length === 0) {
+        queueTbody.innerHTML = '<tr id="empty-row"><td colspan="7" style="text-align: center; color: #94a3b8; padding: 2rem;">尚無圖片，請拖放或選取圖片加入佇列</td></tr>';
+        if (btnStart) btnStart.disabled = true;
+        if (batchActions) batchActions.style.display = 'none';
+        if (summaryCard) summaryCard.style.display = 'none';
+        if (pngWarnBanner) pngWarnBanner.style.display = 'none';
+        return;
+      }
+
+      if (btnStart) btnStart.disabled = state.processing;
+
+      var hasPng = state.queue.some(function (item) {
+        return item.file.type === 'image/png' || /\.png$/i.test(item.file.name);
+      });
+      var isTargetSizeMode = cfgTargetSize && cfgTargetSize.value !== 'none';
+
+      if (pngWarnBanner) {
+        if (hasPng && isTargetSizeMode && state.pngAction === null) {
+          pngWarnBanner.style.display = 'block';
+        } else {
+          pngWarnBanner.style.display = 'none';
+        }
+      }
+
+      var html = '';
+      state.queue.forEach(function (item, idx) {
+        var statusBadge = '';
+        if (item.status === 'pending') {
+          statusBadge = '<span class="badge-status badge-pending">等待處理</span>';
+        } else if (item.status === 'processing') {
+          statusBadge = '<span class="badge-status badge-processing">處理中...</span>';
+        } else if (item.status === 'done') {
+          if (item.achieved) {
+            statusBadge = '<span class="badge-status badge-success">✓ 達標</span>';
+          } else {
+            statusBadge = '<span class="badge-status badge-warn">⚠️ 未達標 (已盡力)</span>';
+          }
+        } else if (item.status === 'error') {
+          statusBadge = '<span class="badge-status badge-error">失敗</span>';
+        }
+
+        var downloadBtn = '';
+        if (item.status === 'done' && item.outputBlob) {
+          downloadBtn = '<button type="button" class="btn btn-sm primary btn-dl-item" data-idx="' + idx + '">下載</button>';
+        } else {
+          downloadBtn = '<button type="button" class="btn btn-sm secondary" disabled>下載</button>';
+        }
+
+        var outSizeText = item.outputSize ? formatBytes(item.outputSize) : '-';
+        var formatText = item.outputFormat || '自動';
+
+        html += '<tr>' +
+          '<td>' + (idx + 1) + '</td>' +
+          '<td style="word-break: break-all; max-width: 200px;">' + escapeHtml(item.file.name) + '</td>' +
+          '<td>' + formatBytes(item.file.size) + '</td>' +
+          '<td>' + escapeHtml(formatText) + '</td>' +
+          '<td>' + outSizeText + '</td>' +
+          '<td>' + statusBadge + '</td>' +
+          '<td>' + downloadBtn + '</td>' +
+          '</tr>';
+      });
+
+      queueTbody.innerHTML = html;
+
+      var allDone = state.queue.length > 0 && state.queue.every(function (item) {
+        return item.status === 'done' || item.status === 'error';
+      });
+
+      if (allDone) {
+        if (batchActions) batchActions.style.display = 'flex';
+        updateSummary();
+      } else {
+        if (batchActions) batchActions.style.display = 'none';
+        if (summaryCard) summaryCard.style.display = 'none';
+      }
+    }
+
+    function updateSummary() {
+      if (!summaryCard) return;
+      var total = state.queue.length;
+      var success = state.queue.filter(function (i) { return i.status === 'done'; }).length;
+      var achieved = state.queue.filter(function (i) { return i.status === 'done' && i.achieved; }).length;
+      var unachieved = state.queue.filter(function (i) { return i.status === 'done' && !i.achieved; }).length;
+
+      var elTotal = document.getElementById('sum-total');
+      var elSuccess = document.getElementById('sum-success');
+      var elAchieved = document.getElementById('sum-achieved');
+      var elUnachieved = document.getElementById('sum-unachieved');
+
+      if (elTotal) elTotal.textContent = total;
+      if (elSuccess) elSuccess.textContent = success;
+      if (elAchieved) elAchieved.textContent = achieved;
+      if (elUnachieved) elUnachieved.textContent = unachieved;
+      summaryCard.style.display = 'block';
+    }
+
+    // --- 批次匯入：透過 setupDropZone()／setupFilePicker() 串接（IMG_CONTRACT.md 第 9a-1 節） ---
+    // opts.multiple === true 且提供 opts.gateBatch 時，setupDropZone／setupFilePicker 會在進入
+    // 逐檔迴圈之前，先用完整 FileList 呼叫一次 opts.gateBatch(files)；!ok 時完全不進入逐檔迴圈、
+    // onData 一次都不會被呼叫。整批總量判定 checkBatchSize() 因此直接放在 gateBatch() 裡，不用
+    // 再靠額外的 change／drop 監聽器搶在 setupFilePicker／setupDropZone 前面記錄 FileList。
+    var currentBatchFileList = null;
+    var currentBatchStaging = null;
+    var currentBatchExpected = 0;
+    var currentBatchReceived = 0;
+    var currentBatchActive = false;
+
+    function gateBatch(files) {
+      var totalBytes = 0;
+      for (var i = 0; i < files.length; i++) {
+        totalBytes += files[i].size;
+      }
+      var result = checkBatchSize(totalBytes, files.length);
+      if (!result.ok) {
+        currentBatchActive = false;
+        return result;
+      }
+      currentBatchFileList = files;
+      currentBatchStaging = new Array(files.length);
+      currentBatchExpected = files.length;
+      currentBatchReceived = 0;
+      currentBatchActive = true;
+      if (result.level === 'warn') {
+        showToast(result.message, 2500);
+      }
+      return result;
+    }
+
+    function batchGate(file) {
+      return checkImageFileSize(file.size);
+    }
+
+    function settleBatchSlot() {
+      currentBatchReceived++;
+      if (currentBatchStaging && currentBatchReceived >= currentBatchExpected) {
+        for (var i = 0; i < currentBatchStaging.length; i++) {
+          if (currentBatchStaging[i]) state.queue.push(currentBatchStaging[i]);
+        }
+        currentBatchStaging = null;
+        renderQueue();
+      }
+    }
+
+    function onBatchFileData(result, fileName, meta) {
+      var file = (currentBatchFileList && meta) ? currentBatchFileList[meta.index] : null;
+      if (file) {
+        var singleGate = checkImageFileSize(file.size);
+        if (singleGate.level === 'warn') {
+          showToast(file.name + '：' + singleGate.message, 2000);
+        }
+        currentBatchStaging[meta.index] = {
+          id: 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+          file: file,
+          status: 'pending',
+          outputBlob: null,
+          outputSize: 0,
+          outputFormat: '',
+          outputName: file.name,
+          achieved: false
+        };
+      }
+      settleBatchSlot();
+    }
+
+    function onBatchFileError(msg) {
+      showToast(msg, 2500);
+      // 批次總量閘門（gateBatch）擋下整批時，逐檔迴圈根本沒開始，currentBatchActive 仍是
+      // false，不應該去跑只屬於逐檔流程的 settleBatchSlot()。
+      if (currentBatchActive) {
+        settleBatchSlot();
+      }
+    }
+
+    var batchImportOpts = {
+      multiple: true,
+      mode: 'bytes',
+      accept: ['.jpg', '.jpeg', '.png', '.webp'],
+      gate: batchGate,
+      gateBatch: gateBatch,
+      onError: onBatchFileError
+    };
+
+    if (btnSelectFiles && fileInput) {
+      btnSelectFiles.addEventListener('click', function () {
+        fileInput.click();
+      });
+    }
+
+    if (fileInput) {
+      setupFilePicker(fileInput, onBatchFileData, batchImportOpts);
+    }
+
+    if (dropZone) {
+      setupDropZone(dropZone, onBatchFileData, batchImportOpts);
+    }
+
+    if (cfgTargetSize) {
+      cfgTargetSize.addEventListener('change', function () {
+        if (cfgCustomKb) {
+          if (cfgTargetSize.value === 'custom') {
+            cfgCustomKb.style.display = 'block';
+          } else {
+            cfgCustomKb.style.display = 'none';
+          }
+        }
+        renderQueue();
+      });
+    }
+
+    if (btnPngConvert) {
+      btnPngConvert.addEventListener('click', function () {
+        state.pngAction = 'convert';
+        showToast('已設定 PNG 轉為 JPEG 壓縮');
+        renderQueue();
+      });
+    }
+
+    if (btnPngKeep) {
+      btnPngKeep.addEventListener('click', function () {
+        state.pngAction = 'keep';
+        showToast('已設定 PNG 維持原格式（僅套用長邊限制）');
+        renderQueue();
+      });
+    }
+
+    if (btnClear) {
+      btnClear.addEventListener('click', function () {
+        state.queue = [];
+        state.pngAction = null;
+        state.processing = false;
+        renderQueue();
+        showToast('已清空佇列');
+      });
+    }
+
+    function getTargetBytes() {
+      if (!cfgTargetSize) return null;
+      var val = cfgTargetSize.value;
+      if (val === 'none') return null;
+      if (val === 'custom') {
+        var kb = Number(cfgCustomKb ? cfgCustomKb.value : 0);
+        return (kb > 0) ? kb * 1024 : 1048576;
+      }
+      return Number(val) || 1048576;
+    }
+
+    function processQueueItem(index) {
+      if (index >= state.queue.length) {
+        state.processing = false;
+        renderQueue();
+        showToast('全部圖片最佳化完成！');
+        return;
+      }
+
+      var item = state.queue[index];
+      item.status = 'processing';
+      renderQueue();
+
+      var maxLongEdge = (cfgMaxEdge ? Number(cfgMaxEdge.value) : 0) || 0;
+      var targetBytes = getTargetBytes();
+      var userFormat = cfgFormat ? cfgFormat.value : 'original';
+
+      var isPng = item.file.type === 'image/png' || /\.png$/i.test(item.file.name);
+      var effectiveMime = item.file.type || 'image/jpeg';
+
+      if (userFormat !== 'original') {
+        effectiveMime = userFormat;
+      } else if (isPng && targetBytes !== null && state.pngAction === 'convert') {
+        effectiveMime = 'image/jpeg';
+      }
+
+      loadImageFile(item.file).then(function (decodeRes) {
+        var currentCanvas = decodeRes.canvas;
+
+        if (maxLongEdge > 0) {
+          currentCanvas = resizeCanvas(currentCanvas, { maxLongEdge: maxLongEdge, allowUpscale: false });
+        }
+
+        var ext = '.jpg';
+        if (effectiveMime === 'image/webp') ext = '.webp';
+        else if (effectiveMime === 'image/png') ext = '.png';
+
+        var baseName = item.file.name.replace(/\.[^/.]+$/, '');
+        item.outputName = baseName + '_opt' + ext;
+        item.outputFormat = (ext === '.jpg') ? 'JPEG' : ((ext === '.webp') ? 'WebP' : 'PNG');
+
+        if (targetBytes !== null && effectiveMime !== 'image/png') {
+          return compressToTargetSize(currentCanvas, { targetBytes: targetBytes, mimeType: effectiveMime });
+        } else {
+          return canvasToBlob(currentCanvas, effectiveMime, 0.92).then(function (blob) {
+            return {
+              blob: blob,
+              quality: 0.92,
+              achieved: targetBytes ? (blob.size <= targetBytes) : true,
+              iterations: 1
+            };
+          });
+        }
+      }).then(function (res) {
+        item.outputBlob = res.blob;
+        item.outputSize = res.blob.size;
+        item.achieved = res.achieved;
+        item.status = 'done';
+      }).catch(function (err) {
+        item.status = 'error';
+        item.message = err.message || '處理失敗';
+      }).finally(function () {
+        setTimeout(function () {
+          processQueueItem(index + 1);
+        }, 0);
+      });
+    }
+
+    if (btnStart) {
+      btnStart.addEventListener('click', function () {
+        if (state.queue.length === 0 || state.processing) return;
+        state.processing = true;
+        btnStart.disabled = true;
+        processQueueItem(0);
+      });
+    }
+
+    if (queueTbody) {
+      queueTbody.addEventListener('click', function (e) {
+        var target = e.target;
+        if (target && target.classList.contains('btn-dl-item')) {
+          var idx = Number(target.getAttribute('data-idx'));
+          var item = state.queue[idx];
+          if (item && item.outputBlob) {
+            downloadFile(item.outputName, item.outputBlob, item.outputBlob.type);
+          }
+        }
+      });
+    }
+
+    if (btnDownloadZip) {
+      btnDownloadZip.addEventListener('click', function () {
+        var completed = state.queue.filter(function (i) { return i.status === 'done' && i.outputBlob; });
+        if (completed.length === 0) {
+          showToast('尚無可下載的完成項目');
+          return;
+        }
+
+        var nameCounts = {};
+        var promises = completed.map(function (item) {
+          return new Promise(function (resolve) {
+            var name = item.outputName;
+            if (nameCounts[name]) {
+              var dot = name.lastIndexOf('.');
+              var base = (dot !== -1) ? name.substring(0, dot) : name;
+              var ext = (dot !== -1) ? name.substring(dot) : '';
+              name = base + '_' + nameCounts[name] + ext;
+              nameCounts[item.outputName]++;
+            } else {
+              nameCounts[name] = 1;
+            }
+
+            var reader = new FileReader();
+            reader.onload = function () {
+              resolve({
+                name: name,
+                bytes: new Uint8Array(reader.result)
+              });
+            };
+            reader.readAsArrayBuffer(item.outputBlob);
+          });
+        });
+
+        Promise.all(promises).then(function (entries) {
+          var zipBlob = createZipBlob(entries);
+          downloadFile('optimized_images.zip', zipBlob, 'application/zip');
+          showToast('已開始下載 ZIP 壓縮包');
+        });
+      });
+    }
+
+    if (btnCopySummary) {
+      btnCopySummary.addEventListener('click', function () {
+        var total = state.queue.length;
+        var success = state.queue.filter(function (i) { return i.status === 'done'; }).length;
+        var achieved = state.queue.filter(function (i) { return i.status === 'done' && i.achieved; }).length;
+        var unachieved = state.queue.filter(function (i) { return i.status === 'done' && !i.achieved; }).length;
+
+        var text = '【圖片批次最佳化報告】\n' +
+                   '總張數：' + total + ' 張\n' +
+                   '成功處理：' + success + ' 張\n' +
+                   '達成目標容量：' + achieved + ' 張\n' +
+                   '未達成目標（已盡力）：' + unachieved + ' 張\n';
+
+        copyToClipboard(text).then(function () {
+          showToast('已複製處理摘要');
+        });
+      });
+    }
+
+    function buildCleanHtmlCopy() {
+      var doc = document.documentElement.cloneNode(true);
+
+      var toast = doc.querySelector('#__shared_toast');
+      if (toast) toast.remove();
+
+      var navBack = doc.querySelector('.nav-back');
+      if (navBack) navBack.remove();
+
+      var offlineBtn = doc.querySelector('#btn-download-offline');
+      if (offlineBtn) offlineBtn.remove();
+
+      var qTbody = doc.querySelector('#queue-tbody');
+      if (qTbody) {
+        qTbody.innerHTML = '<tr id="empty-row"><td colspan="7" style="text-align: center; color: #94a3b8; padding: 2rem;">尚無圖片，請拖放或選取圖片加入佇列</td></tr>';
+      }
+      var qCount = doc.querySelector('#queue-count');
+      if (qCount) qCount.textContent = '0';
+
+      var sumCard = doc.querySelector('#summary-card');
+      if (sumCard) sumCard.style.display = 'none';
+
+      var bActions = doc.querySelector('#batch-actions');
+      if (bActions) bActions.style.display = 'none';
+
+      var warnBanner = doc.querySelector('#png-warn-banner');
+      if (warnBanner) warnBanner.style.display = 'none';
+
+      return '<!DOCTYPE html>\n' + doc.outerHTML;
+    }
+
+    window.buildCleanHtmlCopy = buildCleanHtmlCopy;
+
+    if (btnDownloadOffline) {
+      btnDownloadOffline.addEventListener('click', function () {
+        var cleanHtml = buildCleanHtmlCopy();
+        downloadFile('image-batch-optimizer-offline.html', cleanHtml, 'text/html;charset=utf-8');
+        showToast('已下載離線版工具');
+      });
+    }
+  })();
+
+  </script>
+</body>
+</html>

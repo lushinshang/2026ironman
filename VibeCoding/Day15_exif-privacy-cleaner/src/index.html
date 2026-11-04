@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EXIF 隱私檢查與清除 — Day15</title>
+  <style>
+/* shared/base.css — 共用樣式基底 */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 { line-height: 1.3; }
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 1rem;
+}
+
+button, .btn {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+button:hover, .btn:hover { background: var(--color-bg); }
+
+button.primary, .btn.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover, .btn.primary:hover { background: var(--color-primary-hover); }
+
+button:disabled, .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #eff6ff;
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover { text-decoration: underline; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show { opacity: 1; }
+
+.risk-badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.risk-high { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.risk-med { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+.risk-low { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+.risk-none { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+.photo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+}
+.photo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.photo-thumb {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+  background: #f1f5f9;
+}
+.photo-thumb-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+}
+.photo-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  background: #f8fafc;
+  padding: 0.75rem;
+  border-radius: 6px;
+}
+.diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+}
+.diff-table th, .diff-table td {
+  padding: 0.6rem;
+  border: 1px solid var(--color-border);
+  text-align: left;
+}
+.diff-table th { background: #f1f5f9; }
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav-back">
+      <a href="../index.html">← 回首頁</a>
+    </nav>
+
+    <header>
+      <h1>EXIF 隱私檢查與清除</h1>
+      <p class="subtitle" style="color: var(--color-text-muted);">
+        分析照片內藏的 GPS 座標、裝置型號與拍攝時間，一鍵抹除敏感 Metadata，防止隱私洩漏。
+        支援 JPEG／PNG／WebP 三種格式的 Metadata 讀取與清除。
+      </p>
+    </header>
+
+    <div class="dropzone" id="drop-zone">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">🛡️</div>
+      <div style="margin-bottom: 0.75rem;">拖放多張圖片至此，或點擊選取檔案（支援 JPEG／PNG／WebP）</div>
+      <input type="file" id="file-input" multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" style="display: none;">
+      <button type="button" class="btn secondary" id="btn-select-files">選擇圖片檔案</button>
+    </div>
+
+    <div class="card" id="clean-options-card" style="display: none; margin-top: 1.5rem;">
+      <h3 style="margin-top: 0; font-size: 1.1rem;">清除確認清單</h3>
+      <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 0.75rem;">
+        清除時將直接抹除 APP1 Metadata 區段，徹底銷毀以下資訊且不影響影像畫質：
+      </p>
+      <div style="display: flex; flex-wrap: wrap; gap: 1.25rem; font-size: 0.9rem;">
+        <label><input type="checkbox" id="chk-gps" checked disabled> GPS 經緯度座標</label>
+        <label><input type="checkbox" id="chk-device" checked disabled> 相機/手機裝置型號</label>
+        <label><input type="checkbox" id="chk-date" checked disabled> 原始拍攝時間</label>
+        <label><input type="checkbox" id="chk-xmp" checked disabled> XMP 附加資訊</label>
+      </div>
+      <div style="margin-top: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+        <span id="plan-stats-text" style="font-size: 0.9rem; font-weight: 600;">即將清除：0 張，保留：0 張</span>
+        <div class="btn-group" style="margin: 0;">
+          <button type="button" class="btn primary" id="btn-start-clean">開始清除 Metadata</button>
+          <button type="button" class="btn secondary" id="btn-clear">清空佇列</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="results-section" style="display: none; margin-top: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">圖片清單與風險檢視 (<span id="photo-count">0</span>)</h3>
+        <div class="btn-group" id="download-actions" style="display: none; margin: 0;">
+          <button type="button" class="btn primary btn-sm" id="btn-download-zip">📦 打包下載已清除 ZIP</button>
+          <button type="button" class="btn secondary btn-sm" id="btn-copy-summary">📋 複製風險摘要</button>
+        </div>
+      </div>
+      <div id="photos-container"></div>
+    </div>
+
+    <div class="btn-group" style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+      <button type="button" class="btn secondary" id="btn-download-offline">💾 下載本工具離線版</button>
+    </div>
+
+    <!--{{LICENSES}}-->
+  </div>
+
+  <!--{{ASSET:fflate}}-->
+  <!--{{SHARED:util-escape}}-->
+  <!--{{SHARED:ui-toast}}-->
+  <!--{{SHARED:ui-debounce}}-->
+  <!--{{SHARED:io-download}}-->
+  <!--{{SHARED:io-clipboard}}-->
+  <!--{{SHARED:io-dropzone}}-->
+  <!--{{SHARED:io-zip}}-->
+  <!--{{SHARED:img-file-size}}-->
+  <!--{{SHARED:img-exif}}-->
+  <!--{{SHARED:img-decode}}-->
+  <!--{{SHARED:img-canvas}}-->
+
+  <script>
+  (function () {
+    var state = {
+      items: [], // Array<{ id, file, rawBuffer, tags, riskLevel, process: boolean, cleanedBuffer, cleanedTags, status: 'scanned'|'cleaned'|'skipped'|'error'|'unsupported' }>
+      cleaned: false
+    };
+
+    var dropZone = document.getElementById('drop-zone');
+    var fileInput = document.getElementById('file-input');
+    var btnSelectFiles = document.getElementById('btn-select-files');
+    var cleanOptionsCard = document.getElementById('clean-options-card');
+    var planStatsText = document.getElementById('plan-stats-text');
+    var btnStartClean = document.getElementById('btn-start-clean');
+    var btnClear = document.getElementById('btn-clear');
+    var resultsSection = document.getElementById('results-section');
+    var photoCount = document.getElementById('photo-count');
+    var photosContainer = document.getElementById('photos-container');
+    var downloadActions = document.getElementById('download-actions');
+    var btnDownloadZip = document.getElementById('btn-download-zip');
+    var btnCopySummary = document.getElementById('btn-copy-summary');
+    var btnDownloadOffline = document.getElementById('btn-download-offline');
+
+    function computeRisk(tags) {
+      if (!tags) return { level: 'none', label: '未偵測到 Metadata', cls: 'risk-none' };
+      if (tags.hasGPS) {
+        return { level: 'high', label: '🔴 高風險（含 GPS 座標）', cls: 'risk-high' };
+      }
+      if (tags.make || tags.model || tags.dateTimeOriginal) {
+        return { level: 'med', label: '🟡 中風險（含裝置/時間資訊）', cls: 'risk-med' };
+      }
+      if (tags.hasXMP) {
+        return { level: 'low', label: '🔵 低風險（含 XMP）', cls: 'risk-low' };
+      }
+      return { level: 'none', label: '⚪ 無風險（未偵測到 Metadata）', cls: 'risk-none' };
+    }
+
+    // 對照表「清除後」欄位一律以清除後重新呼叫 readExifTags() 的結果 (cleanedTags) 判定，
+    // 不採用清除前的 item.tags——避免只是憑清除前的欄位值猜文案。
+    // hadBefore: 該欄位清除前是否有值；cleanedTags: 對 cleanedBuffer 重新掃描的結果
+    // (null 代表尚未驗證/驗證失敗)；stillPresentFn/residualValueFn 判斷並取出殘留值。
+    function afterCellHtml(hadBefore, cleanedTags, stillPresentFn, residualValueFn) {
+      if (!hadBefore) return '原本無 Metadata';
+      if (!cleanedTags) {
+        return '<strong style="color: #b45309;">⚠ 無法驗證清除結果</strong>';
+      }
+      if (stillPresentFn(cleanedTags)) {
+        return '<strong style="color: #b91c1c;">⚠ 殘留：' + escapeHtml(residualValueFn(cleanedTags)) + '</strong>';
+      }
+      return '<strong style="color: #166534;">✓ 已清除</strong>';
+    }
+
+    function updateStats() {
+      var toProcess = state.items.filter(function (i) { return i.process && i.status !== 'skipped' && i.status !== 'unsupported'; }).length;
+      var toKeep = state.items.filter(function (i) { return !i.process && i.status !== 'skipped' && i.status !== 'unsupported'; }).length;
+      if (planStatsText) {
+        planStatsText.textContent = '即將清除：' + toProcess + ' 張，保留原樣：' + toKeep + ' 張';
+      }
+    }
+
+    function renderList() {
+      if (photoCount) photoCount.textContent = state.items.length;
+      if (!photosContainer) return;
+
+      if (state.items.length === 0) {
+        if (cleanOptionsCard) cleanOptionsCard.style.display = 'none';
+        if (resultsSection) resultsSection.style.display = 'none';
+        if (downloadActions) downloadActions.style.display = 'none';
+        photosContainer.innerHTML = '';
+        return;
+      }
+
+      if (cleanOptionsCard) cleanOptionsCard.style.display = 'block';
+      if (resultsSection) resultsSection.style.display = 'block';
+      if (downloadActions) downloadActions.style.display = state.cleaned ? 'flex' : 'none';
+
+      updateStats();
+
+      var html = '';
+      state.items.forEach(function (item, idx) {
+        var risk = (item.status === 'loading')
+          ? { level: 'none', label: '⏳ 讀取中…', cls: 'risk-none' }
+          : (item.status === 'unsupported')
+          ? { level: 'none', label: '⚠ 不支援的格式', cls: 'risk-none' }
+          : computeRisk(item.tags);
+        var unknownStr = '未知（不支援的格式，未掃描）';
+        var gpsStr = (item.status === 'unsupported') ? unknownStr
+          : (item.tags && item.tags.hasGPS ? (item.tags.gpsLatitude.toFixed(6) + ', ' + item.tags.gpsLongitude.toFixed(6)) : '無');
+        var deviceStr = (item.status === 'unsupported') ? unknownStr
+          : ((item.tags && (item.tags.make || item.tags.model)) ? ((item.tags.make || '') + ' ' + (item.tags.model || '')).trim() : '無');
+        var dateStr = (item.status === 'unsupported') ? unknownStr
+          : ((item.tags && item.tags.dateTimeOriginal) ? item.tags.dateTimeOriginal : '無');
+        var xmpStr = (item.status === 'unsupported') ? unknownStr
+          : ((item.tags && item.tags.hasXMP) ? '有' : '無');
+
+        var processToggle = '';
+        if (item.status === 'skipped') {
+          processToggle = '<span style="font-size: 0.85rem; color: #dc2626;">已略過（超過容量上限）</span>';
+        } else if (item.status === 'unsupported') {
+          processToggle = '<span style="font-size: 0.85rem; color: #b45309;">⚠ 不支援的格式，此檔案不清除 Metadata</span>';
+        } else if (item.status === 'loading') {
+          processToggle = '<span style="font-size: 0.85rem; color: var(--color-text-muted);">讀取中…</span>';
+        } else {
+          processToggle = '<label style="font-size: 0.85rem;"><input type="checkbox" class="chk-item-process" data-idx="' + idx + '" ' + (item.process ? 'checked' : '') + '> 此張要清除</label>';
+        }
+
+        var diffSection = '';
+        if (state.cleaned && item.status === 'cleaned') {
+          diffSection = '<table class="diff-table">' +
+            '<thead><tr><th>檢測項目</th><th>清除前</th><th>清除後（重新驗證）</th></tr></thead>' +
+            '<tbody>' +
+            '<tr><td>GPS 地理座標</td><td>' + escapeHtml(gpsStr) + '</td><td>' + afterCellHtml(item.tags && item.tags.hasGPS, item.cleanedTags, function (t) { return t.hasGPS; }, function (t) { return t.gpsLatitude.toFixed(6) + ', ' + t.gpsLongitude.toFixed(6); }) + '</td></tr>' +
+            '<tr><td>拍攝裝置型號</td><td>' + escapeHtml(deviceStr) + '</td><td>' + afterCellHtml(item.tags && (item.tags.make || item.tags.model), item.cleanedTags, function (t) { return t.make || t.model; }, function (t) { return ((t.make || '') + ' ' + (t.model || '')).trim(); }) + '</td></tr>' +
+            '<tr><td>原始拍攝時間</td><td>' + escapeHtml(dateStr) + '</td><td>' + afterCellHtml(item.tags && item.tags.dateTimeOriginal, item.cleanedTags, function (t) { return t.dateTimeOriginal; }, function (t) { return t.dateTimeOriginal; }) + '</td></tr>' +
+            '<tr><td>XMP 標籤</td><td>' + escapeHtml(xmpStr) + '</td><td>' + afterCellHtml(item.tags && item.tags.hasXMP, item.cleanedTags, function (t) { return t.hasXMP; }, function () { return '有'; }) + '</td></tr>' +
+            '</tbody></table>';
+        }
+
+        var dlButton = '';
+        if (state.cleaned && item.status === 'cleaned') {
+          dlButton = '<button type="button" class="btn btn-sm primary btn-dl-single" data-idx="' + idx + '">下載清除版</button>';
+        }
+
+        var errorSection = '';
+        if (item.status === 'error') {
+          errorSection = '<div style="color: #b91c1c; font-weight: 600; margin-top: 0.5rem;">⚠ 清除失敗' +
+            (item.errorMessage ? '：' + escapeHtml(item.errorMessage) : '') + '</div>';
+        }
+
+        var thumbHtml = item.thumbDataUrl
+          ? '<img class="photo-thumb" src="' + item.thumbDataUrl + '" alt="縮圖">'
+          : '<div class="photo-thumb photo-thumb-placeholder">載入中</div>';
+
+        html += '<div class="photo-card">' +
+          '<div class="photo-header">' +
+            '<div style="display: flex; align-items: center; gap: 0.75rem;">' +
+              thumbHtml +
+              '<div>' +
+                '<strong>#' + (idx + 1) + ' ' + escapeHtml(item.file.name) + '</strong> ' +
+                '<span class="risk-badge ' + risk.cls + '" style="margin-left: 0.5rem;">' + risk.label + '</span>' +
+              '</div>' +
+            '</div>' +
+            '<div style="display: flex; gap: 0.5rem; align-items: center;">' +
+              processToggle +
+              dlButton +
+            '</div>' +
+          '</div>' +
+          '<div class="photo-meta-grid">' +
+            '<div><strong>拍攝時間：</strong>' + escapeHtml(dateStr) + '</div>' +
+            '<div><strong>拍攝裝置：</strong>' + escapeHtml(deviceStr) + '</div>' +
+            '<div><strong>GPS 座標：</strong>' + escapeHtml(gpsStr) + '</div>' +
+            '<div><strong>XMP：</strong>' + escapeHtml(xmpStr) + '</div>' +
+          '</div>' +
+          diffSection +
+          errorSection +
+        '</div>';
+      });
+
+      photosContainer.innerHTML = html;
+    }
+
+    function handleFiles(files) {
+      if (!files || files.length === 0) return;
+
+      var totalBytes = 0;
+      for (var f = 0; f < files.length; f++) {
+        totalBytes += files[f].size;
+      }
+
+      var batchGate = checkBatchSize(totalBytes, files.length);
+      if (!batchGate.ok) {
+        showToast(batchGate.message, 3000);
+        return;
+      } else if (batchGate.level === 'warn') {
+        showToast(batchGate.message, 2500);
+      }
+
+      for (var i = 0; i < files.length; i++) {
+        (function (file) {
+          var singleGate = checkImageFileSize(file.size);
+          if (!singleGate.ok) {
+            state.items.push({
+              id: 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+              file: file,
+              rawBuffer: null,
+              tags: null,
+              cleanedTags: null,
+              riskLevel: 'none',
+              process: false,
+              cleanedBuffer: null,
+              thumbDataUrl: null,
+              status: 'skipped'
+            });
+            showToast(file.name + '：' + singleGate.message, 2500);
+            return;
+          }
+
+          // 通過大小閘門的檔案立刻建立 placeholder item 並 push、渲染，
+          // 不等 FileReader 讀完才出現在清單；避免使用者在讀取期間誤以為漏選。
+          var item = {
+            id: 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+            file: file,
+            rawBuffer: null,
+            tags: null,
+            cleanedTags: null,
+            riskLevel: 'none',
+            process: true,
+            cleanedBuffer: null,
+            thumbDataUrl: null,
+            status: 'loading',
+            errorMessage: null
+          };
+          state.items.push(item);
+          renderList();
+
+          var reader = new FileReader();
+          reader.onload = function () {
+            var rawBuf = reader.result;
+            item.rawBuffer = rawBuf;
+
+            if (!isSupportedImageFormat(rawBuf)) {
+              // readExifTags()/stripMetadataSegments() 只認得 JPEG/PNG/WebP，其餘格式
+              // （GIF/BMP/TIFF 等）是 no-op，不能宣稱清除，直接標記為不支援，不勾選
+              // 「此張要清除」。
+              item.tags = null;
+              item.riskLevel = 'none';
+              item.process = false;
+              item.status = 'unsupported';
+              renderList();
+            } else {
+              var tags = readExifTags(rawBuf);
+              item.tags = tags;
+              item.riskLevel = computeRisk(tags).level;
+              item.status = 'scanned';
+              renderList();
+            }
+
+            // 通過大小閘門後，呼叫 loadImageFile() 取得轉正後的畫面，
+            // 再用 resizeCanvas() 縮成縮圖顯示在列表卡片上。
+            loadImageFile(file).then(function (result) {
+              var thumbCanvas = resizeCanvas(result.canvas, { maxLongEdge: 200 });
+              item.thumbDataUrl = thumbCanvas.toDataURL('image/jpeg', 0.82);
+              renderList();
+            }).catch(function () {
+              // 解碼失敗時保留無縮圖狀態，不影響其餘功能
+            });
+          };
+          reader.readAsArrayBuffer(file);
+        })(files[i]);
+      }
+    }
+
+    if (btnSelectFiles && fileInput) {
+      btnSelectFiles.addEventListener('click', function () {
+        fileInput.click();
+      });
+      fileInput.addEventListener('change', function () {
+        handleFiles(fileInput.files);
+        fileInput.value = '';
+      });
+    }
+
+    if (dropZone) {
+      dropZone.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+      });
+      dropZone.addEventListener('dragleave', function () {
+        dropZone.classList.remove('dragover');
+      });
+      dropZone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          handleFiles(e.dataTransfer.files);
+        }
+      });
+    }
+
+    if (photosContainer) {
+      photosContainer.addEventListener('change', function (e) {
+        var target = e.target;
+        if (target && target.classList.contains('chk-item-process')) {
+          var idx = Number(target.getAttribute('data-idx'));
+          if (state.items[idx]) {
+            state.items[idx].process = target.checked;
+            updateStats();
+          }
+        }
+      });
+
+      photosContainer.addEventListener('click', function (e) {
+        var target = e.target;
+        if (target && target.classList.contains('btn-dl-single')) {
+          var idx = Number(target.getAttribute('data-idx'));
+          var item = state.items[idx];
+          if (item && item.cleanedBuffer) {
+            var dot = item.file.name.lastIndexOf('.');
+            var base = (dot !== -1) ? item.file.name.substring(0, dot) : item.file.name;
+            var ext = (dot !== -1) ? item.file.name.substring(dot) : '.jpg';
+            var outName = base + '_cleaned' + ext;
+            var mime = item.file.type || 'image/jpeg';
+            downloadFile(outName, item.cleanedBuffer, mime);
+          }
+        }
+      });
+    }
+
+    if (btnClear) {
+      btnClear.addEventListener('click', function () {
+        state.items = [];
+        state.cleaned = false;
+        renderList();
+        showToast('已清空清單');
+      });
+    }
+
+    if (btnStartClean) {
+      btnStartClean.addEventListener('click', function () {
+        var count = 0;
+        state.items.forEach(function (item) {
+          if (item.process && item.rawBuffer) {
+            try {
+              item.cleanedBuffer = stripMetadataSegments(item.rawBuffer);
+              item.status = 'cleaned';
+              count++;
+              // 清除完成後立刻對 cleanedBuffer 重新呼叫 readExifTags() 驗證，
+              // 對照表一律以這次驗證結果顯示，不憑清除前的 item.tags 猜測。
+              try {
+                item.cleanedTags = readExifTags(item.cleanedBuffer);
+              } catch (verifyErr) {
+                item.cleanedTags = null;
+              }
+            } catch (err) {
+              item.status = 'error';
+              item.errorMessage = (err && err.message) ? err.message : String(err);
+            }
+          }
+        });
+
+        state.cleaned = true;
+        renderList();
+        showToast('已完成 ' + count + ' 張圖片的 Metadata 清除！');
+      });
+    }
+
+    if (btnDownloadZip) {
+      btnDownloadZip.addEventListener('click', function () {
+        var entries = [];
+        state.items.forEach(function (item) {
+          if (item.status === 'skipped') return;
+          var buf = (item.status === 'cleaned' && item.cleanedBuffer) ? item.cleanedBuffer : item.rawBuffer;
+          if (!buf) return;
+
+          var dot = item.file.name.lastIndexOf('.');
+          var base = (dot !== -1) ? item.file.name.substring(0, dot) : item.file.name;
+          var ext = (dot !== -1) ? item.file.name.substring(dot) : '.jpg';
+          var outName = (item.status === 'cleaned') ? (base + '_cleaned' + ext) : item.file.name;
+
+          entries.push({
+            name: outName,
+            bytes: new Uint8Array(buf)
+          });
+        });
+
+        if (entries.length === 0) {
+          showToast('無可下載的圖片');
+          return;
+        }
+
+        var zipBlob = createZipBlob(entries);
+        downloadFile('exif_cleaned_images.zip', zipBlob, 'application/zip');
+        showToast('已開始下載 ZIP 壓縮包');
+      });
+    }
+
+    if (btnCopySummary) {
+      btnCopySummary.addEventListener('click', function () {
+        var total = state.items.length;
+        var high = state.items.filter(function (i) { return i.riskLevel === 'high'; }).length;
+        var med = state.items.filter(function (i) { return i.riskLevel === 'med'; }).length;
+        var low = state.items.filter(function (i) { return i.riskLevel === 'low'; }).length;
+        var cleanedCount = state.items.filter(function (i) { return i.status === 'cleaned'; }).length;
+
+        var text = '【EXIF 隱私檢查與清除報告】\n' +
+                   '總檢查張數：' + total + ' 張\n' +
+                   '高風險（含 GPS 座標）：' + high + ' 張\n' +
+                   '中風險（含裝置/時間）：' + med + ' 張\n' +
+                   '低風險（含 XMP 標籤）：' + low + ' 張\n' +
+                   '已成功清除 Metadata：' + cleanedCount + ' 張\n';
+
+        copyToClipboard(text).then(function () {
+          showToast('已複製隱私報告摘要');
+        });
+      });
+    }
+
+    function buildCleanHtmlCopy() {
+      var doc = document.documentElement.cloneNode(true);
+
+      var toast = doc.querySelector('#__shared_toast');
+      if (toast) toast.remove();
+
+      var navBack = doc.querySelector('.nav-back');
+      if (navBack) navBack.remove();
+
+      var offlineBtn = doc.querySelector('#btn-download-offline');
+      if (offlineBtn) offlineBtn.remove();
+
+      var optCard = doc.querySelector('#clean-options-card');
+      if (optCard) optCard.style.display = 'none';
+
+      var resSec = doc.querySelector('#results-section');
+      if (resSec) resSec.style.display = 'none';
+
+      var pContainer = doc.querySelector('#photos-container');
+      if (pContainer) pContainer.innerHTML = '';
+
+      var pCount = doc.querySelector('#photo-count');
+      if (pCount) pCount.textContent = '0';
+
+      return '<!DOCTYPE html>\n' + doc.outerHTML;
+    }
+
+    window.buildCleanHtmlCopy = buildCleanHtmlCopy;
+
+    if (btnDownloadOffline) {
+      btnDownloadOffline.addEventListener('click', function () {
+        var cleanHtml = buildCleanHtmlCopy();
+        downloadFile('exif-privacy-cleaner-offline.html', cleanHtml, 'text/html;charset=utf-8');
+        showToast('已下載離線版工具');
+      });
+    }
+  })();
+  </script>
+</body>
+</html>

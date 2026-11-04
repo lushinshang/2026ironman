@@ -1,0 +1,10 @@
+{
+  "assets": {
+    "outside": {
+      "path": "../../../etc/hosts",
+      "version": "fixture",
+      "license": "fixture",
+      "escape_mode": "raw_js"
+    }
+  }
+}

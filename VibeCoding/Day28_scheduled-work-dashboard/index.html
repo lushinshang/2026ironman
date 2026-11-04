@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日自動更新工作 Dashboard — Day28</title>
+<style>
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-success: #16a34a;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font-sans); color: var(--color-text); background: var(--color-bg); line-height: 1.6; }
+.container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+h1, h2, h3 { line-height: 1.3; }
+.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 16px; }
+.hint { font-size: 0.85rem; color: var(--color-text-muted); }
+.nav-back { display: inline-block; margin-bottom: 16px; color: var(--color-text-muted); text-decoration: none; }
+.nav-back:hover { text-decoration: underline; }
+
+.notice-banner { background: #fff7ed; border: 1px solid #fdba74; border-radius: var(--radius); padding: 10px 14px; font-size: 0.85rem; color: #9a3412; margin-bottom: 16px; }
+
+.section { margin: 24px 0; }
+.section-title { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.section-title h2 { margin: 0; font-size: 1.15rem; }
+.section-note { font-size: 0.82rem; color: var(--color-text-muted); margin: 4px 0 12px 0; }
+
+.month-switcher { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+.month-switcher button { font-family: inherit; font-size: 1rem; padding: 6px 14px; border-radius: var(--radius); border: 1px solid var(--color-border); background: var(--color-surface); cursor: pointer; }
+.month-switcher button:hover:not(:disabled) { background: var(--color-bg); }
+.month-switcher button:disabled { cursor: not-allowed; opacity: 0.35; }
+.month-switcher .current-month { font-size: 1.1rem; font-weight: 700; min-width: 110px; text-align: center; }
+
+.type-filter-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; }
+.type-filter-row label { font-size: 0.85rem; color: var(--color-text-muted); }
+.type-filter-row select { font-family: inherit; font-size: 0.9rem; padding: 5px 10px; border-radius: var(--radius); border: 1px solid var(--color-border); background: var(--color-surface); cursor: pointer; }
+
+.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 640px) { .kpi-grid { grid-template-columns: 1fr; } }
+.kpi-card { text-align: center; }
+.kpi-card .kpi-label { font-size: 0.9rem; color: var(--color-text-muted); margin-bottom: 8px; }
+.kpi-card .kpi-value { font-size: 1.8rem; font-weight: 700; margin-bottom: 6px; }
+.kpi-card .kpi-change { font-size: 0.9rem; }
+.kpi-card .kpi-change.up { color: var(--color-danger); }
+.kpi-card .kpi-change.down { color: var(--color-success); }
+.kpi-card .kpi-change.flat { color: var(--color-text-muted); }
+.kpi-empty { color: var(--color-text-muted); font-size: 0.9rem; padding: 20px 0; text-align: center; }
+
+.chart-wrap { overflow-x: auto; }
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 900px) { .chart-grid { grid-template-columns: 1fr; } }
+.chart-legend { display: flex; gap: 12px; font-size: 0.78rem; margin-bottom: 8px; flex-wrap: wrap; }
+.chart-legend .legend-item { display: flex; align-items: center; gap: 4px; }
+.legend-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+table.detail-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+table.detail-table th, table.detail-table td { border: 1px solid var(--color-border); padding: 5px 8px; text-align: right; }
+table.detail-table th:first-child, table.detail-table td:first-child,
+table.detail-table th:nth-child(2), table.detail-table td:nth-child(2) { text-align: left; }
+table.detail-table thead th { background: var(--color-bg); position: sticky; top: 0; }
+.table-wrap { overflow-x: auto; max-height: 480px; overflow-y: auto; }
+
+footer.page-footer { margin-top: 32px; border-top: 1px solid var(--color-border); padding-top: 16px; font-size: 0.82rem; color: var(--color-text-muted); }
+footer.page-footer a { color: var(--color-primary); }
+footer.page-footer p { margin: 4px 0; }
+
+.loading-state { text-align: center; padding: 40px 0; color: var(--color-text-muted); }
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="nav-back" href="../index.html">&larr; 回作品集</a>
+  <h1>每日自動更新工作 Dashboard</h1>
+  <p class="hint">資料來源：聯合信用卡中心「發卡機構通報詐欺交易型態之金額及筆數」月報表。GitHub Actions 每天自動檢查是否有新月份，Repo（CSV）即資料庫，前端純 JS 讀取渲染。</p>
+
+  <div class="notice-banner">
+    這是網站，不是離線 HTML。需透過網站瀏覽（讀取伺服器上的 <code>data/monthly-stats.csv</code>），
+    <strong>不支援下載後單獨離線使用</strong>——資料由 GitHub Actions 自動更新，離線下載無法重現這個能力。
+  </div>
+
+  <div id="app">
+    <div class="loading-state" id="loading-state">載入資料中…</div>
+  </div>
+
+  <footer class="page-footer" id="page-footer" style="display:none;">
+    <p>Last Updated：<span id="last-updated"></span>（取本地 CSV 最新一列年月）</p>
+    <p>資料最新到 <strong id="latest-month-label"></strong>。來源通報作業約有 1-2 個月延遲，非即時資料。</p>
+    <p>資料來源：聯合信用卡中心「發卡機構通報詐欺交易型態之金額及筆數」（<a href="https://www.nccc.com.tw/dataDownload/Fraud/BANK_FRAUD_TWN_ALL.CSV" target="_blank" rel="noopener">原始 CSV 下載連結</a>），本站為<strong>非官方</strong>轉載整理，<strong>僅供技術練習展示</strong>（GitHub Actions 排程 + Repo 即資料庫），非商用、非官方公告開放資料集。</p>
+    <p>已知資料特性：「多刷帳單之詐欺」型態在 2021-01 之後的月份已不再出現於來源資料（僅 2014-01 ~ 2020-12 有此型態），本站完整性檢查會如實標記這些月份為「缺筆」，詳見 <code>data/validation-log.csv</code>——這是來源資料本身的變化，不是本站抓取有誤。</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var FRAUD_TYPES = ["遺失卡", "被竊卡", "未達卡", "冒用申請卡", "偽卡", "MOTO / EC", "其他", "多刷帳單之詐欺"];
+  var TYPE_COLORS = {
+    "遺失卡": "#2563eb", "被竊卡": "#dc2626", "未達卡": "#16a34a", "冒用申請卡": "#f59e0b",
+    "偽卡": "#7c3aed", "MOTO / EC": "#0891b2", "其他": "#6b7280", "多刷帳單之詐欺": "#db2777"
+  };
+
+  var ALL_TYPES_KEY = "__ALL__";
+
+  var state = {
+    monthly: {},        // { "202401": { "遺失卡": {cases, losses}, ... }, ... }
+    months: [],         // sorted year_month strings
+    currentMonthIndex: -1,
+    latestMonth: null,
+    selectedType: ALL_TYPES_KEY  // ALL_TYPES_KEY = 全部合計，或其中一個 FRAUD_TYPES 值
+  };
+
+  function parseCsv(text) {
+    var lines = text.trim().split(/\r?\n/);
+    var header = lines[0].split(",");
+    var rows = [];
+    for (var i = 1; i < lines.length; i++) {
+      if (!lines[i]) continue;
+      var cols = lines[i].split(",");
+      var row = {};
+      for (var j = 0; j < header.length; j++) row[header[j]] = cols[j];
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  function aggregateByMonth(rows) {
+    var monthly = {};
+    var latest = null;
+    rows.forEach(function (r) {
+      var m = r.year_month;
+      if (!monthly[m]) {
+        monthly[m] = {};
+        FRAUD_TYPES.forEach(function (t) { monthly[m][t] = { cases: 0, losses: 0 }; });
+      }
+      if (!monthly[m][r.category]) monthly[m][r.category] = { cases: 0, losses: 0 };
+      monthly[m][r.category].cases += parseInt(r.cases, 10) || 0;
+      monthly[m][r.category].losses += parseInt(r.losses, 10) || 0;
+      if (!latest || m > latest) latest = m;
+    });
+    return { monthly: monthly, latest: latest };
+  }
+
+  function monthTotal(m) {
+    var cases = 0, losses = 0;
+    FRAUD_TYPES.forEach(function (t) {
+      cases += state.monthly[m][t].cases;
+      losses += state.monthly[m][t].losses;
+    });
+    return { cases: cases, losses: losses };
+  }
+
+  // 依目前選取的類型（全部合計 or 單一類型）取某月數值
+  function monthValueForSelectedType(m) {
+    if (state.selectedType === ALL_TYPES_KEY) return monthTotal(m);
+    var d = state.monthly[m][state.selectedType];
+    return { cases: d.cases, losses: d.losses };
+  }
+
+  function fmtInt(n) { return n.toLocaleString("zh-TW"); }
+  function fmtYuan(n) { return n.toLocaleString("zh-TW") + " 元"; }
+
+  function monthLabel(m) {
+    return m.slice(0, 4) + "年" + parseInt(m.slice(4, 6), 10) + "月";
+  }
+
+  // ---- 本月摘要卡片（本月 vs 上月，可切換「全部合計」或單一詐欺型態） ----
+  function renderKpiSection(container) {
+    var section = document.createElement("div");
+    section.className = "section card";
+    var typeOptionsHtml = '<option value="' + ALL_TYPES_KEY + '">全部合計</option>' +
+      FRAUD_TYPES.map(function (t) { return '<option value="' + t + '">' + t + '</option>'; }).join("");
+    section.innerHTML =
+      '<div class="section-title"><h2>本月摘要</h2></div>' +
+      '<p class="section-note">本站無官方對照頁面可供逐位比對，頁尾附原始 CSV 下載連結，可自行加總核對。</p>' +
+      '<div class="month-switcher">' +
+      '<button type="button" id="btn-prev-month">&larr; 上一月</button>' +
+      '<span class="current-month" id="current-month-label"></span>' +
+      '<button type="button" id="btn-next-month">下一月 &rarr;</button>' +
+      '</div>' +
+      '<div class="type-filter-row">' +
+      '<label for="type-filter">檢視類型：</label>' +
+      '<select id="type-filter">' + typeOptionsHtml + '</select>' +
+      '</div>' +
+      '<div class="kpi-grid" id="kpi-grid"></div>';
+    container.appendChild(section);
+
+    document.getElementById("btn-prev-month").addEventListener("click", function () {
+      if (state.currentMonthIndex > 0) {
+        state.currentMonthIndex--;
+        renderKpiValues();
+      }
+    });
+    document.getElementById("btn-next-month").addEventListener("click", function () {
+      if (state.currentMonthIndex < state.months.length - 1) {
+        state.currentMonthIndex++;
+        renderKpiValues();
+      }
+    });
+    var typeFilter = document.getElementById("type-filter");
+    typeFilter.value = state.selectedType;
+    typeFilter.addEventListener("change", function () {
+      state.selectedType = typeFilter.value;
+      renderKpiValues();
+    });
+  }
+
+  function changeBadge(curr, prev) {
+    if (prev === 0 || prev == null) return { text: "無上月資料", cls: "flat" };
+    var pct = ((curr - prev) / prev) * 100;
+    var sign = pct > 0 ? "+" : "";
+    var cls = pct > 0.001 ? "up" : (pct < -0.001 ? "down" : "flat");
+    return { text: sign + pct.toFixed(1) + "% 較上月", cls: cls };
+  }
+
+  function renderKpiValues() {
+    var label = document.getElementById("current-month-label");
+    var grid = document.getElementById("kpi-grid");
+    var prevBtn = document.getElementById("btn-prev-month");
+    var nextBtn = document.getElementById("btn-next-month");
+
+    if (state.currentMonthIndex < 0 || state.months.length === 0) {
+      label.textContent = "無資料";
+      grid.innerHTML = '<div class="kpi-empty">尚無月度資料</div>';
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      return;
+    }
+
+    var m = state.months[state.currentMonthIndex];
+    var prevM = state.currentMonthIndex > 0 ? state.months[state.currentMonthIndex - 1] : null;
+    label.textContent = monthLabel(m);
+    prevBtn.disabled = state.currentMonthIndex <= 0;
+    nextBtn.disabled = state.currentMonthIndex >= state.months.length - 1;
+
+    var cur = monthValueForSelectedType(m);
+    var prev = prevM ? monthValueForSelectedType(prevM) : null;
+
+    var casesChange = prev ? changeBadge(cur.cases, prev.cases) : { text: "無上月資料", cls: "flat" };
+    var lossesChange = prev ? changeBadge(cur.losses, prev.losses) : { text: "無上月資料", cls: "flat" };
+
+    var typeLabel = state.selectedType === ALL_TYPES_KEY ? "8 類型合計" : state.selectedType;
+    grid.innerHTML =
+      '<div class="kpi-card">' +
+      '<div class="kpi-label">詐欺筆數(件) · ' + typeLabel + '</div>' +
+      '<div class="kpi-value">' + fmtInt(cur.cases) + '</div>' +
+      '<div class="kpi-change ' + casesChange.cls + '">' + casesChange.text + (prev ? "（上月 " + fmtInt(prev.cases) + " 件）" : "") + '</div>' +
+      '</div>' +
+      '<div class="kpi-card">' +
+      '<div class="kpi-label">詐欺金額(元) · ' + typeLabel + '</div>' +
+      '<div class="kpi-value">' + fmtYuan(cur.losses) + '</div>' +
+      '<div class="kpi-change ' + lossesChange.cls + '">' + lossesChange.text + (prev ? "（上月 " + fmtYuan(prev.losses) + "）" : "") + '</div>' +
+      '</div>';
+  }
+
+  // ---- 月度趨勢折線圖（手刻 SVG，8 種型態各一張，用 <path> 而非逐點 <line> 避免大量節點卡頓） ----
+  function renderTrendSection(container) {
+    var section = document.createElement("div");
+    section.className = "section card";
+    section.innerHTML =
+      '<div class="section-title"><h2>月度趨勢圖</h2></div>' +
+      '<p class="section-note">8 種信用卡詐欺型態的筆數／金額趨勢，橫軸為累積至今的月份（共 ' + state.months.length + ' 個月）。</p>' +
+      '<h3 style="font-size:0.95rem;">詐欺筆數月趨勢（件）</h3>' +
+      '<div class="chart-wrap"><div id="chart-cases"></div></div>' +
+      '<h3 style="font-size:0.95rem;margin-top:20px;">詐欺金額月趨勢（元）</h3>' +
+      '<div class="chart-wrap"><div id="chart-losses"></div></div>';
+    container.appendChild(section);
+
+    var casesSeries = {}, lossesSeries = {};
+    FRAUD_TYPES.forEach(function (t) {
+      casesSeries[t] = state.months.map(function (m) { return state.monthly[m][t].cases; });
+      lossesSeries[t] = state.months.map(function (m) { return state.monthly[m][t].losses; });
+    });
+
+    document.getElementById("chart-cases").appendChild(buildLineChartSvg(state.months, casesSeries, fmtInt));
+    document.getElementById("chart-losses").appendChild(buildLineChartSvg(state.months, lossesSeries, fmtYuan));
+  }
+
+  function buildLineChartSvg(months, series, fmt) {
+    var wrap = document.createElement("div");
+    var W = Math.max(360, months.length * 8 + 100);
+    var H = 240;
+    var padL = 70, padR = 20, padT = 20, padB = 30;
+    var plotW = W - padL - padR;
+    var plotH = H - padT - padB;
+
+    var allValues = [];
+    FRAUD_TYPES.forEach(function (t) { series[t].forEach(function (v) { allValues.push(v); }); });
+    var maxV = Math.max.apply(null, allValues.concat([1]));
+    var niceMax = maxV * 1.15;
+
+    function xAt(i) {
+      if (months.length === 1) return padL + plotW / 2;
+      return padL + (plotW * i) / (months.length - 1);
+    }
+    function yAt(v) { return padT + plotH - (plotH * v) / niceMax; }
+
+    var svgParts = [];
+    svgParts.push('<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" xmlns="http://www.w3.org/2000/svg" role="img">');
+    svgParts.push('<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (padT + plotH) + '" stroke="#d9d9de" />');
+    svgParts.push('<line x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (padL + plotW) + '" y2="' + (padT + plotH) + '" stroke="#d9d9de" />');
+    // 首尾 + 每 12 個月標一次 x 軸標籤（避免 149 個月全標爆版）
+    months.forEach(function (m, i) {
+      if (i === 0 || i === months.length - 1 || i % 12 === 0) {
+        var x = xAt(i);
+        svgParts.push('<text x="' + x + '" y="' + (padT + plotH + 16) + '" font-size="9" fill="#6b7280" text-anchor="middle">' + m + '</text>');
+      }
+    });
+    [0, 0.5, 1].forEach(function (frac) {
+      var v = niceMax * frac;
+      var y = yAt(v);
+      svgParts.push('<text x="' + (padL - 8) + '" y="' + (y + 4) + '" font-size="10" fill="#6b7280" text-anchor="end">' + fmt(Math.round(v)) + '</text>');
+    });
+
+    // 用單一 <path> 畫折線（而非逐點堆 <line>/<polyline> 疊加），149 個月 x 8 條線效能較穩定；
+    // 資料點用 <circle> 附 <title> 供 hover 查數值，但不逐點畫獨立線段。
+    FRAUD_TYPES.forEach(function (t) {
+      var d = series[t].map(function (v, i) {
+        return (i === 0 ? "M" : "L") + xAt(i).toFixed(1) + "," + yAt(v).toFixed(1);
+      }).join(" ");
+      svgParts.push('<path d="' + d + '" fill="none" stroke="' + TYPE_COLORS[t] + '" stroke-width="1.5" />');
+    });
+    // 只在資料點數不多時畫圓點（避免 149 點 x 8 型態 = 1192 個 circle 拖累效能）；
+    // 點數多時省略逐點 circle，靠 path 本身呈現趨勢即可。
+    if (months.length <= 36) {
+      FRAUD_TYPES.forEach(function (t) {
+        series[t].forEach(function (v, i) {
+          svgParts.push('<circle cx="' + xAt(i).toFixed(1) + '" cy="' + yAt(v).toFixed(1) + '" r="2.5" fill="' + TYPE_COLORS[t] + '"><title>' + t + " " + months[i] + ": " + fmt(v) + '</title></circle>');
+        });
+      });
+    }
+    svgParts.push('</svg>');
+
+    var legend = document.createElement("div");
+    legend.className = "chart-legend";
+    FRAUD_TYPES.forEach(function (t) {
+      var item = document.createElement("span");
+      item.className = "legend-item";
+      item.innerHTML = '<span class="legend-swatch" style="background:' + TYPE_COLORS[t] + '"></span>' + t;
+      legend.appendChild(item);
+    });
+
+    wrap.appendChild(legend);
+    var svgHolder = document.createElement("div");
+    svgHolder.innerHTML = svgParts.join("");
+    wrap.appendChild(svgHolder.firstChild);
+    return wrap;
+  }
+
+  // ---- 月度明細表 ----
+  function renderDetailTable(container) {
+    var section = document.createElement("div");
+    section.className = "section card";
+    var rowsHtml = "";
+    state.months.slice().reverse().forEach(function (m) {
+      FRAUD_TYPES.forEach(function (t, idx) {
+        var d = state.monthly[m][t];
+        rowsHtml += '<tr>' +
+          '<td>' + (idx === 0 ? monthLabel(m) : "") + '</td>' +
+          '<td>' + t + '</td>' +
+          '<td>' + fmtInt(d.cases) + '</td>' +
+          '<td>' + fmtInt(d.losses) + '</td>' +
+          '</tr>';
+      });
+    });
+    section.innerHTML =
+      '<div class="section-title"><h2>月度明細表</h2></div>' +
+      '<div class="table-wrap"><table class="detail-table">' +
+      '<thead><tr><th>月份</th><th>型態</th><th>筆數(件)</th><th>金額(元)</th></tr></thead>' +
+      '<tbody>' + rowsHtml + '</tbody>' +
+      '</table></div>';
+    container.appendChild(section);
+  }
+
+  function render() {
+    var app = document.getElementById("app");
+    app.innerHTML = "";
+
+    if (state.months.length === 0) {
+      app.innerHTML = '<div class="card"><p>尚無資料，請確認 <code>data/monthly-stats.csv</code> 是否存在。</p></div>';
+      return;
+    }
+
+    renderKpiSection(app);
+    renderKpiValues();
+    renderTrendSection(app);
+    renderDetailTable(app);
+
+    document.getElementById("last-updated").textContent = state.latestMonth || "無資料";
+    document.getElementById("latest-month-label").textContent = state.latestMonth ? monthLabel(state.latestMonth) : "無資料";
+    document.getElementById("page-footer").style.display = "block";
+  }
+
+  fetch("data/monthly-stats.csv")
+    .then(function (res) {
+      if (!res.ok) throw new Error("CSV fetch failed: " + res.status);
+      return res.text();
+    })
+    .then(function (text) {
+      var rows = parseCsv(text);
+      var result = aggregateByMonth(rows);
+      state.monthly = result.monthly;
+      state.months = Object.keys(result.monthly).sort();
+      state.currentMonthIndex = state.months.length - 1;
+      state.latestMonth = result.latest;
+
+      console.log("[Day28 Dashboard] 月度彙總結果：", JSON.parse(JSON.stringify(state.monthly)));
+      console.log("[Day28 Dashboard] 可用月份數：", state.months.length);
+      console.log("[Day28 Dashboard] 資料最新到：", state.latestMonth);
+
+      render();
+    })
+    .catch(function (err) {
+      console.error("[Day28 Dashboard] 載入失敗：", err);
+      document.getElementById("loading-state").textContent = "資料載入失敗：" + err.message + "（需透過網站伺服器開啟，file:// 直接開啟無法讀取本地 CSV）";
+    });
+})();
+</script>
+</body>
+</html>

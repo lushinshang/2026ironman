@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSV 一頁式管理報告</title>
+<style>
+/* shared/base.css — 共用樣式基底，逐字複製，勿手動修改（改請去 shared/base.css 源頭並重新複製） */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 {
+  line-height: 1.3;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+textarea,
+input[type="text"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 160px;
+}
+
+button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--color-bg);
+}
+
+button.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover {
+  background: var(--color-primary-hover);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover {
+  text-decoration: underline;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+/* ---- 本題（csv-one-page-report）專屬樣式 ---- */
+.page-header {
+  margin-bottom: 8px;
+}
+
+.page-header h1 {
+  font-size: 1.4rem;
+  margin: 0 0 4px;
+}
+
+.page-header p {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.section-gap {
+  margin-top: 16px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.file-hint {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.file-meta {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  margin-top: 8px;
+}
+
+.file-meta span {
+  margin-right: 14px;
+}
+
+.msg {
+  font-size: 0.85rem;
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  margin-top: 8px;
+}
+
+.msg.warn {
+  background: #fdf3e0;
+  color: #8a5a00;
+  border: 1px solid #e8c99a;
+}
+
+.msg.error {
+  background: #fdeaea;
+  color: #a13a3a;
+  border: 1px solid #f0a3a3;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 10px;
+}
+
+button.small {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
+  flex: 1;
+}
+
+.field-group label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+select {
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.report-section {
+  margin-top: 12px;
+}
+
+.report-section h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.report-placeholder {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+/* ---- task 6：KPI 卡片／排名表格／圖表容器 ---- */
+
+.report-meta.hidden,
+.report-note.hidden {
+  display: none;
+}
+
+.report-meta h2 {
+  margin: 0 0 4px;
+  font-size: 1.2rem;
+}
+
+.report-note {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.kpi-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  text-align: center;
+}
+
+.kpi-card .kpi-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.kpi-card .kpi-value {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.rank-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.rank-table th,
+.rank-table td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.rank-table td.num {
+  text-align: right;
+}
+
+.chart-placeholder,
+.chart-empty {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.chart-note {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+
+.chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-legend-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+/* ---- task 7：列印版型 ---- */
+
+@page {
+  size: A4;
+  margin: 2cm;
+}
+
+#report-container {
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+#section-kpi,
+#section-top5,
+#section-bottom5,
+#section-category,
+#section-trend {
+  break-inside: avoid;
+}
+
+.rank-tables {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.rank-tables > .report-section {
+  flex: 1;
+  min-width: 220px;
+}
+
+/* 引用 shared/print.css — 共用列印樣式基底 */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+  }
+
+  .container {
+    max-width: none;
+    padding: 0;
+  }
+
+  .card {
+    border: none;
+    padding: 0;
+  }
+
+  .report-section {
+    margin-top: 8px;
+  }
+
+  .report-section h3 {
+    margin: 0 0 4px;
+    font-size: 0.9rem;
+  }
+
+  .kpi-grid {
+    gap: 6px;
+  }
+
+  .kpi-card {
+    padding: 6px 8px;
+  }
+
+  .rank-table th,
+  .rank-table td {
+    padding: 3px 6px;
+  }
+
+  .chart-legend {
+    gap: 2px 12px;
+    margin-top: 4px;
+    font-size: 0.75rem;
+  }
+
+  .chart-note {
+    margin-top: 2px;
+  }
+
+  .report-meta h2 {
+    font-size: 1.05rem;
+  }
+
+  .bundled-licenses {
+    display: none;
+  }
+}
+
+.bundled-licenses {
+  margin-top: 24px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.bundled-licenses ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="nav-back no-print" href="../index.html">← 返回作品集</a>
+
+  <div class="page-header no-print">
+    <h1>CSV 一頁式管理報告</h1>
+    <p>上傳 CSV、選定一個核心數值欄與一個核心分類欄，按「產生報告」產出可列印的一頁式管理摘要。所有處理都在瀏覽器本機完成，不上傳任何內容。</p>
+  </div>
+
+  <div class="card section-gap no-print">
+    <h3>1. 上傳 CSV</h3>
+    <div id="dropzone" class="dropzone">拖曳 .csv 檔案到此，或使用下方按鈕選取檔案</div>
+    <div class="button-row">
+      <button type="button" id="btn-pick-file">選取檔案</button>
+      <input type="file" id="file-input" accept=".csv" style="display:none;">
+    </div>
+    <div id="size-msg"></div>
+    <div id="file-meta" class="file-meta"></div>
+    <div id="encoding-fallback" class="msg warn hidden"></div>
+  </div>
+
+  <div class="card section-gap no-print">
+    <h3>2. 選擇欄位與報告資訊</h3>
+    <div class="field-row">
+      <div class="field-group">
+        <label for="measure-select">核心數值欄（measure）</label>
+        <select id="measure-select" disabled></select>
+      </div>
+      <div class="field-group">
+        <label for="dimension-select">核心分類欄（dimension）</label>
+        <select id="dimension-select" disabled></select>
+      </div>
+      <div id="date-select-group" class="field-group hidden">
+        <label for="date-select">日期欄（趨勢用）</label>
+        <select id="date-select" disabled></select>
+      </div>
+    </div>
+    <div id="date-hint" class="file-hint hidden">未偵測到日期欄位，此報告不含時間趨勢</div>
+
+    <div class="field-row">
+      <div class="field-group">
+        <label for="title-input">報告標題</label>
+        <input type="text" id="title-input" maxlength="60" placeholder="例如：2026 年 8 月營運摘要">
+      </div>
+      <div class="field-group">
+        <label for="period-input">期間</label>
+        <input type="text" id="period-input" maxlength="40" placeholder="例如：2026-08-01 ~ 2026-08-31">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-group" style="flex-basis:100%;">
+        <label for="note-input">註記</label>
+        <textarea id="note-input" maxlength="200" style="min-height:60px;"></textarea>
+      </div>
+    </div>
+
+    <div class="button-row">
+      <button type="button" id="btn-generate" class="primary" disabled>產生報告</button>
+    </div>
+  </div>
+
+  <div class="card section-gap" id="report-container">
+    <h3 class="no-print">報告預覽</h3>
+
+    <div id="report-meta" class="report-meta hidden">
+      <h2 id="report-title-out"></h2>
+      <div id="report-period-out" class="file-hint"></div>
+    </div>
+
+    <div class="report-section" id="section-kpi">
+      <h3>KPI</h3>
+      <div id="report-kpi" class="report-placeholder">尚未產生報告</div>
+      <div id="report-kpi-note" class="file-hint"></div>
+    </div>
+
+    <div class="rank-tables">
+      <div class="report-section" id="section-top5">
+        <h3>Top 5</h3>
+        <div id="report-top5" class="report-placeholder">尚未產生報告</div>
+      </div>
+
+      <div class="report-section" id="section-bottom5">
+        <h3>Bottom 5</h3>
+        <div id="report-bottom5" class="report-placeholder">尚未產生報告</div>
+      </div>
+    </div>
+
+    <div class="report-section" id="section-category">
+      <h3>分類占比</h3>
+      <div id="report-category" class="report-placeholder">尚未產生報告</div>
+    </div>
+
+    <div class="report-section" id="section-trend">
+      <h3>日期趨勢</h3>
+      <div id="report-trend" class="report-placeholder">尚未產生報告</div>
+    </div>
+
+    <div id="report-note-out" class="report-note hidden"></div>
+  </div>
+
+  <div class="card section-gap no-print">
+    <h3>結果</h3>
+    <div class="button-row">
+      <button type="button" id="btn-copy" disabled>複製報告摘要</button>
+      <button type="button" id="btn-export-html">匯出單一 HTML</button>
+      <button type="button" id="btn-download-offline">下載本工具離線版</button>
+    </div>
+    <div class="file-hint">此檔案包含完整報告資料，請確認分享對象</div>
+  </div>
+
+  <!--{{LICENSES}}-->
+</div>
+
+<!--{{SHARED:util-escape}}-->
+<!--{{SHARED:ui-toast}}-->
+<!--{{SHARED:io-download}}-->
+<!--{{SHARED:io-clipboard}}-->
+<!--{{SHARED:io-dropzone}}-->
+<!--{{ASSET:papaparse}}-->
+<!--{{SHARED:csv-parse}}-->
+<!--{{SHARED:csv-decode}}-->
+<!--{{SHARED:csv-write}}-->
+<!--{{SHARED:csv-types}}-->
+<!--{{SHARED:ui-chart-svg}}-->
+<script>
+(function () {
+  'use strict';
+
+  var state = {
+    arrayBuffer: null,
+    fileName: null,
+    table: null,
+    columnTypes: null,
+    dateColIdx: null,
+    report: null
+  };
+
+  // ---------- 小工具 ----------
+
+  function optionEl(value, text) {
+    var o = document.createElement('option');
+    o.value = String(value);
+    o.textContent = text;
+    return o;
+  }
+
+  function fmtNumber(v, decimals) {
+    if (v === null || typeof v === 'undefined' || Number.isNaN(v)) return '—';
+    var d = typeof decimals === 'number' ? decimals : (Number.isInteger(v) ? 0 : 2);
+    return new Intl.NumberFormat('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: d }).format(v);
+  }
+
+  function pad2(n) {
+    return n < 10 ? '0' + n : String(n);
+  }
+
+  // ---------- task 2：型別推論與欄位下拉 ----------
+
+  function populateFieldSelects(table, columnTypes) {
+    var measureSel = document.getElementById('measure-select');
+    var dimSel = document.getElementById('dimension-select');
+    var dateSel = document.getElementById('date-select');
+    var dateGroup = document.getElementById('date-select-group');
+    var dateHint = document.getElementById('date-hint');
+
+    measureSel.innerHTML = '';
+    dimSel.innerHTML = '';
+    dateSel.innerHTML = '';
+
+    var measureIdxs = [];
+    var dimIdxs = [];
+    var dateIdxs = [];
+
+    table.headers.forEach(function (h, i) {
+      var kind = columnTypes[i].kind;
+      if (kind === 'number') {
+        measureIdxs.push(i);
+      } else if (kind === 'date') {
+        dateIdxs.push(i);
+      } else {
+        // kind === 'text'，含樣本數 < 3 的欄位（依契約 4.0b，樣本不足一律判定為 text）
+        dimIdxs.push(i);
+      }
+    });
+
+    measureIdxs.forEach(function (i) { measureSel.appendChild(optionEl(i, table.headers[i])); });
+    dimIdxs.forEach(function (i) { dimSel.appendChild(optionEl(i, table.headers[i])); });
+
+    measureSel.disabled = measureIdxs.length === 0;
+    dimSel.disabled = dimIdxs.length === 0;
+
+    if (dateIdxs.length === 0) {
+      dateGroup.classList.add('hidden');
+      dateHint.classList.remove('hidden');
+      dateSel.disabled = true;
+      state.dateColIdx = null;
+    } else {
+      dateGroup.classList.remove('hidden');
+      dateHint.classList.add('hidden');
+      dateIdxs.forEach(function (i) { dateSel.appendChild(optionEl(i, table.headers[i])); });
+      dateSel.value = String(dateIdxs[0]);
+      dateSel.disabled = false;
+      state.dateColIdx = dateIdxs[0];
+    }
+
+    dateSel.addEventListener('change', function () {
+      state.dateColIdx = dateSel.value === '' ? null : Number(dateSel.value);
+    });
+  }
+
+  // ---------- task 3：KPI 計算（SUM/AVG/COUNT/MAX） ----------
+  // 一律用 cellAt() 取格，不得直接索引 row 的 cells 陣列（CSV_CONTRACT.md 第 3.2.1 節）。
+  // 排除規則：空值格（cellAt 回傳 ''）與非數值格（toNumber() 回傳 NaN，
+  // 這正是 inferColumnTypes() 的 mismatchLines 判準所在），兩者皆不納入計算。
+
+  function calcKpis(table, measureColIdx) {
+    var total = table.rows.length;
+    var included = 0;
+    var sum = 0;
+    var max = null;
+
+    table.rows.forEach(function (row) {
+      var cell = cellAt(row, measureColIdx);
+      var num = toNumber(cell);
+      if (Number.isNaN(num)) return; // 空值格與非數值格皆在此被排除
+      included += 1;
+      sum += num;
+      if (max === null || num > max) max = num;
+    });
+
+    var avg = included > 0 ? sum / included : 0;
+
+    return {
+      sum: sum,
+      avg: avg,
+      count: included,
+      max: max === null ? 0 : max,
+      included: included,
+      total: total
+    };
+  }
+
+  // ---------- 分組加總（task 4 / task 5a 共用） ----------
+  // 依核心 dimension 分組、對核心 measure 做 SUM 聚合；一律用 cellAt() 取格。
+  // 非數值 measure 格（含空值）比照 KPI 排除規則，不納入分組加總。
+
+  function groupSumByDimension(table, dimColIdx, measureColIdx) {
+    var groups = {};
+    var order = [];
+
+    table.rows.forEach(function (row) {
+      var dimVal = cellAt(row, dimColIdx);
+      var num = toNumber(cellAt(row, measureColIdx));
+      if (Number.isNaN(num)) return;
+      if (!Object.prototype.hasOwnProperty.call(groups, dimVal)) {
+        groups[dimVal] = { label: dimVal, sum: 0, order: order.length };
+        order.push(dimVal);
+      }
+      groups[dimVal].sum += num;
+    });
+
+    return order.map(function (k) { return groups[k]; });
+  }
+
+  // ---------- task 4：Top5 / Bottom5 ----------
+
+  function calcTopBottom(table, dimColIdx, measureColIdx) {
+    var list = groupSumByDimension(table, dimColIdx, measureColIdx);
+
+    var sortedDesc = list.slice().sort(function (a, b) {
+      return b.sum - a.sum || a.order - b.order;
+    });
+    var sortedAsc = list.slice().sort(function (a, b) {
+      return a.sum - b.sum || a.order - b.order;
+    });
+
+    return {
+      top5: sortedDesc.slice(0, 5),
+      bottom5: sortedAsc.slice(0, 5),
+      groupCount: list.length
+    };
+  }
+
+  // ---------- task 5a：分類占比 ----------
+  // 門檻依 CSV_CONTRACT.md 第 7.4b 節：類別數 ≤ 9 全畫；≥ 10 取前 8 大 + 其餘併為「其他」。
+
+  function calcCategoryShare(table, dimColIdx, measureColIdx) {
+    var list = groupSumByDimension(table, dimColIdx, measureColIdx);
+    var sorted = list.slice().sort(function (a, b) {
+      return b.sum - a.sum || a.order - b.order;
+    });
+
+    if (sorted.length <= 9) {
+      return { categories: sorted.map(function (g) { return { label: g.label, sum: g.sum, isOther: false }; }), hasOther: false };
+    }
+
+    var top8 = sorted.slice(0, 8);
+    var rest = sorted.slice(8);
+    var otherSum = rest.reduce(function (acc, g) { return acc + g.sum; }, 0);
+
+    var categories = top8.map(function (g) { return { label: g.label, sum: g.sum, isOther: false }; });
+    categories.push({ label: '其他', sum: otherSum, isOther: true });
+
+    return { categories: categories, hasOther: true };
+  }
+
+  // ---------- task 5b：日期趨勢 ----------
+  // 年月日拆解一律用 dateParts()，不自寫 regex。
+  // 【裁示 18】排除規則依「當下粒度」而定，不是一律「m 或 d 任一為 null 就排除」：
+  //   月分組（y／m）：只需 y+m，YYYY-MM（d===null）納入——放進「2026-08」這個月桶沒有捏造任何東西。
+  //   日分組（y／m／d）：需 y+m+d，YYYY-MM（d===null）排除——沒有日就沒有日分組要的粒度。
+  // 兩種粒度都要求至少 m 不為 null（僅 YYYY 缺月，任何粒度都無法納入，一律排除，不得補 0/1）。
+
+  function calcDateTrend(table, dateColIdx, measureColIdx) {
+    if (dateColIdx === null || typeof dateColIdx === 'undefined') {
+      return { noDate: true, granularity: null, series: [] };
+    }
+
+    // monthRows：至少有 y+m（月分組所需最低粒度），d 可能為 null（YYYY-MM）
+    var monthRows = [];
+    table.rows.forEach(function (row) {
+      var raw = cellAt(row, dateColIdx);
+      var parts = dateParts(raw);
+      if (parts === null) return;
+      if (parts.m === null) return; // 連月份都沒有（僅 YYYY），任何粒度都無法納入
+      var num = toNumber(cellAt(row, measureColIdx));
+      if (Number.isNaN(num)) return;
+      monthRows.push({ y: parts.y, m: parts.m, d: parts.d, value: num });
+    });
+
+    if (monthRows.length === 0) {
+      return { noDate: false, granularity: null, series: [] };
+    }
+
+    // fullDateRows：含日（y+m+d），用來判斷日期範圍以決定粒度、也是日分組時實際要用的列
+    var fullDateRows = monthRows.filter(function (r) { return r.d !== null; });
+
+    var granularity;
+    if (fullDateRows.length === 0) {
+      // 沒有任何一列含日，無法量測「範圍是否 < 31 天」，也無法做日分組，退回月分組
+      granularity = 'month';
+    } else {
+      var minEpoch = null;
+      var maxEpoch = null;
+      fullDateRows.forEach(function (r) {
+        var epoch = Date.UTC(r.y, r.m - 1, r.d);
+        if (minEpoch === null || epoch < minEpoch) minEpoch = epoch;
+        if (maxEpoch === null || epoch > maxEpoch) maxEpoch = epoch;
+      });
+      var rangeDays = (maxEpoch - minEpoch) / 86400000;
+      granularity = rangeDays < 31 ? 'day' : 'month';
+    }
+
+    // 依粒度決定納入哪些列：月分組用 monthRows（YYYY-MM 納入）；日分組用 fullDateRows（YYYY-MM 排除）
+    var rowsForGrouping = granularity === 'month' ? monthRows : fullDateRows;
+
+    var groups = {};
+    var order = [];
+    rowsForGrouping.forEach(function (r) {
+      var key, label;
+      if (granularity === 'month') {
+        key = r.y + '-' + pad2(r.m);
+        label = key;
+      } else {
+        key = r.y + '-' + pad2(r.m) + '-' + pad2(r.d);
+        label = key;
+      }
+      if (!Object.prototype.hasOwnProperty.call(groups, key)) {
+        groups[key] = { key: key, label: label, sum: 0 };
+        order.push(key);
+      }
+      groups[key].sum += r.value;
+    });
+
+    order.sort();
+
+    return {
+      noDate: false,
+      granularity: granularity,
+      series: order.map(function (k) { return groups[k]; })
+    };
+  }
+
+  // ---------- 產生報告（task 3–5 的計算結果最小化呈現；完整卡片／表格／SVG 由 task 6 接手） ----------
+
+  function clearReportShells() {
+    ['report-kpi', 'report-top5', 'report-bottom5', 'report-category', 'report-trend'].forEach(function (id) {
+      var el = document.getElementById(id);
+      el.className = 'report-placeholder';
+      el.textContent = '尚未產生報告';
+    });
+    document.getElementById('report-kpi-note').textContent = '';
+    document.getElementById('report-meta').classList.add('hidden');
+    document.getElementById('report-title-out').textContent = '';
+    document.getElementById('report-period-out').textContent = '';
+    var noteOut = document.getElementById('report-note-out');
+    noteOut.classList.add('hidden');
+    noteOut.textContent = '';
+    state.report = null;
+    document.getElementById('btn-copy').disabled = true;
+  }
+
+  // ---------- task 6：串接 UI（KPI 卡片／排名表格／圖表） ----------
+
+  function kpiCardHtml(label, value) {
+    return '<div class="kpi-card"><div class="kpi-label">' + escapeHtml(label) +
+      '</div><div class="kpi-value">' + escapeHtml(value) + '</div></div>';
+  }
+
+  function renderKpi(kpi) {
+    var el = document.getElementById('report-kpi');
+    el.className = 'kpi-grid';
+    el.innerHTML =
+      kpiCardHtml('SUM', fmtNumber(kpi.sum)) +
+      kpiCardHtml('AVG', fmtNumber(kpi.avg)) +
+      kpiCardHtml('COUNT', fmtNumber(kpi.count)) +
+      kpiCardHtml('MAX', fmtNumber(kpi.max));
+    document.getElementById('report-kpi-note').textContent =
+      '納入計算筆數：' + kpi.included + ' / ' + kpi.total + ' 筆';
+  }
+
+  function renderGroupList(elId, list) {
+    var el = document.getElementById(elId);
+    el.className = '';
+    if (list.length === 0) {
+      el.innerHTML = '<div class="report-placeholder">（無資料）</div>';
+      return;
+    }
+    var rows = list.map(function (g, i) {
+      return '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(String(g.label)) +
+        '</td><td class="num">' + escapeHtml(fmtNumber(g.sum)) + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<table class="rank-table"><thead><tr><th>#</th><th>分類</th><th>加總</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>';
+  }
+
+  // 分類占比圖：直接把分組加總（未預先合併）交給 renderPieChart()，
+  // 由該模組依 CSV_CONTRACT.md 7.4b 的門檻自行判斷是否合併「其他」並固定灰階
+  // （不自寫 SVG，也不重複實作合併規則——calcCategoryShare() 用的是同一套 groupSumByDimension()）。
+  function renderCategory(dimGroups) {
+    var el = document.getElementById('report-category');
+    el.className = '';
+    var series = dimGroups.map(function (g) { return { label: g.label, value: g.sum }; });
+    el.innerHTML = renderPieChart(series, { maxPieSlices: 8, width: 640, height: 200 });
+  }
+
+  function renderTrend(result) {
+    var el = document.getElementById('report-trend');
+    el.className = '';
+    if (result.noDate) {
+      el.innerHTML = '<div class="chart-placeholder">未偵測到日期欄位，此報告不含時間趨勢</div>';
+      return;
+    }
+    if (result.series.length === 0) {
+      el.innerHTML = '<div class="chart-placeholder">（無可用日期資料）</div>';
+      return;
+    }
+    var granLabel = result.granularity === 'day' ? '（依日分組）' : '（依月分組）';
+    var series = result.series.map(function (s) { return { label: s.label, value: s.sum }; });
+    el.innerHTML = '<div class="chart-note">' + escapeHtml(granLabel) + '</div>' +
+      renderLineChart(series, { width: 640, height: 170 });
+  }
+
+  function renderReportMeta(title, period, note) {
+    var metaEl = document.getElementById('report-meta');
+    var titleEl = document.getElementById('report-title-out');
+    var periodEl = document.getElementById('report-period-out');
+    var noteEl = document.getElementById('report-note-out');
+
+    if (title || period) {
+      metaEl.classList.remove('hidden');
+    } else {
+      metaEl.classList.add('hidden');
+    }
+    titleEl.innerHTML = escapeHtml(title);
+    periodEl.innerHTML = period ? '期間：' + escapeHtml(period) : '';
+
+    if (note) {
+      noteEl.classList.remove('hidden');
+      noteEl.innerHTML = '註記：' + escapeHtml(note);
+    } else {
+      noteEl.classList.add('hidden');
+      noteEl.innerHTML = '';
+    }
+  }
+
+  function generateReport() {
+    if (!state.table) return;
+    var measureIdx = Number(document.getElementById('measure-select').value);
+    var dimIdx = Number(document.getElementById('dimension-select').value);
+
+    var title = document.getElementById('title-input').value;
+    var period = document.getElementById('period-input').value;
+    var note = document.getElementById('note-input').value;
+
+    var kpi = calcKpis(state.table, measureIdx);
+    var topBottom = calcTopBottom(state.table, dimIdx, measureIdx);
+    var dimGroups = groupSumByDimension(state.table, dimIdx, measureIdx);
+    var category = calcCategoryShare(state.table, dimIdx, measureIdx);
+    var trend = calcDateTrend(state.table, state.dateColIdx, measureIdx);
+
+    state.report = { title: title, period: period, note: note, kpi: kpi, topBottom: topBottom, category: category, trend: trend };
+
+    renderReportMeta(title, period, note);
+    renderKpi(kpi);
+    renderGroupList('report-top5', topBottom.top5);
+    renderGroupList('report-bottom5', topBottom.bottom5);
+    renderCategory(dimGroups);
+    renderTrend(trend);
+
+    document.getElementById('btn-copy').disabled = false;
+  }
+
+  // ---------- task 6：複製報告摘要 ----------
+
+  function buildReportSummaryText() {
+    var r = state.report;
+    var lines = [];
+    lines.push('標題：' + r.title);
+    lines.push('期間：' + r.period);
+    lines.push('SUM：' + fmtNumber(r.kpi.sum));
+    lines.push('AVG：' + fmtNumber(r.kpi.avg));
+    lines.push('COUNT：' + fmtNumber(r.kpi.count));
+    lines.push('MAX：' + fmtNumber(r.kpi.max));
+    lines.push('Top 5：');
+    r.topBottom.top5.forEach(function (g) {
+      lines.push('  ' + g.label + '：' + fmtNumber(g.sum));
+    });
+    lines.push('Bottom 5：');
+    r.topBottom.bottom5.forEach(function (g) {
+      lines.push('  ' + g.label + '：' + fmtNumber(g.sum));
+    });
+    return lines.join('\n');
+  }
+
+  document.getElementById('btn-copy').addEventListener('click', function () {
+    if (!state.report) {
+      showToast('請先產生報告');
+      return;
+    }
+    var text = buildReportSummaryText();
+    copyToClipboard(text).then(function (ok) {
+      if (ok) {
+        showToast('已複製報告摘要');
+      } else {
+        showToast('複製失敗，請手動複製');
+      }
+    });
+  });
+
+  // ---------- 讀檔 ----------
+
+  function updateFileMeta(decoded) {
+    var el = document.getElementById('file-meta');
+    if (!decoded) { el.textContent = ''; return; }
+    el.innerHTML = '<span>編碼：' + escapeHtml(decoded.encoding) + '</span>' +
+      '<span>信心度：' + escapeHtml(decoded.confidence) + '</span>';
+  }
+
+  function renderEncodingFallback(decoded) {
+    var el = document.getElementById('encoding-fallback');
+    if (decoded.confidence === 'fallback') {
+      el.classList.remove('hidden');
+      el.innerHTML = '偵測為 Big5，若顯示為亂碼請手動切換編碼：' +
+        '<select id="encoding-select" style="width:auto; display:inline-block; margin-left:8px;">' +
+        '<option value="big5">Big5</option><option value="utf-8">UTF-8</option></select>';
+      var sel = el.querySelector('#encoding-select');
+      sel.value = 'big5';
+      sel.addEventListener('change', function (e) {
+        loadTableFromArrayBuffer(state.arrayBuffer, state.fileName, e.target.value);
+      });
+    } else {
+      el.classList.add('hidden');
+      el.innerHTML = '';
+    }
+  }
+
+  function loadTableFromArrayBuffer(arrayBuffer, fileName, forcedEncoding) {
+    state.arrayBuffer = arrayBuffer;
+    state.fileName = fileName;
+
+    var decoded;
+    if (forcedEncoding) {
+      decoded = {
+        text: new TextDecoder(forcedEncoding).decode(arrayBuffer),
+        encoding: forcedEncoding,
+        hadBom: false,
+        confidence: 'manual'
+      };
+    } else {
+      decoded = decodeCsvBytes(arrayBuffer);
+    }
+
+    var table = parseCsv(decoded.text, { encoding: decoded.encoding, hadBom: decoded.hadBom });
+    state.table = table;
+    state.columnTypes = inferColumnTypes(table);
+
+    updateFileMeta(decoded);
+    renderEncodingFallback(decoded);
+    populateFieldSelects(table, state.columnTypes);
+    clearReportShells();
+
+    document.getElementById('btn-generate').disabled = false;
+  }
+
+  function onData(arrayBuffer, fileName) {
+    // 不在此清空 #size-msg：onGate() 已先於此執行並視 level 設好訊息
+    // （warn 要保留顯示；ok 由 onGate 自己清空），這裡清空會把 warn 訊息洗掉。
+    loadTableFromArrayBuffer(arrayBuffer, fileName, null);
+  }
+
+  function onError(message) {
+    document.getElementById('size-msg').innerHTML = '<div class="msg error">' + escapeHtml(message) + '</div>';
+    document.getElementById('btn-generate').disabled = true;
+    state.table = null;
+  }
+
+  function onGate(file) {
+    var result = checkCsvFileSize(file.size);
+    if (result.level === 'warn') {
+      document.getElementById('size-msg').innerHTML = '<div class="msg warn">' + escapeHtml(result.message) + '</div>';
+    } else if (result.level === 'ok') {
+      document.getElementById('size-msg').innerHTML = '';
+    }
+    return result;
+  }
+
+  var dropOpts = { mode: 'bytes', accept: ['.csv'], gate: onGate, onError: onError };
+
+  var dropzoneEl = document.getElementById('dropzone');
+  var fileInputEl = document.getElementById('file-input');
+  setupDropZone(dropzoneEl, onData, dropOpts);
+  setupFilePicker(fileInputEl, onData, dropOpts);
+
+  document.getElementById('btn-pick-file').addEventListener('click', function () {
+    fileInputEl.click();
+  });
+
+  document.getElementById('btn-generate').addEventListener('click', generateReport);
+
+  // ---------- task 8：匯出單一 HTML（把已計算完成的數值與 SVG 寫死進匯出檔，不內嵌原始 CSV 全表） ----------
+
+  var EXPORT_CSS =
+    'body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC",sans-serif;' +
+    'color:#1f2328;background:#f7f7f8;line-height:1.6;}' +
+    '.container{max-width:960px;margin:0 auto;padding:24px 16px;}' +
+    '.card{background:#ffffff;border:1px solid #d9d9de;border-radius:8px;padding:16px;margin-top:16px;}' +
+    '.msg{font-size:.85rem;border-radius:8px;padding:8px 12px;background:#fdf3e0;color:#8a5a00;border:1px solid #e8c99a;}' +
+    '.file-hint{font-size:.8rem;color:#6b7280;margin-top:6px;}' +
+    '.report-meta h2{margin:0 0 4px;font-size:1.2rem;}' +
+    '.report-note{margin-top:12px;font-size:.85rem;color:#6b7280;white-space:pre-wrap;}' +
+    '.report-section{margin-top:16px;}' +
+    '.report-section h3{margin:0 0 8px;font-size:1rem;}' +
+    '.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}' +
+    '.kpi-card{background:#f7f7f8;border:1px solid #d9d9de;border-radius:8px;padding:10px 12px;text-align:center;}' +
+    '.kpi-card .kpi-label{font-size:.75rem;color:#6b7280;}' +
+    '.kpi-card .kpi-value{font-size:1.15rem;font-weight:600;margin-top:4px;}' +
+    '.rank-table{width:100%;border-collapse:collapse;font-size:.85rem;}' +
+    '.rank-table th,.rank-table td{border-bottom:1px solid #d9d9de;padding:6px 8px;text-align:left;}' +
+    '.rank-table td.num{text-align:right;}' +
+    '.chart-placeholder,.chart-empty{border:1px dashed #d9d9de;border-radius:8px;padding:24px;text-align:center;color:#6b7280;font-size:.9rem;}' +
+    '.chart-note{font-size:.8rem;color:#6b7280;margin-top:6px;}' +
+    '.chart-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:.85rem;}' +
+    '.chart-legend-item{display:flex;align-items:center;gap:6px;}' +
+    '.chart-legend-swatch{display:inline-block;width:10px;height:10px;border-radius:2px;}' +
+    '.rank-tables{display:flex;gap:16px;flex-wrap:wrap;}' +
+    '.rank-tables>.report-section{flex:1;min-width:220px;}' +
+    '@page{size:A4;margin:2cm;}' +
+    '#section-kpi,#section-top5,#section-bottom5,#section-category,#section-trend{break-inside:avoid;}' +
+    '#report-container{print-color-adjust:exact;-webkit-print-color-adjust:exact;}' +
+    '@media print{.container{max-width:none;padding:0;}.report-section{margin-top:8px;}' +
+    '.report-section h3{margin:0 0 4px;font-size:.9rem;}.kpi-grid{gap:6px;}.kpi-card{padding:6px 8px;}}';
+
+  // 只用畫面上已經算好、已經 escapeHtml 過的 innerHTML 組出靜態頁面，不重跑運算、不內嵌原始 CSV 全表
+  function buildReportHtml() {
+    var metaHtml = document.getElementById('report-meta').outerHTML;
+    var kpiHtml = document.getElementById('report-kpi').outerHTML;
+    var kpiNoteHtml = document.getElementById('report-kpi-note').outerHTML;
+    var top5Html = document.getElementById('report-top5').outerHTML;
+    var bottom5Html = document.getElementById('report-bottom5').outerHTML;
+    var categoryHtml = document.getElementById('report-category').outerHTML;
+    var trendHtml = document.getElementById('report-trend').outerHTML;
+    var noteOutHtml = document.getElementById('report-note-out').outerHTML;
+    var generatedAt = new Date().toLocaleString('zh-TW');
+
+    return '<!DOCTYPE html>\n<html lang="zh-Hant"><head><meta charset="UTF-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<title>CSV 一頁式管理報告</title><style>' + EXPORT_CSS + '</style></head><body>' +
+      '<div class="container" id="report-container">' +
+      '<div class="msg">本檔含已計算完成的報告內容，請確認分享對象</div>' +
+      '<p class="file-hint">產生時間：' + escapeHtml(generatedAt) + '</p>' +
+      metaHtml +
+      '<div class="report-section" id="section-kpi"><h3>KPI</h3>' + kpiHtml + kpiNoteHtml + '</div>' +
+      '<div class="rank-tables">' +
+      '<div class="report-section" id="section-top5"><h3>Top 5</h3>' + top5Html + '</div>' +
+      '<div class="report-section" id="section-bottom5"><h3>Bottom 5</h3>' + bottom5Html + '</div>' +
+      '</div>' +
+      '<div class="report-section" id="section-category"><h3>分類占比</h3>' + categoryHtml + '</div>' +
+      '<div class="report-section" id="section-trend"><h3>日期趨勢</h3>' + trendHtml + '</div>' +
+      noteOutHtml +
+      '</div></body></html>';
+  }
+
+  document.getElementById('btn-export-html').addEventListener('click', function () {
+    if (!state.report) {
+      showToast('請先產生報告');
+      return;
+    }
+    var html = buildReportHtml();
+    downloadFile('csv-one-page-report.html', html, 'text/html;charset=utf-8');
+    showToast('已下載報告 HTML');
+  });
+
+  // ---------- task 9：buildCleanHtmlCopy()（CONTRACT.md 第 6 節硬性要求，不含任何使用者資料） ----------
+  // 與 task 8 的匯出邏輯各自獨立實作，不共用「複製當下頁面再清空」的路徑。
+
+  function buildCleanHtmlCopy() {
+    var clone = document.documentElement.cloneNode(true);
+
+    // 檔案輸入與檔名顯示
+    var fileInputClone = clone.querySelector('#file-input');
+    if (fileInputClone) { fileInputClone.value = ''; fileInputClone.removeAttribute('value'); }
+    var sizeMsgClone = clone.querySelector('#size-msg');
+    if (sizeMsgClone) sizeMsgClone.innerHTML = '';
+
+    // 檔案資訊列
+    var fileMetaClone = clone.querySelector('#file-meta');
+    if (fileMetaClone) fileMetaClone.textContent = '';
+    var encFallbackClone = clone.querySelector('#encoding-fallback');
+    if (encFallbackClone) { encFallbackClone.innerHTML = ''; encFallbackClone.classList.add('hidden'); }
+
+    // 欄位下拉裡從 CSV headers 動態產生的所有 <option>（欄名本身就是使用者資料）
+    var measureClone = clone.querySelector('#measure-select');
+    if (measureClone) { measureClone.innerHTML = ''; measureClone.disabled = true; }
+    var dimClone = clone.querySelector('#dimension-select');
+    if (dimClone) { dimClone.innerHTML = ''; dimClone.disabled = true; }
+    var dateSelClone = clone.querySelector('#date-select');
+    if (dateSelClone) { dateSelClone.innerHTML = ''; dateSelClone.disabled = true; }
+    var dateGroupClone = clone.querySelector('#date-select-group');
+    if (dateGroupClone) dateGroupClone.classList.add('hidden');
+    var dateHintClone = clone.querySelector('#date-hint');
+    if (dateHintClone) dateHintClone.classList.add('hidden');
+
+    // 標題／期間／註記輸入框
+    var titleInClone = clone.querySelector('#title-input');
+    if (titleInClone) { titleInClone.value = ''; titleInClone.removeAttribute('value'); }
+    var periodInClone = clone.querySelector('#period-input');
+    if (periodInClone) { periodInClone.value = ''; periodInClone.removeAttribute('value'); }
+    var noteInClone = clone.querySelector('#note-input');
+    if (noteInClone) { noteInClone.value = ''; noteInClone.textContent = ''; }
+
+    // 報告預覽區：標題／期間／註記輸出與已算出的 KPI／排名／圖表結果，全部還原成初始空殼
+    var metaClone = clone.querySelector('#report-meta');
+    if (metaClone) metaClone.classList.add('hidden');
+    var titleOutClone = clone.querySelector('#report-title-out');
+    if (titleOutClone) titleOutClone.innerHTML = '';
+    var periodOutClone = clone.querySelector('#report-period-out');
+    if (periodOutClone) periodOutClone.innerHTML = '';
+    var noteOutClone = clone.querySelector('#report-note-out');
+    if (noteOutClone) { noteOutClone.innerHTML = ''; noteOutClone.classList.add('hidden'); }
+
+    ['report-kpi', 'report-top5', 'report-bottom5', 'report-category', 'report-trend'].forEach(function (id) {
+      var el = clone.querySelector('#' + id);
+      if (el) {
+        el.className = 'report-placeholder';
+        el.textContent = '尚未產生報告';
+      }
+    });
+    var kpiNoteClone = clone.querySelector('#report-kpi-note');
+    if (kpiNoteClone) kpiNoteClone.textContent = '';
+
+    // 「產生報告」「複製報告摘要」按鈕還原為停用（要重新上傳資料才能用）
+    var genBtnClone = clone.querySelector('#btn-generate');
+    if (genBtnClone) genBtnClone.setAttribute('disabled', 'disabled');
+    var copyBtnClone = clone.querySelector('#btn-copy');
+    if (copyBtnClone) copyBtnClone.setAttribute('disabled', 'disabled');
+
+    // showToast() 注入的 #__shared_toast（可能含使用者內容）
+    var toastClone = clone.querySelector('#__shared_toast');
+    if (toastClone && toastClone.parentNode) toastClone.parentNode.removeChild(toastClone);
+
+    // .nav-back 與所有指向本站的外連
+    Array.prototype.forEach.call(clone.querySelectorAll('.nav-back'), function (a) {
+      if (a.parentNode) a.parentNode.removeChild(a);
+    });
+
+    return '<!DOCTYPE html>\n' + clone.outerHTML;
+  }
+
+  document.getElementById('btn-download-offline').addEventListener('click', function () {
+    var html = buildCleanHtmlCopy();
+    downloadFile('csv-one-page-report-offline.html', html, 'text/html;charset=utf-8');
+    showToast('已下載本工具離線版');
+  });
+
+}());
+</script>
+</body>
+</html>

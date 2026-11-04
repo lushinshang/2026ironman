@@ -1,0 +1,16 @@
+{
+  "assets": {
+    "cantoo_pdf_lib": {
+      "path": "../../shared/vendor/cantoo-pdf-lib.min.js",
+      "license": "MIT",
+      "version": "2.9.1",
+      "escape_mode": "raw_js"
+    },
+    "fflate": {
+      "path": "../../shared/vendor/fflate.umd.js",
+      "license": "MIT",
+      "version": "0.8.3",
+      "escape_mode": "raw_js"
+    }
+  }
+}

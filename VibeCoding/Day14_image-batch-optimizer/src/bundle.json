@@ -1,0 +1,10 @@
+{
+  "assets": {
+    "fflate": {
+      "path": "../../shared/vendor/fflate.umd.js",
+      "version": "0.8.3",
+      "license": "MIT",
+      "escape_mode": "raw_js"
+    }
+  }
+}

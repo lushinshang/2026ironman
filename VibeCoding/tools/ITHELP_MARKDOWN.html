@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📄 iT 邦幫忙（iThome 鐵人賽）編輯器功能 ＆ Markdown 發文全指南</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #ffffff;
+      --fg: #1f2328;
+      --muted: #59636e;
+      --border: #d0d7de;
+      --soft: #f6f8fa;
+      --link: #0969da;
+      --quote: #656d76;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC",
+        "PingFang TC", "Microsoft JhengHei", sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+      overflow-wrap: break-word;
+    }
+    main { width: min(100% - 40px, 880px); margin: 0 auto; padding: 48px 0 80px; }
+    h1, h2, h3, h4, h5, h6 {
+      margin: 1.5em 0 0.65em;
+      line-height: 1.3;
+      font-weight: 650;
+      text-wrap: balance;
+    }
+    h1 { margin-top: 0; padding-bottom: 0.3em; border-bottom: 1px solid var(--border); font-size: 2em; }
+    h2 { padding-bottom: 0.3em; border-bottom: 1px solid var(--border); font-size: 1.5em; }
+    h3 { font-size: 1.25em; }
+    p, ul, ol, blockquote, pre, table { margin: 0 0 1em; }
+    ul, ol { padding-left: 2em; }
+    li + li { margin-top: 0.25em; }
+    a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
+    a:hover { text-decoration-thickness: 2px; }
+    img { max-width: 100%; height: auto; border-radius: 6px; }
+    code {
+      padding: 0.15em 0.35em;
+      border-radius: 5px;
+      background: var(--soft);
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-size: 0.88em;
+    }
+    pre {
+      max-width: 100%;
+      padding: 16px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--soft);
+      line-height: 1.5;
+    }
+    pre code { padding: 0; border-radius: 0; background: transparent; font-size: 0.875em; }
+    blockquote {
+      margin-left: 0;
+      padding: 0.15em 1em;
+      border-left: 4px solid var(--border);
+      color: var(--quote);
+    }
+    blockquote > :last-child { margin-bottom: 0; }
+    .table-wrap { max-width: 100%; overflow-x: auto; margin-bottom: 1em; }
+    table { width: 100%; border-spacing: 0; border-collapse: collapse; }
+    th, td { padding: 8px 12px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+    th { background: var(--soft); font-weight: 650; }
+    tr:nth-child(even) td { background: color-mix(in srgb, var(--soft) 55%, transparent); }
+    hr { height: 1px; margin: 2em 0; border: 0; background: var(--border); }
+    @media (max-width: 640px) {
+      main { width: min(100% - 28px, 880px); padding: 28px 0 56px; }
+      body { font-size: 15.5px; line-height: 1.68; }
+      h1 { font-size: 1.75em; }
+      h2 { font-size: 1.35em; }
+      ul, ol { padding-left: 1.5em; }
+      pre { padding: 12px; }
+      th, td { min-width: 9rem; padding: 7px 10px; }
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117;
+        --fg: #e6edf3;
+        --muted: #8d96a0;
+        --border: #30363d;
+        --soft: #161b22;
+        --link: #58a6ff;
+        --quote: #8b949e;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+<h1 id="it-ithome-markdown">📄 iT 邦幫忙（iThome 鐵人賽）編輯器功能 ＆ Markdown 發文全指南</h1>
+<blockquote>
+<p><strong>官方來源</strong>：<a href="https://ithelp.ithome.com.tw/markdown">iT 邦幫忙 Markdown 說明頁面</a><br>
+<strong>技術底層</strong>：編輯器為 <a href="https://github.com/NextStepWebs/simplemde-markdown-editor">SimpleMDE</a>（CodeMirror 核心），程式碼高亮為 <a href="https://highlightjs.org/">Highlight.js v11.9.0</a>（<code>railscasts</code> 配色主題）<br>
+<strong>適用場景</strong>：iThome 鐵人賽文章撰寫、技術問答發文、技術文章排版。</p>
+</blockquote>
+<hr>
+<h2 id="_1">📑 目錄</h2>
+<p><strong>Part A — Markdown 語法規範</strong>
+1. <a href="#1-標題-headings">標題 (Headings)</a>
+2. <a href="#2-文字樣式-styling-text">文字樣式 (Styling Text)</a>
+3. <a href="#3-引用文字-blockquotes">引用文字 (Blockquotes)</a>
+4. <a href="#4-清單列表-lists">清單列表 (Lists)</a>
+5. <a href="#5-程式碼區塊與語法高亮-code-formatting">程式碼區塊與語法高亮 (Code Formatting)</a>
+6. <a href="#6-超連結與自動連結-links">超連結與自動連結 (Links)</a>
+7. <a href="#7-表格-tables">表格 (Tables)</a>
+8. <a href="#8-圖片插入-images">圖片插入 (Images)</a>
+9. <a href="#9-支援的語法高亮程式語言完整清單">支援的語法高亮程式語言完整清單</a></p>
+<p><strong>Part B — 編輯器工具列與進階嵌入</strong>
+10. <a href="#10-simplemde-編輯器工具列全功能對照表">SimpleMDE 編輯器工具列全功能對照表</a>
+11. <a href="#11-平台專屬進階嵌入語法">平台專屬進階嵌入語法</a></p>
+<p><strong>Part C — 限制與避坑</strong>
+12. <a href="#12-鐵人賽發文限制與防斷賽機制">鐵人賽發文限制與防斷賽機制</a>
+13. <a href="#13-平台不支援功能與避坑指南">平台不支援功能與避坑指南</a></p>
+<hr>
+<h1 id="part-a-markdown">Part A — Markdown 語法規範</h1>
+<hr>
+<h2 id="1-headings">1. 標題 (Headings)</h2>
+<p>將 <code>#</code> 符號置於標題文字前面便能將文字顯示為標題大小（<code>#</code> 的數量決定標題層級）：</p>
+<pre><code class="language-markdown"># 這是 H1 標題
+## 這是 H2 標題
+### 這是 H3 標題
+#### 這是 H4 標題
+##### 這是 H5 標題
+###### 這是 H6 標題
+</code></pre>
+<blockquote>
+<p>💡 <strong>注意事項</strong>：<code>#</code> 與後方的文字之間建議<strong>保留一個半形空格</strong>。</p>
+</blockquote>
+<hr>
+<h2 id="2-styling-text">2. 文字樣式 (Styling Text)</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">樣式效果</th>
+<th style="text-align: left;">Markdown 語法範例</th>
+<th style="text-align: left;">渲染結果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>粗體 (Bold)</strong></td>
+<td style="text-align: left;"><code>**粗體文字**</code></td>
+<td style="text-align: left;"><strong>粗體文字</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><em>斜體 (Italic)</em></td>
+<td style="text-align: left;"><code>*斜體文字*</code></td>
+<td style="text-align: left;"><em>斜體文字</em></td>
+</tr>
+<tr>
+<td style="text-align: left;">~~刪除線 (Strikethrough)~~</td>
+<td style="text-align: left;"><code>~~被刪除的文字~~</code></td>
+<td style="text-align: left;">~~被刪除的文字~~</td>
+</tr>
+<tr>
+<td style="text-align: left;">行內程式碼 / 強調</td>
+<td style="text-align: left;"><code>`code`</code></td>
+<td style="text-align: left;"><code>code</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="3-blockquotes">3. 引用文字 (Blockquotes)</h2>
+<p>利用 <code>&gt;</code> 符號顯示引言或重點提醒：</p>
+<pre><code class="language-markdown">&gt; 一分耕耘，一分收獲。
+&gt; 可以多行引用，適合用來放小叮嚀或名言。
+</code></pre>
+<hr>
+<h2 id="4-lists">4. 清單列表 (Lists)</h2>
+<h3 id="1-unordered-list">(1) 無序清單 (Unordered List)</h3>
+<p>使用 <code>*</code> 或 <code>-</code>，符號與後面的文字之間<strong>必須空一格</strong>：</p>
+<pre><code class="language-markdown">* 星星
+* 月亮
+* 太陽
+
+- 蘋果
+- 香蕉
+- 橘子
+</code></pre>
+<h3 id="2-ordered-list">(2) 有序清單 (Ordered List)</h3>
+<p>使用數字加上英文句點 <code>1.</code>、<code>2.</code>，數字與文字之間<strong>必須空一格</strong>：</p>
+<pre><code class="language-markdown">1. 第一步：取得截圖
+2. 第二步：資料清洗
+3. 第三步：產出筆記
+</code></pre>
+<h3 id="3-nested-list">(3) 巢狀清單 (Nested List)</h3>
+<p>次層清單在行首使用 <strong>3 個半形空白</strong> 進行縮排：</p>
+<pre><code class="language-markdown">1. 項目 1
+   1. 項目 1 的子項目 A
+   2. 項目 1 的子項目 B
+2. 項目 2
+   * 子無序項目（需縮排 3~4 格）
+   * 另一個子項目
+</code></pre>
+<hr>
+<h2 id="5-code-formatting">5. 程式碼區塊與語法高亮 (Code Formatting)</h2>
+<h3 id="1-inline-code">(1) 行內程式碼 (Inline Code)</h3>
+<p>使用單個反引號（鍵盤 <code>1</code> 左側的「<code>`</code>」）包夾文字：</p>
+<pre><code class="language-markdown">執行 `npm run dev` 啟動本地開發伺服器。
+</code></pre>
+<h3 id="2-code-block">(2) 多行程式碼區塊 (Code Block)</h3>
+<p>使用 3 個反引號「<code>```</code>」在上下方包夾：</p>
+<pre><code class="language-markdown">```
+x = 0
+x = 2 + 2
+what is x
+```
+</code></pre>
+<p>或在每行程式碼開頭<strong>空 4 個半形空格</strong>。</p>
+<h3 id="3-syntax-highlighting">(3) 語法高亮 (Syntax Highlighting)</h3>
+<p>在開頭的三個反引號後方指定<strong>語言名稱代碼</strong>（若未指定，預設採 HTML 高亮）：</p>
+<pre><code class="language-markdown">```javascript
+const message = &quot;Hello iThome Ironman!&quot;;
+console.log(message);
+```
+</code></pre>
+<pre><code class="language-markdown">```sql
+CREATE TABLE &quot;topic&quot; (
+    &quot;id&quot; serial NOT NULL PRIMARY KEY,
+    &quot;forum_id&quot; integer NOT NULL,
+    &quot;subject&quot; varchar(255) NOT NULL
+);
+```
+</code></pre>
+<hr>
+<h2 id="6-links">6. 超連結與自動連結 (Links)</h2>
+<h3 id="1">(1) 標準超連結</h3>
+<p>使用 <code>[連結文字](網址)</code> 格式（所有括號必須為半形）：</p>
+<pre><code class="language-markdown">[iT 邦幫忙官方首頁](https://ithelp.ithome.com.tw)
+</code></pre>
+<h3 id="2-url-auto-linking">(2) 自動加上連結 (URL Auto-linking)</h3>
+<p>若希望直接貼網址並自動轉為超連結，可在網址前後加上半形小括號 <code>(URL)</code>：</p>
+<pre><code class="language-markdown">歡迎前往 (https://ithelp.ithome.com.tw) 參與討論。
+</code></pre>
+<hr>
+<h2 id="7-tables">7. 表格 (Tables)</h2>
+<p>利用直線符號 <code>|</code> 與橫線符號 <code>-</code> 建立表格：</p>
+<pre><code class="language-markdown">姓名 | 住址 | 備註
+------------- | ------------- | -------------
+李大華 | 桃園 | 前端工程師
+張小明 | 高雄 | 資安工程師
+</code></pre>
+<blockquote>
+<p>⚠️ <strong>行動端排版提醒</strong>：表格在手機窄螢幕上容易觸發橫向滾動，鐵人賽發文時若內容過長，建議改採<strong>卡片式清單（Card Layout）</strong>。</p>
+</blockquote>
+<hr>
+<h2 id="8-images">8. 圖片插入 (Images)</h2>
+<p>使用標準 Markdown 圖片語法，推薦先將圖片上傳至 iThome 後台取得官方圖床網址：</p>
+<pre><code class="language-markdown">![圖片替代文字](https://ithelp.ithome.com.tw/upload/images/20260902/20171720ShKyblMSyO.jpg)
+</code></pre>
+<hr>
+<h2 id="9">9. 支援的語法高亮程式語言完整清單</h2>
+<p>iT 邦幫忙使用 <strong>Highlight.js v11.9.0</strong>（<code>railscasts</code> 配色主題），支援的語言標籤如下（於 <code>```language</code> 後指定）：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">領域分類</th>
+<th style="text-align: left;">支援之語言代碼 (Language Tag)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>通用 / 腳本</strong></td>
+<td style="text-align: left;"><code>bash</code>, <code>shell</code>, <code>dos</code>, <code>powershell</code>, <code>plaintext</code>, <code>diff</code>, <code>profile</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>主流後端</strong></td>
+<td style="text-align: left;"><code>python</code>, <code>java</code>, <code>cpp</code>, <code>cs</code> (C#), <code>go</code>, <code>rust</code>, <code>ruby</code>, <code>php</code>, <code>kotlin</code>, <code>swift</code>, <code>scala</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>前端 / Web</strong></td>
+<td style="text-align: left;"><code>javascript</code>, <code>typescript</code>, <code>html</code>, <code>css</code>, <code>scss</code>, <code>less</code>, <code>json</code>, <code>yaml</code>, <code>xml</code>, <code>twig</code>, <code>markdown</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>資料庫</strong></td>
+<td style="text-align: left;"><code>sql</code>, <code>pgsql</code> (PostgreSQL)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>系統 / 網路</strong></td>
+<td style="text-align: left;"><code>apache</code>, <code>nginx</code>, <code>http</code>, <code>dns</code>, <code>dockerfile</code>, <code>accesslog</code>, <code>ini</code>, <code>makefile</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>函數式 / 特殊</strong></td>
+<td style="text-align: left;"><code>clojure</code>, <code>clojure-repl</code>, <code>elixir</code>, <code>erlang</code>, <code>erlang-repl</code>, <code>haskell</code>, <code>lisp</code>, <code>ocaml</code>, <code>fsharp</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>科學 / 數值</strong></td>
+<td style="text-align: left;"><code>r</code>, <code>matlab</code>, <code>julia</code>, <code>julia-repl</code>, <code>fortran</code>, <code>sas</code>, <code>excel</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>底層 / 硬體</strong></td>
+<td style="text-align: left;"><code>armasm</code>, <code>arduino</code>, <code>llvm</code>, <code>lua</code>, <code>perl</code>, <code>tcl</code>, <code>verilog</code>, <code>vhdl</code>, <code>vim</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>其它</strong></td>
+<td style="text-align: left;"><code>brainfuck</code>, <code>basic</code>, <code>crystal</code>, <code>coffeescript</code>, <code>cmake</code>, <code>django</code>, <code>delphi</code>, <code>dart</code>, <code>glsl</code>, <code>haml</code>, <code>groovy</code>, <code>gradle</code>, <code>livescript</code>, <code>puppet</code>, <code>properties</code>, <code>prolog</code>, <code>smalltalk</code>, <code>vbscript</code>, <code>vbnet</code>, <code>xquery</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h1 id="part-b">Part B — 編輯器工具列與進階嵌入</h1>
+<hr>
+<h2 id="10-simplemde">10. SimpleMDE 編輯器工具列全功能對照表</h2>
+<p>iT 邦幫忙的文章編輯器基於 <strong>SimpleMDE</strong>（CodeMirror 核心），工具列按鈕<strong>從左到右</strong>依序如下：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">順序</th>
+<th style="text-align: left;">圖示</th>
+<th style="text-align: left;">按鈕名稱</th>
+<th style="text-align: left;">點擊後的動作 / 插入語法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">1</td>
+<td style="text-align: left;"><strong>B</strong></td>
+<td style="text-align: left;">粗體 (Bold)</td>
+<td style="text-align: left;">選取文字前後包夾 <code>**粗體**</code></td>
+</tr>
+<tr>
+<td style="text-align: center;">2</td>
+<td style="text-align: left;"><em>I</em></td>
+<td style="text-align: left;">斜體 (Italic)</td>
+<td style="text-align: left;">選取文字前後包夾 <code>*斜體*</code></td>
+</tr>
+<tr>
+<td style="text-align: center;">3</td>
+<td style="text-align: left;">🔗</td>
+<td style="text-align: left;">插入連結 (Link)</td>
+<td style="text-align: left;">插入 <code>[連結文字](URL)</code></td>
+</tr>
+<tr>
+<td style="text-align: center;">4</td>
+<td style="text-align: left;">❝</td>
+<td style="text-align: left;">引用 (Quote)</td>
+<td style="text-align: left;">行首插入 <code>&gt;</code></td>
+</tr>
+<tr>
+<td style="text-align: center;">5</td>
+<td style="text-align: left;">``</td>
+<td style="text-align: left;">新增程式碼 (Code)</td>
+<td style="text-align: left;">插入 <code>```</code> 多行程式碼區塊</td>
+</tr>
+<tr>
+<td style="text-align: center;">6</td>
+<td style="text-align: left;">🖼️</td>
+<td style="text-align: left;">插入圖片語法 (Image)</td>
+<td style="text-align: left;">插入 <code>![](http://)</code> 基本圖片 Markdown</td>
+</tr>
+<tr>
+<td style="text-align: center;">—</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><strong>分隔線</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">7</td>
+<td style="text-align: left;">⬆️</td>
+<td style="text-align: left;"><strong>上傳圖片</strong> ⭐</td>
+<td style="text-align: left;">跳出彈窗：支援<strong>拖曳上傳（Drag &amp; Drop）</strong>或按鈕選檔上傳，完成後自動轉為 <code>![URL](URL)</code> 語法</td>
+</tr>
+<tr>
+<td style="text-align: center;">8</td>
+<td style="text-align: left;">📊</td>
+<td style="text-align: left;"><strong>加入數學公式</strong> ⭐</td>
+<td style="text-align: left;">跳出彈窗輸入 <strong>LaTeX 語法</strong>，透過 Google Chart API 產生公式圖片</td>
+</tr>
+<tr>
+<td style="text-align: center;">9</td>
+<td style="text-align: left;">1.</td>
+<td style="text-align: left;">編號清單 (Ordered List)</td>
+<td style="text-align: left;">插入 <code>1. 項目</code></td>
+</tr>
+<tr>
+<td style="text-align: center;">10</td>
+<td style="text-align: left;">•</td>
+<td style="text-align: left;">項目符號清單 (Unordered List)</td>
+<td style="text-align: left;">插入 <code>- 項目</code></td>
+</tr>
+<tr>
+<td style="text-align: center;">11</td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">插入水平線 (Horizontal Rule)</td>
+<td style="text-align: left;">插入 <code>---</code></td>
+</tr>
+<tr>
+<td style="text-align: center;">12</td>
+<td style="text-align: left;">▶️</td>
+<td style="text-align: left;"><strong>加入 YouTube 影片</strong> ⭐</td>
+<td style="text-align: left;">輸入 YouTube 網址，自動轉為可點擊的影片縮圖連結</td>
+</tr>
+<tr>
+<td style="text-align: center;">—</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><strong>分隔線</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">13</td>
+<td style="text-align: left;">↩️</td>
+<td style="text-align: left;">復原 (Undo)</td>
+<td style="text-align: left;">編輯歷史上一步</td>
+</tr>
+<tr>
+<td style="text-align: center;">14</td>
+<td style="text-align: left;">↪️</td>
+<td style="text-align: left;">取消復原 (Redo)</td>
+<td style="text-align: left;">編輯歷史下一步</td>
+</tr>
+<tr>
+<td style="text-align: center;">15</td>
+<td style="text-align: left;">😊</td>
+<td style="text-align: left;"><strong>熊俠貼圖</strong> ⭐</td>
+<td style="text-align: left;">彈窗選擇 82 款 iThome 官方「熊俠」GIF 動態貼圖</td>
+</tr>
+<tr>
+<td style="text-align: center;">—</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><strong>分隔線</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: center;">16</td>
+<td style="text-align: left;">👁️</td>
+<td style="text-align: left;">即時預覽 (Preview)</td>
+<td style="text-align: left;">切換 Markdown 預覽模式（透過 <code>POST /api/preview</code> 後端渲染）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>💡 <strong>備註</strong>：標記 ⭐ 的按鈕為 iT 邦幫忙<strong>自訂擴充功能</strong>（非 SimpleMDE 原生）。</p>
+</blockquote>
+<hr>
+<h2 id="11">11. 平台專屬進階嵌入語法</h2>
+<h3 id="1-youtube">🎬 (1) YouTube 影片嵌入</h3>
+<p>點擊工具列的 YouTube 按鈕（或直接在 Markdown 中手寫），編輯器會自動將 YouTube 網址轉為<strong>可點擊的影片縮圖連結</strong>：</p>
+<pre><code class="language-markdown">[![Yes](https://img.youtube.com/vi/影片ID/0.jpg)](https://www.youtube.com/watch?v=影片ID)
+</code></pre>
+<p><strong>使用方式</strong>：
+1. 點擊工具列的 ▶️ YouTube 按鈕。
+2. 在彈窗中貼入 YouTube 影片網址（如 <code>https://www.youtube.com/watch?v=jl5oj2VLEws</code>）。
+3. 編輯器自動擷取影片 ID，產生帶有影片封面縮圖的可點擊連結。</p>
+<blockquote>
+<p>⚠️ <strong>注意</strong>：這不是真正的嵌入式播放器（<code>&lt;iframe&gt;</code>），而是一張<strong>縮圖加超連結</strong>，點擊後會跳轉至 YouTube 觀看。</p>
+</blockquote>
+<hr>
+<h3 id="2-latex">🧮 (2) LaTeX 數學公式</h3>
+<p>點擊工具列的 📊 數學公式按鈕，輸入 LaTeX 語法，編輯器透過 <strong>Google Chart API</strong> 產生公式圖片：</p>
+<pre><code class="language-markdown">![公式](https://chart.googleapis.com/chart?cht=tx&amp;chl=x%3D%5Cfrac%7B-b%5Cpm%5Csqrt%7Bb%5E2-4ac%7D%7D%7B2a%7D)
+</code></pre>
+<p><strong>使用方式</strong>：
+1. 點擊工具列的 📊 公式按鈕。
+2. 在彈窗中輸入 LaTeX 語法（如 <code>x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}</code>）。
+3. 編輯器自動將 LaTeX 編碼為 URL，產生圖片語法。</p>
+<hr>
+<h3 id="3">🐻 (3) 熊俠動態貼圖</h3>
+<p>iT 邦幫忙內建 <strong>82 款「熊俠」官方 GIF 動態貼圖</strong>，可在文章中插入：</p>
+<p><strong>使用方式</strong>：
+1. 點擊工具列的 😊 熊俠貼圖按鈕。
+2. 在彈窗中瀏覽並點選喜歡的貼圖。
+3. 編輯器自動插入圖片語法。</p>
+<p><strong>手動語法（貼圖路徑範例）</strong>：</p>
+<pre><code class="language-markdown">![熊俠](/images/emoticon/emoticon01.gif)
+</code></pre>
+<p>貼圖編號範圍：<code>emoticon01.gif</code> ~ <code>emoticon59.gif</code>、<code>emoticon61.gif</code> ~ <code>emoticon82.gif</code>（第 60 張不存在）。</p>
+<hr>
+<h3 id="4">👤 (4) 標記使用者（@提及）</h3>
+<p>在文章中標記其他 iT 邦幫忙使用者（原始碼中雖有此功能定義，但目前工具列上<strong>已被註解關閉</strong>，不會顯示按鈕）：</p>
+<p><strong>手動語法</strong>：</p>
+<pre><code class="language-markdown">[使用者暱稱](/users/使用者ID)
+</code></pre>
+<hr>
+<h1 id="part-c">Part C — 限制與避坑</h1>
+<hr>
+<h2 id="12">12. 鐵人賽發文限制與防斷賽機制</h2>
+<h3 id="1_1">📤 (1) 圖片上傳限制</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">項目</th>
+<th style="text-align: left;">規格</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>單檔大小上限</strong></td>
+<td style="text-align: left;"><strong>5 MB</strong>（超過會直接報錯：「檔案大小超過限制」）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>上傳方式</strong></td>
+<td style="text-align: left;">按鈕選檔 或 <strong>拖曳上傳（Drag &amp; Drop）</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>上傳 API 端點</strong></td>
+<td style="text-align: left;"><code>https://ithelp.ithome.com.tw/api/upload</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>圖床網址格式</strong></td>
+<td style="text-align: left;"><code>https://ithelp.ithome.com.tw/upload/images/日期/使用者ID隨機碼.jpg</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="2">⏱️ (2) 系統標準時間與截止警告</h3>
+<ul>
+<li>編輯器下方會即時顯示 <strong>UTC+0800 Asia/Taipei 系統標準時間</strong>（每秒更新，透過 <code>/api/now</code> API 校正）。</li>
+<li><strong>晚上 23:30 後</strong>：時間文字自動<strong>變紅色警告</strong>，提醒參賽者當天截止時間將至。</li>
+<li>點擊時間旁的 🔄 重新整理按鈕可重新同步系統標準時間。</li>
+</ul>
+<h3 id="3_1">✍️ (3) 即時字數統計</h3>
+<ul>
+<li>編輯器右下方會即時顯示「<strong>已輸入 X 字</strong>」計數器（監聽鍵盤輸入與貼上事件）。</li>
+</ul>
+<h3 id="4_1">📝 (4) 發文操作按鈕</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">按鈕</th>
+<th style="text-align: left;">功能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>儲存草稿</strong></td>
+<td style="text-align: left;">儲存目前內容為草稿，不公開發布</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>發表文章</strong></td>
+<td style="text-align: left;">正式發布（隱藏在儲存草稿的下拉選單中）</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>刪除草稿</strong></td>
+<td style="text-align: left;">永久刪除此草稿（隱藏在儲存草稿的下拉選單中）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="5-tag">🏷️ (5) Tag 標籤</h3>
+<ul>
+<li>鐵人賽文章會自動帶上 <code>18th鐵人賽</code> 預設標籤。</li>
+<li>可自行新增其他技術 Tag（使用 Select2 多選元件）。</li>
+</ul>
+<h3 id="6">🔒 (6) 預覽渲染機制</h3>
+<ul>
+<li>點擊「預覽」按鈕時，Markdown 內容會透過 <strong>AJAX <code>POST /api/preview</code></strong> 送至後端解析為 HTML 後回傳顯示。</li>
+<li>預覽時程式碼區塊會經過 Highlight.js 高亮渲染。</li>
+<li>這代表<strong>前端預覽 ≈ 最終發布效果</strong>，可作為排版檢查的可靠依據。</li>
+</ul>
+<h3 id="7">🛡️ (7) 安全機制</h3>
+<ul>
+<li>側邊欄明確標示：<strong>「本站編輯器採 Markdown 語法，請勿使用 HTML Code，以避免內容濾掉無法呈現」</strong>。</li>
+<li>使用 Cloudflare Turnstile 驗證（反機器人）。</li>
+<li>所有表單提交皆攜帶 CSRF Token（<code>X-CSRF-TOKEN</code>）。</li>
+</ul>
+<hr>
+<h2 id="13">13. 平台不支援功能與避坑指南</h2>
+<p>為確保發布於 iThome 鐵人賽時版面 100% 正常，請特別注意以下<strong>平台不支援項目</strong>：</p>
+<h3 id="1-mermaid">❌ 1. 不支援原生 Mermaid 圖表</h3>
+<ul>
+<li><strong>問題</strong>：若在 iThome 貼上 <code>```mermaid</code> 代碼塊，平台<strong>無法渲染出圖形</strong>，會顯示一整塊原始代碼。</li>
+<li><strong>正解</strong>：改用純文字 <strong>Unicode / ASCII 框線流程圖（<code>```text</code>）</strong>，或將流程圖截圖上傳。</li>
+</ul>
+<h3 id="2-hackmd-callout">❌ 2. 不支援 HackMD 專屬 Callout 方塊</h3>
+<ul>
+<li><strong>問題</strong>：HackMD 的 <code>:::info</code>、<code>:::warning</code>、<code>:::tip</code> 在 iThome <strong>會直接顯示為純文字</strong>。</li>
+<li><strong>正解</strong>：改用標準引用語法加上 Emoji：
+  ```markdown<blockquote>
+<p>💡 <strong>小提示</strong>：所有鑑別檢查一律需在後端驗證。
+  ```</p>
+</blockquote>
+</li>
+</ul>
+<h3 id="3-html">❌ 3. 不支援 HTML 標籤</h3>
+<ul>
+<li><strong>問題</strong>：官方明確表示「<strong>請勿使用 HTML Code，以避免內容濾掉無法呈現</strong>」。</li>
+<li><strong>正解</strong>：所有排版一律使用純 Markdown 語法。包含 <code>&lt;br&gt;</code>、<code>&lt;details&gt;</code>、<code>&lt;summary&gt;</code> 等常見標籤都可能被過濾。</li>
+</ul>
+<h3 id="4_2">❌ 4. 不支援本機檔案絕對路徑圖片</h3>
+<ul>
+<li><strong>問題</strong>：本機路徑如 <code>![截圖](/Users/.../photo.jpg)</code> 讀者無法讀取。</li>
+<li><strong>正解</strong>：於 iThome 編輯器點選「上傳圖片」，使用產出的官方圖床網址（<code>https://ithelp.ithome.com.tw/upload/images/...</code>）。</li>
+</ul>
+<h3 id="5">⚠️ 5. 寬表格在手機端體驗不佳</h3>
+<ul>
+<li><strong>問題</strong>：超過 3~4 欄的寬表格在手機 App 或行動瀏覽器上會被擠壓或必須左右滑動。</li>
+<li><strong>正解</strong>：大量資料改採「標題 ＋ 列點卡片式（<code>### 01. 名稱</code> ＋ 列點）」排版。</li>
+</ul>
+<h3 id="6-youtube">⚠️ 6. YouTube 嵌入為縮圖連結而非嵌入式播放器</h3>
+<ul>
+<li><strong>問題</strong>：iThome 不支援 <code>&lt;iframe&gt;</code> 嵌入，YouTube 影片不會直接在頁面上播放。</li>
+<li><strong>正解</strong>：使用編輯器的 YouTube 按鈕產生的<strong>縮圖 + 超連結</strong>格式即可，讀者點擊後跳轉至 YouTube。</li>
+</ul>
+<h3 id="7-text">❌ 7. 不支援 ==text== 螢光筆標註語法</h3>
+<ul>
+<li><strong>問題</strong>：<code>==text==</code> 為 HackMD / Markdown Extended 專屬語法，iThome SimpleMDE <strong>無法解析</strong>，會直接在頁面裸露成 <code>==text==</code> 純文字等號。</li>
+<li><strong>正解</strong>：在 iThome 上欲加強文字視覺焦點，改用標準 Markdown <strong>行內程式碼反白（<code>`text`</code>）</strong> 或 <strong>粗體（<code>**text**</code>）</strong>。</li>
+</ul>
+  </main>
+  <script>
+    document.querySelectorAll("table").forEach(function (table) {
+      var wrapper = document.createElement("div");
+      wrapper.className = "table-wrap";
+      table.parentNode.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+    });
+  </script>
+</body>
+</html>

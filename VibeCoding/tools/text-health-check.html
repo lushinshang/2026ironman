@@ -1,0 +1,893 @@
+<!-- BUNDLED: util-escape@internal (project-internal) sha256:75d81be0a09695ce built 2026-08-24 -->
+<!-- BUNDLED: ui-toast@internal (project-internal) sha256:ae3a7ec34ac21b9d built 2026-08-24 -->
+<!-- BUNDLED: ui-debounce@internal (project-internal) sha256:7cfcafe8e57332df built 2026-08-24 -->
+<!-- BUNDLED: io-download@internal (project-internal) sha256:3da6c61784b1dd4b built 2026-08-24 -->
+<!-- BUNDLED: io-clipboard@internal (project-internal) sha256:afa2866517ff6f41 built 2026-08-24 -->
+<!-- BUNDLED: io-dropzone@internal (project-internal) sha256:85732c4d7a5eea7a built 2026-08-24 -->
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文字健檢工作台</title>
+<style>
+/* shared/base.css — 共用樣式基底，逐字複製，勿手動修改（改請去 shared/base.css 源頭並重新複製） */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 {
+  line-height: 1.3;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+textarea,
+input[type="text"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 160px;
+}
+
+button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--color-bg);
+}
+
+button.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover {
+  background: var(--color-primary-hover);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover {
+  text-decoration: underline;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+/* ---- 本題（text-health-check）專屬樣式 ---- */
+.page-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.page-header h1 {
+  font-size: 1.4rem;
+  margin: 0 0 16px;
+}
+
+.section-gap {
+  margin-top: 16px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--color-border);
+  font-size: 0.95rem;
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-row .stat-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+#problem-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 0.9rem;
+}
+
+#problem-list li {
+  margin-bottom: 6px;
+}
+
+#problem-list .empty {
+  list-style: none;
+  margin-left: -20px;
+  color: var(--color-text-muted);
+}
+
+#highlight-view {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 1rem;
+  min-height: 60px;
+  color: var(--color-text-muted);
+}
+
+#highlight-view mark.mark-issue {
+  background: #fde68a;
+  color: var(--color-text);
+  border-radius: 3px;
+}
+
+#highlight-view mark.mark-para {
+  background: #fecaca;
+  color: var(--color-text);
+  border-radius: 3px;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="nav-back" href="../index.html">← 返回作品集</a>
+
+  <div class="page-header">
+    <h1>文字健檢工作台</h1>
+  </div>
+
+  <div id="dropzone" class="dropzone">拖曳 TXT / MD 檔案到此，或直接貼上文字</div>
+
+  <div class="section-gap">
+    <textarea id="text-input" placeholder="在這裡貼上或輸入文字…" aria-label="輸入文字"></textarea>
+  </div>
+
+  <div class="section-gap card">
+    <h3>問題位置標示（唯讀預覽）</h3>
+    <div id="highlight-view">（尚無內容）</div>
+  </div>
+
+  <div class="section-gap grid-2">
+    <div class="card">
+      <h3>統計摘要</h3>
+      <div class="stat-row"><span>中文字數</span><span class="stat-value" id="stat-zh">0</span></div>
+      <div class="stat-row"><span>英文字數</span><span class="stat-value" id="stat-en">0</span></div>
+      <div class="stat-row"><span>總字元數</span><span class="stat-value" id="stat-total">0</span></div>
+      <div class="stat-row"><span>行數</span><span class="stat-value" id="stat-lines">0</span></div>
+      <div class="stat-row"><span>段落數</span><span class="stat-value" id="stat-para">0</span></div>
+      <div class="stat-row"><span>中英文比例</span><span class="stat-value" id="stat-ratio">0/0</span></div>
+      <div class="stat-row"><span>標點數</span><span class="stat-value" id="stat-punct">0</span></div>
+      <div class="stat-row"><span>空白數</span><span class="stat-value" id="stat-space">0</span></div>
+    </div>
+    <div class="card">
+      <h3>問題清單</h3>
+      <ul id="problem-list"><li class="empty">無</li></ul>
+    </div>
+  </div>
+
+  <div class="section-gap button-row">
+    <button type="button" id="btn-copy">複製健檢摘要</button>
+    <button type="button" id="btn-download">下載結果檔案</button>
+    <button type="button" id="btn-download-offline">下載本工具離線版</button>
+  </div>
+</div>
+
+<script>
+// shared/util-escape.js
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+</script>
+<script>
+// shared/ui-toast.js
+function showToast(msg, ms) {
+  if (ms === undefined) ms = 2000;
+  var el = document.getElementById('__shared_toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '__shared_toast';
+    el.className = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  if (el.__hideTimer) {
+    clearTimeout(el.__hideTimer);
+  }
+  el.__hideTimer = setTimeout(function () {
+    el.classList.remove('show');
+  }, ms);
+}
+
+</script>
+<script>
+// shared/ui-debounce.js
+function debounce(fn, ms) {
+  if (ms === undefined) ms = 150;
+  var timer = null;
+  return function () {
+    var args = arguments;
+    var ctx = this;
+    if (timer) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(function () {
+      fn.apply(ctx, args);
+    }, ms);
+  };
+}
+
+</script>
+<script>
+// shared/io-download.js
+function downloadFile(filename, content, mime) {
+  if (mime === undefined) mime = 'text/plain;charset=utf-8';
+  var blob = new Blob([content], { type: mime });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () {
+    URL.revokeObjectURL(url);
+  }, 0);
+}
+
+</script>
+<script>
+// shared/io-clipboard.js
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).then(function () {
+      return true;
+    }).catch(function () {
+      return false;
+    });
+  }
+  return new Promise(function (resolve) {
+    var textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    var ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch (e) {
+      ok = false;
+    }
+    document.body.removeChild(textarea);
+    resolve(ok);
+  });
+}
+
+function pasteImageFromClipboard() {
+  if (!navigator.clipboard || !navigator.clipboard.read) {
+    return Promise.resolve(null);
+  }
+  return navigator.clipboard.read().then(function (items) {
+    if (!items || items.length === 0) return null;
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (item && item.types) {
+        for (var t = 0; t < item.types.length; t++) {
+          if (item.types[t].indexOf('image/') === 0) {
+            return item.getType(item.types[t]);
+          }
+        }
+      }
+    }
+    return null;
+  }).catch(function () {
+    return null;
+  });
+}
+
+
+</script>
+<script>
+// shared/io-dropzone.js
+function ioDropzoneHandleFile(file, onData, opts) {
+  opts = opts || {};
+  // 預設只收 .txt / .md（契約第 3 節）。不要改成 [] ——那會變成靜默全收。
+  var accept = opts.accept || ['.txt', '.md'];
+  var onError = opts.onError || function () {};
+
+  function isAccepted(fileName) {
+    if (accept.length === 0) return true;
+    var lower = fileName.toLowerCase();
+    for (var i = 0; i < accept.length; i++) {
+      if (lower.indexOf(accept[i].toLowerCase(), lower.length - accept[i].length) !== -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  if (!isAccepted(file.name)) {
+    onError('不支援的檔案類型：' + file.name);
+    return;
+  }
+
+  if (opts.gate) {
+    var gateResult = opts.gate(file);
+    if (!gateResult.ok) {
+      onError(gateResult.message);
+      return;
+    }
+  }
+
+  var reader = new FileReader();
+  reader.onload = function () {
+    onData(reader.result, file.name);
+  };
+  reader.onerror = function () {
+    onError('讀取檔案失敗：' + file.name);
+  };
+  if (opts.mode === 'bytes') {
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.readAsText(file);
+  }
+}
+
+function setupDropZone(dropEl, onData, opts) {
+  opts = opts || {};
+
+  dropEl.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    dropEl.classList.add('dragover');
+  });
+
+  dropEl.addEventListener('dragleave', function () {
+    dropEl.classList.remove('dragover');
+  });
+
+  dropEl.addEventListener('drop', function (e) {
+    e.preventDefault();
+    dropEl.classList.remove('dragover');
+    var files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    if (opts.multiple === true) {
+      if (opts.gateBatch) {
+        var batchResult = opts.gateBatch(files);
+        if (!batchResult.ok) {
+          (opts.onError || function () {})(batchResult.message);
+          return;
+        }
+      }
+      var total = files.length;
+      for (var i = 0; i < total; i++) {
+        (function (idx) {
+          var meta = { index: idx, total: total };
+          var wrappedOnData = function (result, fileName) {
+            onData(result, fileName, meta);
+          };
+          ioDropzoneHandleFile(files[idx], wrappedOnData, opts);
+        })(i);
+      }
+    } else {
+      ioDropzoneHandleFile(files[0], onData, opts);
+    }
+  });
+}
+
+function setupFilePicker(inputEl, onData, opts) {
+  opts = opts || {};
+
+  inputEl.addEventListener('change', function () {
+    var files = inputEl.files;
+    if (!files || files.length === 0) return;
+
+    if (opts.multiple === true) {
+      if (opts.gateBatch) {
+        var batchResult = opts.gateBatch(files);
+        if (!batchResult.ok) {
+          (opts.onError || function () {})(batchResult.message);
+          return;
+        }
+      }
+      var total = files.length;
+      for (var i = 0; i < total; i++) {
+        (function (idx) {
+          var meta = { index: idx, total: total };
+          var wrappedOnData = function (result, fileName) {
+            onData(result, fileName, meta);
+          };
+          ioDropzoneHandleFile(files[idx], wrappedOnData, opts);
+        })(i);
+      }
+    } else {
+      ioDropzoneHandleFile(files[0], onData, opts);
+    }
+  });
+}
+
+
+</script>
+
+<script>
+(function () {
+  "use strict";
+
+  var CJK_RE = /[㐀-䶿一-鿿豈-﫿]/g;
+  var EN_WORD_RE = /[A-Za-z]+(?:'[A-Za-z]+)?/g;
+  var PUNCT_RE = /[，。！？；：「」『』（）【】《》〈〉、～…—,.!?;:()\[\]{}"'`\-_/\\]/g;
+  var WHITESPACE_NO_NEWLINE_RE = /[^\S\n]/g;
+  var CONSECUTIVE_SPACE_RE = /[ 　\t]{2,}/g;
+  var REPEAT_PUNCT_RE = /([，。！？；：「」『』（）【】《》〈〉、～…—,.!?;:()\[\]{}"'`\-_/\\])\1+/g;
+  var PARA_LIMIT = 300;
+
+  function countMatches(str, re) {
+    var m = str.match(re);
+    return m ? m.length : 0;
+  }
+
+  function extractParagraphs(text) {
+    var lines = text.split("\n");
+    var paras = [];
+    var offset = 0;
+    var curStart = -1;
+    var curLines = [];
+
+    function flush() {
+      if (curLines.length) {
+        var joined = curLines.join("\n");
+        paras.push({ start: curStart, text: joined });
+      }
+      curLines = [];
+      curStart = -1;
+    }
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (line.replace(/[ 　\t]/g, "") === "") {
+        flush();
+      } else {
+        if (curStart === -1) curStart = offset;
+        curLines.push(line);
+      }
+      offset += line.length + 1;
+    }
+    flush();
+    return paras;
+  }
+
+  function computeLineStarts(text) {
+    var lines = text.split("\n");
+    var starts = [];
+    var acc = 0;
+    for (var i = 0; i < lines.length; i++) {
+      starts.push(acc);
+      acc += lines[i].length + 1;
+    }
+    return starts;
+  }
+
+  function lineNumberForOffset(lineStarts, offset) {
+    var ln = 1;
+    for (var i = 1; i < lineStarts.length; i++) {
+      if (lineStarts[i] <= offset) ln = i + 1;
+      else break;
+    }
+    return ln;
+  }
+
+  function computeStats(raw) {
+    var text = raw || "";
+    var zh = countMatches(text, CJK_RE);
+    var en = countMatches(text, EN_WORD_RE);
+    var total = countMatches(text, /\S/g);
+    var lines = text.length === 0 ? 0 : text.split("\n").length;
+    var paras = extractParagraphs(text);
+    var punct = countMatches(text, PUNCT_RE);
+    var space = countMatches(text, WHITESPACE_NO_NEWLINE_RE);
+
+    var denom = zh + en;
+    var zhPct = 0;
+    var enPct = 0;
+    if (denom > 0) {
+      zhPct = Math.round((zh / denom) * 100);
+      enPct = 100 - zhPct;
+    }
+
+    return {
+      zh: zh,
+      en: en,
+      total: total,
+      lines: lines,
+      para: paras.length,
+      zhPct: zhPct,
+      enPct: enPct,
+      punct: punct,
+      space: space,
+      paras: paras
+    };
+  }
+
+  function detectIssues(text) {
+    var issues = [];
+    var lineStarts = computeLineStarts(text);
+    var lines = text.split("\n");
+
+    // 連續空白（同一行內 >=2 個空白字元，半形/全形空白/Tab 混用也算）
+    for (var li = 0; li < lines.length; li++) {
+      var line = lines[li];
+      var re = new RegExp(CONSECUTIVE_SPACE_RE.source, "g");
+      var m;
+      while ((m = re.exec(line)) !== null) {
+        var start = lineStarts[li] + m.index;
+        issues.push({
+          type: "space",
+          start: start,
+          end: start + m[0].length,
+          message: "第 " + (li + 1) + " 行：連續空白 x" + m[0].length
+        });
+        if (m[0].length === 0) re.lastIndex++;
+      }
+    }
+
+    // 重複標點（同一字元連續出現 >=2 次）
+    var pm;
+    var repeatRe = new RegExp(REPEAT_PUNCT_RE.source, "g");
+    while ((pm = repeatRe.exec(text)) !== null) {
+      var pStart = pm.index;
+      var ln = lineNumberForOffset(lineStarts, pStart);
+      issues.push({
+        type: "punct",
+        start: pStart,
+        end: pStart + pm[0].length,
+        message: "第 " + ln + " 行：重複標點「" + escapeHtml(pm[0]) + "」"
+      });
+    }
+
+    // 多餘空白行（連續 >=2 行空白行）
+    var blankRunStart = -1;
+    var blankRunCount = 0;
+    for (var i = 0; i <= lines.length; i++) {
+      var isBlank = i < lines.length && lines[i].replace(/[ 　\t]/g, "") === "";
+      if (isBlank) {
+        if (blankRunStart === -1) blankRunStart = i;
+        blankRunCount++;
+      } else {
+        if (blankRunCount >= 2) {
+          issues.push({
+            type: "blankline",
+            start: -1,
+            end: -1,
+            message: "第 " + (blankRunStart + 1) + " 行：多餘空白行（連續 " + blankRunCount + " 行）"
+          });
+        }
+        blankRunStart = -1;
+        blankRunCount = 0;
+      }
+    }
+
+    // 過長段落（單段不含換行符超過 300 字）
+    var stats = { paras: extractParagraphs(text) };
+    for (var pi = 0; pi < stats.paras.length; pi++) {
+      var para = stats.paras[pi];
+      var len = para.text.replace(/\n/g, "").length;
+      if (len > PARA_LIMIT) {
+        issues.push({
+          type: "para",
+          start: para.start,
+          end: para.start + para.text.length,
+          message: "第 " + (pi + 1) + " 段：段落過長（" + len + " 字）"
+        });
+      }
+    }
+
+    return issues;
+  }
+
+  function renderHighlight(text, issues) {
+    if (text.length === 0) {
+      return "（尚無內容）";
+    }
+    var types = new Array(text.length).fill(null);
+    var i, j;
+    // 先標段落（低優先），再標連續空白／重複標點（高優先，會覆蓋）
+    for (i = 0; i < issues.length; i++) {
+      if (issues[i].type === "para" && issues[i].start >= 0) {
+        for (j = issues[i].start; j < issues[i].end && j < types.length; j++) {
+          if (types[j] === null) types[j] = "para";
+        }
+      }
+    }
+    for (i = 0; i < issues.length; i++) {
+      if ((issues[i].type === "space" || issues[i].type === "punct") && issues[i].start >= 0) {
+        for (j = issues[i].start; j < issues[i].end && j < types.length; j++) {
+          types[j] = "issue";
+        }
+      }
+    }
+
+    var html = "";
+    var runStart = 0;
+    var runType = types[0];
+    function flushRun(endIdx) {
+      var chunk = escapeHtml(text.slice(runStart, endIdx));
+      if (runType === "issue") {
+        html += '<mark class="mark-issue">' + chunk + "</mark>";
+      } else if (runType === "para") {
+        html += '<mark class="mark-para">' + chunk + "</mark>";
+      } else {
+        html += chunk;
+      }
+    }
+    for (i = 1; i <= text.length; i++) {
+      var t = i < text.length ? types[i] : "__end__";
+      if (t !== runType) {
+        flushRun(i);
+        runStart = i;
+        runType = t;
+      }
+    }
+    return html;
+  }
+
+  var textInput = document.getElementById("text-input");
+  var dropzone = document.getElementById("dropzone");
+  var highlightView = document.getElementById("highlight-view");
+  var problemList = document.getElementById("problem-list");
+
+  var elZh = document.getElementById("stat-zh");
+  var elEn = document.getElementById("stat-en");
+  var elTotal = document.getElementById("stat-total");
+  var elLines = document.getElementById("stat-lines");
+  var elPara = document.getElementById("stat-para");
+  var elRatio = document.getElementById("stat-ratio");
+  var elPunct = document.getElementById("stat-punct");
+  var elSpace = document.getElementById("stat-space");
+
+  var lastStats = null;
+  var lastIssues = [];
+
+  function render() {
+    var text = textInput.value;
+    var stats = computeStats(text);
+    var issues = detectIssues(text);
+    lastStats = stats;
+    lastIssues = issues;
+
+    elZh.textContent = stats.zh;
+    elEn.textContent = stats.en;
+    elTotal.textContent = stats.total;
+    elLines.textContent = stats.lines;
+    elPara.textContent = stats.para;
+    elRatio.textContent = stats.zhPct + "/" + stats.enPct;
+    elPunct.textContent = stats.punct;
+    elSpace.textContent = stats.space;
+
+    highlightView.innerHTML = renderHighlight(text, issues);
+
+    if (issues.length === 0) {
+      problemList.innerHTML = '<li class="empty">無</li>';
+    } else {
+      var itemsHtml = "";
+      for (var i = 0; i < issues.length; i++) {
+        itemsHtml += "<li>" + issues[i].message + "</li>";
+      }
+      problemList.innerHTML = itemsHtml;
+    }
+  }
+
+  var scheduleRender = debounce(render, 150);
+  textInput.addEventListener("input", scheduleRender);
+
+  setupDropZone(dropzone, function (text) {
+    textInput.value = text;
+    render();
+  }, {
+    accept: [".txt", ".md"],
+    onError: function (msg) {
+      showToast(msg);
+    }
+  });
+
+  document.getElementById("btn-copy").addEventListener("click", function () {
+    if (!lastStats) return;
+    var summary = "中文字數：" + lastStats.zh +
+      "／英文字數：" + lastStats.en +
+      "／總字元數：" + lastStats.total +
+      "／行數：" + lastStats.lines +
+      "／段落數：" + lastStats.para +
+      "／中英文比例：" + lastStats.zhPct + "/" + lastStats.enPct +
+      "／標點數：" + lastStats.punct +
+      "／空白數：" + lastStats.space +
+      "／問題數：" + lastIssues.length;
+    copyToClipboard(summary).then(function (ok) {
+      showToast(ok ? "已複製健檢摘要" : "複製失敗，請手動選取");
+    });
+  });
+
+  function buildResultText() {
+    if (!lastStats) return "";
+    var lines = [];
+    lines.push("文字健檢結果");
+    lines.push("");
+    lines.push("中文字數：" + lastStats.zh);
+    lines.push("英文字數：" + lastStats.en);
+    lines.push("總字元數：" + lastStats.total);
+    lines.push("行數：" + lastStats.lines);
+    lines.push("段落數：" + lastStats.para);
+    lines.push("中英文比例：" + lastStats.zhPct + "/" + lastStats.enPct);
+    lines.push("標點數：" + lastStats.punct);
+    lines.push("空白數：" + lastStats.space);
+    lines.push("");
+    lines.push("問題清單：");
+    if (lastIssues.length === 0) {
+      lines.push("無");
+    } else {
+      for (var i = 0; i < lastIssues.length; i++) {
+        lines.push((i + 1) + ". " + lastIssues[i].message.replace(/<\/?[^>]+>/g, ""));
+      }
+    }
+    return lines.join("\n");
+  }
+
+  document.getElementById("btn-download").addEventListener("click", function () {
+    downloadFile("text-health-check-result.txt", buildResultText(), "text/plain;charset=utf-8");
+  });
+
+  function buildCleanHtmlCopy() {
+    var clone = document.documentElement.cloneNode(true);
+
+    var ta = clone.querySelector("#text-input");
+    if (ta) ta.value = "";
+
+    var statIds = ["stat-zh", "stat-en", "stat-total", "stat-lines", "stat-para", "stat-punct", "stat-space"];
+    for (var i = 0; i < statIds.length; i++) {
+      var el = clone.querySelector("#" + statIds[i]);
+      if (el) el.textContent = "0";
+    }
+    var ratioEl = clone.querySelector("#stat-ratio");
+    if (ratioEl) ratioEl.textContent = "0/0";
+
+    var hv = clone.querySelector("#highlight-view");
+    if (hv) hv.innerHTML = "（尚無內容）";
+
+    var pl = clone.querySelector("#problem-list");
+    if (pl) pl.innerHTML = '<li class="empty">無</li>';
+
+    var toastEl = clone.querySelector("#__shared_toast");
+    if (toastEl && toastEl.parentNode) toastEl.parentNode.removeChild(toastEl);
+
+    var navBack = clone.querySelector(".nav-back");
+    if (navBack && navBack.parentNode) navBack.parentNode.removeChild(navBack);
+
+    var htmlStr = "<!DOCTYPE html>\n" + clone.outerHTML;
+    downloadFile("text-health-check-offline.html", htmlStr, "text/html;charset=utf-8");
+  }
+
+  document.getElementById("btn-download-offline").addEventListener("click", buildCleanHtmlCopy);
+
+  render();
+})();
+</script>
+</body>
+</html>

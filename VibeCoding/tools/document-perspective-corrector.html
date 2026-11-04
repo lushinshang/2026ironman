@@ -1,0 +1,2063 @@
+<!-- BUNDLED: util-escape@internal (project-internal) sha256:75d81be0a09695ce built 2026-08-24 -->
+<!-- BUNDLED: ui-toast@internal (project-internal) sha256:ae3a7ec34ac21b9d built 2026-08-24 -->
+<!-- BUNDLED: ui-debounce@internal (project-internal) sha256:7cfcafe8e57332df built 2026-08-24 -->
+<!-- BUNDLED: io-download@internal (project-internal) sha256:3da6c61784b1dd4b built 2026-08-24 -->
+<!-- BUNDLED: io-clipboard@internal (project-internal) sha256:afa2866517ff6f41 built 2026-08-24 -->
+<!-- BUNDLED: io-dropzone@internal (project-internal) sha256:85732c4d7a5eea7a built 2026-08-24 -->
+<!-- BUNDLED: img-file-size@internal (project-internal) sha256:929e0eb0798c901d built 2026-08-24 -->
+<!-- BUNDLED: img-decode@internal (project-internal) sha256:3f133fa8a5b4a6ab built 2026-08-24 -->
+<!-- BUNDLED: img-canvas@internal (project-internal) sha256:d46d1922fd0cc0fc built 2026-08-24 -->
+<!-- BUNDLED: img-perspective@internal (project-internal) sha256:e6028a23925a4511 built 2026-08-24 -->
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文件照片透視校正器 — Day17</title>
+  <style>
+/* shared/base.css — 共用樣式基底 */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 { line-height: 1.3; }
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 1rem;
+}
+
+button, .btn {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+button:hover, .btn:hover { background: var(--color-bg); }
+
+button.primary, .btn.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover, .btn.primary:hover { background: var(--color-primary-hover); }
+
+button:disabled, .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #eff6ff;
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover { text-decoration: underline; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show { opacity: 1; }
+
+.workspace-grid {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+@media (max-width: 768px) {
+  .workspace-grid { grid-template-columns: 1fr; }
+}
+
+.canvas-container {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: #1e293b;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  /* corner-handle 半徑 12px + 3px 邊框，留一圈內距避免落在圖片邊界的角點被裁掉一半 */
+  padding: 20px;
+}
+#main-canvas {
+  max-width: 100%;
+  max-height: 600px;
+  display: block;
+}
+.corner-handle {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  margin-left: -12px;
+  margin-top: -12px;
+  background: #2563eb;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  cursor: grab;
+  z-index: 10;
+  touch-action: none;
+}
+.corner-handle:active { cursor: grabbing; background: #1d4ed8; }
+
+.crop-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  margin-top: -10px;
+  background: #f59e0b;
+  border: 3px solid #ffffff;
+  border-radius: 3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  cursor: nwse-resize;
+  z-index: 11;
+  touch-action: none;
+  display: none;
+}
+.crop-handle:active { cursor: grabbing; background: #d97706; }
+
+.overlay-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Tier 1/2 即時透視預覽面板：Tier 1 拖曳中用 CSS matrix3d 近似，
+   Tier 2 停止拖曳 debounce 150ms 後換成真正 warpImageData() 的精確縮圖 */
+.live-preview-panel {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 140px;
+  max-width: 38%;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  padding: 6px;
+  z-index: 6;
+  pointer-events: none;
+  display: none;
+}
+.live-preview-panel.visible { display: block; }
+.live-preview-label {
+  color: #e2e8f0;
+  font-size: 0.7rem;
+  margin-bottom: 4px;
+  text-align: center;
+}
+.live-preview-stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: #0f172a;
+  border-radius: 4px;
+}
+#live-preview-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transform-origin: 0 0;
+}
+
+.filter-group {
+  margin-bottom: 1rem;
+}
+.filter-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+.filter-group input[type="range"] {
+  width: 100%;
+}
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+
+@media print {
+  body * { visibility: hidden; }
+  #print-area, #print-area * { visibility: visible; }
+  #print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  #print-img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav-back">
+      <a href="../index.html">← 回首頁</a>
+    </nav>
+
+    <header>
+      <h1>文件照片透視校正器</h1>
+      <p class="subtitle" style="color: var(--color-text-muted);">
+        手機斜拍公文、發票、證書或白板？拖曳四個角點即可校正為正面平整文件，並支援增強對比與灰階模式。
+      </p>
+    </header>
+
+    <div class="dropzone" id="drop-zone">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">📄</div>
+      <div style="margin-bottom: 0.75rem;">拖放 JPG / PNG / WebP 文件照片至此，或點擊選取檔案</div>
+      <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" style="display: none;">
+      <button type="button" class="btn secondary" id="btn-select-file">選擇文件照片</button>
+    </div>
+
+    <div id="editor-section" style="display: none;">
+      <div class="card" style="padding: 0.75rem 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+          <div class="btn-group" style="margin: 0;">
+            <button type="button" class="btn btn-sm secondary" id="btn-rot-left">↶ 向左旋轉 90°</button>
+            <button type="button" class="btn btn-sm secondary" id="btn-rot-right">↷ 向右旋轉 90°</button>
+            <button type="button" class="btn btn-sm primary" id="btn-apply-warp">⚡ 套用透視校正</button>
+            <button type="button" class="btn btn-sm secondary" id="btn-apply-crop">✂️ 套用裁切</button>
+            <button type="button" class="btn btn-sm secondary" id="btn-reset-crop">↩️ 重設裁切</button>
+            <button type="button" class="btn btn-sm secondary" id="btn-toggle-view">👁️ 檢視原圖 (Before)</button>
+            <button type="button" class="btn btn-sm secondary" id="btn-restore">還原重置</button>
+          </div>
+          <div style="font-size: 0.85rem; color: #64748b;" id="status-hint">
+            拖曳畫面中四個藍色角點以對齊文件四角
+          </div>
+        </div>
+      </div>
+
+      <div class="workspace-grid">
+        <div class="canvas-container" id="canvas-container">
+          <canvas id="main-canvas"></canvas>
+          <svg class="overlay-svg" id="overlay-svg">
+            <polygon id="poly-guide" points="" fill="rgba(37, 99, 235, 0.2)" stroke="#2563eb" stroke-width="2" stroke-dasharray="4,4" />
+            <rect id="crop-rect" x="0" y="0" width="0" height="0" fill="rgba(245, 158, 11, 0.12)" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6,4" style="display: none;" />
+          </svg>
+          <div class="corner-handle" id="handle-tl" data-corner="0"></div>
+          <div class="corner-handle" id="handle-tr" data-corner="1"></div>
+          <div class="corner-handle" id="handle-br" data-corner="2"></div>
+          <div class="corner-handle" id="handle-bl" data-corner="3"></div>
+          <div class="crop-handle" id="crop-handle-tl" data-crop-corner="0"></div>
+          <div class="crop-handle" id="crop-handle-tr" data-crop-corner="1"></div>
+          <div class="crop-handle" id="crop-handle-br" data-crop-corner="2"></div>
+          <div class="crop-handle" id="crop-handle-bl" data-crop-corner="3"></div>
+          <div class="live-preview-panel" id="live-preview-panel">
+            <div class="live-preview-label">即時預覽</div>
+            <div class="live-preview-stage">
+              <img id="live-preview-img" alt="即時透視校正預覽">
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar">
+          <div class="card">
+            <h3 style="margin-top: 0; font-size: 1rem;">影像濾鏡與增強</h3>
+            <div class="filter-group">
+              <label for="filter-brightness">亮度：<span id="val-brightness">0</span></label>
+              <input type="range" id="filter-brightness" min="-100" max="100" value="0">
+            </div>
+            <div class="filter-group">
+              <label for="filter-contrast">對比度：<span id="val-contrast">0</span></label>
+              <input type="range" id="filter-contrast" min="-100" max="100" value="0">
+            </div>
+            <div class="filter-group">
+              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" id="filter-grayscale"> 灰階文件模式 (黑白增強)
+              </label>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 style="margin-top: 0; font-size: 1rem;">匯出與儲存</h3>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <button type="button" class="btn primary" id="btn-dl-jpg">下載校正 JPG</button>
+              <button type="button" class="btn secondary" id="btn-dl-png">下載校正 PNG</button>
+              <button type="button" class="btn secondary" id="btn-print-pdf">🖨️ 輸出 / 列印 PDF</button>
+              <button type="button" class="btn secondary btn-sm" id="btn-copy-summary">📋 複製處理摘要</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="print-area" style="display: none;">
+      <img id="print-img" src="" alt="校正後文件">
+    </div>
+
+    <div class="btn-group" style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+      <button type="button" class="btn secondary" id="btn-download-offline">💾 下載本工具離線版</button>
+    </div>
+
+    
+  </div>
+
+  <script>
+// shared/util-escape.js
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+</script>
+  <script>
+// shared/ui-toast.js
+function showToast(msg, ms) {
+  if (ms === undefined) ms = 2000;
+  var el = document.getElementById('__shared_toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '__shared_toast';
+    el.className = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  if (el.__hideTimer) {
+    clearTimeout(el.__hideTimer);
+  }
+  el.__hideTimer = setTimeout(function () {
+    el.classList.remove('show');
+  }, ms);
+}
+
+</script>
+  <script>
+// shared/ui-debounce.js
+function debounce(fn, ms) {
+  if (ms === undefined) ms = 150;
+  var timer = null;
+  return function () {
+    var args = arguments;
+    var ctx = this;
+    if (timer) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(function () {
+      fn.apply(ctx, args);
+    }, ms);
+  };
+}
+
+</script>
+  <script>
+// shared/io-download.js
+function downloadFile(filename, content, mime) {
+  if (mime === undefined) mime = 'text/plain;charset=utf-8';
+  var blob = new Blob([content], { type: mime });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () {
+    URL.revokeObjectURL(url);
+  }, 0);
+}
+
+</script>
+  <script>
+// shared/io-clipboard.js
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).then(function () {
+      return true;
+    }).catch(function () {
+      return false;
+    });
+  }
+  return new Promise(function (resolve) {
+    var textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    var ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch (e) {
+      ok = false;
+    }
+    document.body.removeChild(textarea);
+    resolve(ok);
+  });
+}
+
+function pasteImageFromClipboard() {
+  if (!navigator.clipboard || !navigator.clipboard.read) {
+    return Promise.resolve(null);
+  }
+  return navigator.clipboard.read().then(function (items) {
+    if (!items || items.length === 0) return null;
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (item && item.types) {
+        for (var t = 0; t < item.types.length; t++) {
+          if (item.types[t].indexOf('image/') === 0) {
+            return item.getType(item.types[t]);
+          }
+        }
+      }
+    }
+    return null;
+  }).catch(function () {
+    return null;
+  });
+}
+
+
+</script>
+  <script>
+// shared/io-dropzone.js
+function ioDropzoneHandleFile(file, onData, opts) {
+  opts = opts || {};
+  // 預設只收 .txt / .md（契約第 3 節）。不要改成 [] ——那會變成靜默全收。
+  var accept = opts.accept || ['.txt', '.md'];
+  var onError = opts.onError || function () {};
+
+  function isAccepted(fileName) {
+    if (accept.length === 0) return true;
+    var lower = fileName.toLowerCase();
+    for (var i = 0; i < accept.length; i++) {
+      if (lower.indexOf(accept[i].toLowerCase(), lower.length - accept[i].length) !== -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  if (!isAccepted(file.name)) {
+    onError('不支援的檔案類型：' + file.name);
+    return;
+  }
+
+  if (opts.gate) {
+    var gateResult = opts.gate(file);
+    if (!gateResult.ok) {
+      onError(gateResult.message);
+      return;
+    }
+  }
+
+  var reader = new FileReader();
+  reader.onload = function () {
+    onData(reader.result, file.name);
+  };
+  reader.onerror = function () {
+    onError('讀取檔案失敗：' + file.name);
+  };
+  if (opts.mode === 'bytes') {
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.readAsText(file);
+  }
+}
+
+function setupDropZone(dropEl, onData, opts) {
+  opts = opts || {};
+
+  dropEl.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    dropEl.classList.add('dragover');
+  });
+
+  dropEl.addEventListener('dragleave', function () {
+    dropEl.classList.remove('dragover');
+  });
+
+  dropEl.addEventListener('drop', function (e) {
+    e.preventDefault();
+    dropEl.classList.remove('dragover');
+    var files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    if (opts.multiple === true) {
+      if (opts.gateBatch) {
+        var batchResult = opts.gateBatch(files);
+        if (!batchResult.ok) {
+          (opts.onError || function () {})(batchResult.message);
+          return;
+        }
+      }
+      var total = files.length;
+      for (var i = 0; i < total; i++) {
+        (function (idx) {
+          var meta = { index: idx, total: total };
+          var wrappedOnData = function (result, fileName) {
+            onData(result, fileName, meta);
+          };
+          ioDropzoneHandleFile(files[idx], wrappedOnData, opts);
+        })(i);
+      }
+    } else {
+      ioDropzoneHandleFile(files[0], onData, opts);
+    }
+  });
+}
+
+function setupFilePicker(inputEl, onData, opts) {
+  opts = opts || {};
+
+  inputEl.addEventListener('change', function () {
+    var files = inputEl.files;
+    if (!files || files.length === 0) return;
+
+    if (opts.multiple === true) {
+      if (opts.gateBatch) {
+        var batchResult = opts.gateBatch(files);
+        if (!batchResult.ok) {
+          (opts.onError || function () {})(batchResult.message);
+          return;
+        }
+      }
+      var total = files.length;
+      for (var i = 0; i < total; i++) {
+        (function (idx) {
+          var meta = { index: idx, total: total };
+          var wrappedOnData = function (result, fileName) {
+            onData(result, fileName, meta);
+          };
+          ioDropzoneHandleFile(files[idx], wrappedOnData, opts);
+        })(i);
+      }
+    } else {
+      ioDropzoneHandleFile(files[0], onData, opts);
+    }
+  });
+}
+
+
+</script>
+  <script>
+// shared/img-file-size.js
+
+function checkImageFileSize(byteLength) {
+  var bytes = Number(byteLength) || 0;
+  var MB = 1024 * 1024;
+
+  if (bytes <= 30 * MB) {
+    return {
+      ok: true,
+      level: 'ok',
+      message: '檔案大小正常'
+    };
+  } else if (bytes <= 80 * MB) {
+    return {
+      ok: true,
+      level: 'warn',
+      message: '檔案較大（' + (bytes / MB).toFixed(1) + 'MB），處理可能需要數秒'
+    };
+  } else {
+    return {
+      ok: false,
+      level: 'reject',
+      message: '檔案超過 80MB 上限（' + (bytes / MB).toFixed(1) + 'MB），已拒絕載入'
+    };
+  }
+}
+
+function checkBatchSize(totalByteLength, fileCount) {
+  var bytes = Number(totalByteLength) || 0;
+  var count = Number(fileCount) || 0;
+  var MB = 1024 * 1024;
+
+  if (bytes <= 200 * MB) {
+    return {
+      ok: true,
+      level: 'ok',
+      message: '批次大小正常（共 ' + count + ' 檔，' + (bytes / MB).toFixed(1) + 'MB）'
+    };
+  } else if (bytes <= 500 * MB) {
+    return {
+      ok: true,
+      level: 'warn',
+      message: '批次較大（共 ' + count + ' 檔，' + (bytes / MB).toFixed(1) + 'MB），批次處理可能需要較長時間'
+    };
+  } else {
+    return {
+      ok: false,
+      level: 'reject',
+      message: '批次總量超過 500MB 上限（' + (bytes / MB).toFixed(1) + 'MB），已拒絕整批載入'
+    };
+  }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    checkImageFileSize: checkImageFileSize,
+    checkBatchSize: checkBatchSize
+  };
+}
+
+</script>
+  <script>
+// shared/img-decode.js
+
+// Tiny 2x1 real JPEG (EXIF Orientation=6, distinct width/height so a swap
+// is observable) used to self-test whether this browser's
+// createImageBitmap({imageOrientation:'none'}) actually returns the raw,
+// un-rotated pixels. Verified against real browsers (2026-08): Chromium 141,
+// Firefox 142 and WebKit 26 all ACCEPT the option without error but SILENTLY
+// IGNORE it and still auto-apply EXIF rotation (bitmap comes back rotated,
+// same as calling createImageBitmap() with no options at all). Because
+// feature-detecting the option's mere existence would be wrong on every
+// current engine, this probe measures actual behavior instead.
+var IMG_DECODE_ORIENTATION_PROBE_JPEG_BASE64 =
+  '/9j/4AAQSkZJRgABAQAAAQABAAD/4QAiRXhpZgAATU0AKgAAAAgAAQESAAMAAAABAAYAAAAAAAD/2wBD' +
+  'AAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYU' +
+  'GBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU' +
+  'FBQUFBQUFBQUFBQUFBT/wAARCAABAAIDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQF' +
+  'BgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAk' +
+  'M2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWG' +
+  'h4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx' +
+  '8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQA' +
+  'AQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5' +
+  'OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmq' +
+  'srO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDo' +
+  'vBn/ACJ+hf8AXhB/6LWiiiv4mr/xZ+r/ADP4J4p/5H+P/wCv1X/0uR//2Q==';
+
+// Memoized (module-scope) detection result: true if
+// createImageBitmap(blob, {imageOrientation:'none'}) genuinely returns
+// un-rotated pixels on this browser; false if it silently auto-rotates
+// anyway (current behavior on all major engines as of 2026-08); null if not
+// yet tested. Cached as a Promise so concurrent loadImageFile() calls share
+// one probe decode instead of racing multiple probes.
+var _imgDecodeRawBitmapSupportPromise = null;
+
+function _imgDecodeDetectRawBitmapSupport() {
+  if (_imgDecodeRawBitmapSupportPromise) {
+    return _imgDecodeRawBitmapSupportPromise;
+  }
+  if (typeof createImageBitmap !== 'function') {
+    _imgDecodeRawBitmapSupportPromise = Promise.resolve(false);
+    return _imgDecodeRawBitmapSupportPromise;
+  }
+  _imgDecodeRawBitmapSupportPromise = Promise.resolve().then(function () {
+    var binary = atob(IMG_DECODE_ORIENTATION_PROBE_JPEG_BASE64);
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    var probeBlob = new Blob([bytes], { type: 'image/jpeg' });
+    return createImageBitmap(probeBlob, { imageOrientation: 'none' }).then(function (bmp) {
+      // Raw (un-rotated) probe is 2 wide x 1 tall. If 'none' were honored,
+      // the bitmap must still be 2x1. If the browser rotated it anyway
+      // (per Orientation=6), it comes back 1x2.
+      var supported = (bmp.width === 2 && bmp.height === 1);
+      if (typeof bmp.close === 'function') {
+        bmp.close();
+      }
+      return supported;
+    }).catch(function () {
+      return false;
+    });
+  }).catch(function () {
+    return false;
+  });
+  return _imgDecodeRawBitmapSupportPromise;
+}
+
+function loadImageFile(file, opts) {
+  opts = opts || {};
+  return new Promise(function (resolve, reject) {
+    if (!file) {
+      return reject(new Error('No file provided'));
+    }
+
+    var mimeType = file.type || 'image/jpeg';
+    var reader = new FileReader();
+
+    reader.onerror = function () {
+      reject(new Error('Failed to read file'));
+    };
+
+    reader.onload = function () {
+      var arrayBuffer = reader.result;
+      var orientation = 1;
+      try {
+        if (typeof readExifTags === 'function') {
+          var exif = readExifTags(arrayBuffer);
+          if (exif && exif.orientation) {
+            orientation = exif.orientation;
+          }
+        }
+      } catch (e) {
+        orientation = 1;
+      }
+
+      var blob = new Blob([arrayBuffer], { type: mimeType });
+
+      // drawSource: draws either an ImageBitmap (unrotated raw pixels, when
+      // createImageBitmap({imageOrientation:'none'}) is available) or a plain
+      // <img> element (browsers auto-apply EXIF orientation when decoding to
+      // <img>, so in that fallback path we must NOT re-apply orientation
+      // ourselves - ctxOrientation is forced to 1 for that case).
+      function drawSource(source, ctxOrientation, cleanup) {
+        var origW = source.naturalWidth || source.width;
+        var origH = source.naturalHeight || source.height;
+        var orientation = ctxOrientation;
+
+        var isSwapped = (orientation >= 5 && orientation <= 8);
+        var rotatedW = isSwapped ? origH : origW;
+        var rotatedH = isSwapped ? origW : origH;
+
+        var targetW = rotatedW;
+        var targetH = rotatedH;
+
+        if (opts.maxDimension && opts.maxDimension > 0) {
+          var maxSide = Math.max(rotatedW, rotatedH);
+          if (maxSide > opts.maxDimension) {
+            var scale = opts.maxDimension / maxSide;
+            targetW = Math.max(1, Math.round(rotatedW * scale));
+            targetH = Math.max(1, Math.round(rotatedH * scale));
+          }
+        }
+
+        var canvas = document.createElement('canvas');
+        canvas.width = targetW;
+        canvas.height = targetH;
+        var ctx = canvas.getContext('2d');
+
+        var scaleX = targetW / rotatedW;
+        var scaleY = targetH / rotatedH;
+
+        ctx.save();
+        ctx.scale(scaleX, scaleY);
+
+        switch (orientation) {
+          case 2: // Horizontal flip
+            ctx.translate(rotatedW, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(source, 0, 0);
+            break;
+          case 3: // 180 rotate
+            ctx.translate(rotatedW, rotatedH);
+            ctx.rotate(Math.PI);
+            ctx.drawImage(source, 0, 0);
+            break;
+          case 4: // Vertical flip
+            ctx.translate(0, rotatedH);
+            ctx.scale(1, -1);
+            ctx.drawImage(source, 0, 0);
+            break;
+          case 5: // Transpose
+            ctx.rotate(0.5 * Math.PI);
+            ctx.scale(1, -1);
+            ctx.drawImage(source, 0, 0);
+            break;
+          case 6: // 90 CW rotate
+            ctx.translate(rotatedW, 0);
+            ctx.rotate(0.5 * Math.PI);
+            ctx.drawImage(source, 0, 0);
+            break;
+          case 7: // Transverse
+            ctx.translate(rotatedW, rotatedH);
+            ctx.rotate(0.5 * Math.PI);
+            ctx.scale(1, -1);
+            ctx.drawImage(source, 0, 0);
+            break;
+          case 8: // 270 CW (90 CCW) rotate
+            ctx.translate(0, rotatedH);
+            ctx.rotate(-0.5 * Math.PI);
+            ctx.drawImage(source, 0, 0);
+            break;
+          default: // 1 or others (Normal)
+            ctx.drawImage(source, 0, 0);
+            break;
+        }
+
+        ctx.restore();
+
+        if (cleanup) {
+          cleanup();
+        }
+
+        resolve({
+          canvas: canvas,
+          width: targetW,
+          height: targetH,
+          mimeType: mimeType,
+          orientationApplied: orientation
+        });
+      }
+
+      // Fallback path: decode via <img> element. Browsers auto-apply EXIF
+      // orientation when decoding JPEG into an <img> (CSS image-orientation
+      // default is 'from-image'), so naturalWidth/naturalHeight and the
+      // painted pixels are ALREADY orientation-corrected. Passing the real
+      // EXIF orientation into drawSource here would double-apply the
+      // transform - so this path always draws with ctxOrientation = 1.
+      function loadViaImgElement() {
+        var blobUrl = URL.createObjectURL(blob);
+        var img = new Image();
+
+        img.onerror = function () {
+          URL.revokeObjectURL(blobUrl);
+          reject(new Error('Failed to load image element'));
+        };
+
+        img.onload = function () {
+          drawSource(img, 1, function () {
+            URL.revokeObjectURL(blobUrl);
+          });
+        };
+
+        img.src = blobUrl;
+      }
+
+      if (typeof createImageBitmap === 'function') {
+        _imgDecodeDetectRawBitmapSupport().then(function (rawBitmapSupported) {
+          if (!rawBitmapSupported) {
+            // This browser accepts {imageOrientation:'none'} but ignores it
+            // (auto-rotates anyway) - decoding via createImageBitmap here
+            // would double-apply orientation just like the old <img> bug.
+            // Fall back to the <img> path, which is known-correct for
+            // browser-auto-rotated sources (ctxOrientation forced to 1).
+            loadViaImgElement();
+            return;
+          }
+          createImageBitmap(blob, { imageOrientation: 'none' }).then(function (bitmap) {
+            drawSource(bitmap, orientation, function () {
+              if (typeof bitmap.close === 'function') {
+                bitmap.close();
+              }
+            });
+          }).catch(function () {
+            // Failed to decode this specific file - fall back to <img>.
+            loadViaImgElement();
+          });
+        }).catch(function () {
+          loadViaImgElement();
+        });
+      } else {
+        loadViaImgElement();
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    loadImageFile: loadImageFile
+  };
+}
+
+</script>
+  <script>
+// shared/img-canvas.js
+
+function resizeCanvas(sourceCanvas, opts) {
+  opts = opts || {};
+  if (!sourceCanvas) {
+    throw new Error('sourceCanvas is required');
+  }
+
+  var srcW = sourceCanvas.width;
+  var srcH = sourceCanvas.height;
+  var maxLongEdge = opts.maxLongEdge;
+  var allowUpscale = opts.allowUpscale === true;
+
+  var targetW = srcW;
+  var targetH = srcH;
+
+  if (maxLongEdge && maxLongEdge > 0) {
+    var longEdge = Math.max(srcW, srcH);
+    if (longEdge > maxLongEdge || (longEdge < maxLongEdge && allowUpscale)) {
+      var scale = maxLongEdge / longEdge;
+      targetW = Math.max(1, Math.round(srcW * scale));
+      targetH = Math.max(1, Math.round(srcH * scale));
+    }
+  }
+
+  var outCanvas = document.createElement('canvas');
+  outCanvas.width = targetW;
+  outCanvas.height = targetH;
+  var ctx = outCanvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(sourceCanvas, 0, 0, targetW, targetH);
+
+  return outCanvas;
+}
+
+function canvasToBlob(canvas, mimeType, quality) {
+  mimeType = mimeType || 'image/jpeg';
+  if (quality === undefined) {
+    quality = 0.92;
+  }
+
+  return new Promise(function (resolve, reject) {
+    if (!canvas || typeof canvas.toBlob !== 'function') {
+      return reject(new Error('Invalid canvas'));
+    }
+    canvas.toBlob(function (blob) {
+      if (!blob) {
+        return reject(new Error('canvas.toBlob returned null'));
+      }
+      resolve(blob);
+    }, mimeType, quality);
+  });
+}
+
+function compressToTargetSize(canvas, opts) {
+  opts = opts || {};
+  var targetBytes = opts.targetBytes;
+  var mimeType = opts.mimeType || 'image/jpeg';
+  var maxIterations = opts.maxIterations || 8;
+
+  if (!canvas) {
+    return Promise.reject(new Error('Canvas is required'));
+  }
+  if (!targetBytes || targetBytes <= 0) {
+    return Promise.reject(new Error('targetBytes must be positive'));
+  }
+  if (mimeType === 'image/png') {
+    return Promise.reject(new Error('PNG 不支援目標容量壓縮'));
+  }
+
+  return new Promise(function (resolve, reject) {
+    var currentCanvas = canvas;
+    var dimensionRounds = 0;
+    var maxDimensionRounds = 3;
+    var totalIterations = 0;
+    var bestBlob = null;
+    var bestQuality = 0.5;
+
+    function runRound() {
+      var low = 0.1;
+      var high = 0.95;
+      var roundBestBlob = null;
+      var roundBestQuality = low;
+      var roundIter = 0;
+
+      function binaryStep() {
+        if (roundIter >= maxIterations || (high - low) < 0.02) {
+          if (roundBestBlob && roundBestBlob.size <= targetBytes) {
+            return resolve({
+              blob: roundBestBlob,
+              quality: roundBestQuality,
+              achieved: true,
+              iterations: totalIterations
+            });
+          }
+
+          // If not achieved in this round, check if we can reduce dimensions
+          if (dimensionRounds < maxDimensionRounds) {
+            dimensionRounds++;
+            var curLongEdge = Math.max(currentCanvas.width, currentCanvas.height);
+            var newLongEdge = Math.max(32, Math.round(curLongEdge * 0.7));
+            currentCanvas = resizeCanvas(currentCanvas, { maxLongEdge: newLongEdge, allowUpscale: false });
+            return runRound();
+          } else {
+            // Failed after all rounds, return closest blob
+            return resolve({
+              blob: bestBlob || roundBestBlob,
+              quality: bestQuality || roundBestQuality,
+              achieved: false,
+              iterations: totalIterations
+            });
+          }
+        }
+
+        var mid = (low + high) / 2;
+        roundIter++;
+        totalIterations++;
+
+        canvasToBlob(currentCanvas, mimeType, mid).then(function (blob) {
+          if (!bestBlob || Math.abs(blob.size - targetBytes) < Math.abs(bestBlob.size - targetBytes) || blob.size <= targetBytes) {
+            bestBlob = blob;
+            bestQuality = mid;
+          }
+
+          if (blob.size <= targetBytes) {
+            roundBestBlob = blob;
+            roundBestQuality = mid;
+            // Can try higher quality
+            low = mid;
+          } else {
+            // Oversized, need lower quality
+            high = mid;
+          }
+          binaryStep();
+        }).catch(reject);
+      }
+
+      binaryStep();
+    }
+
+    runRound();
+  });
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    resizeCanvas: resizeCanvas,
+    canvasToBlob: canvasToBlob,
+    compressToTargetSize: compressToTargetSize
+  };
+}
+
+</script>
+  <script>
+// shared/img-perspective.js
+
+function solveHomography(srcQuad, dstQuad) {
+  if (!srcQuad || srcQuad.length !== 4 || !dstQuad || dstQuad.length !== 4) {
+    throw new Error('Both srcQuad and dstQuad must have 4 points [x, y]');
+  }
+
+  // 8x8 system: A * h = B
+  var A = [];
+  var B = [];
+
+  for (var i = 0; i < 4; i++) {
+    var x = srcQuad[i][0];
+    var y = srcQuad[i][1];
+    var u = dstQuad[i][0];
+    var v = dstQuad[i][1];
+
+    A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]);
+    B.push(u);
+
+    A.push([0, 0, 0, x, y, 1, -v * x, -v * y]);
+    B.push(v);
+  }
+
+  // Gaussian elimination with partial pivoting
+  var n = 8;
+  for (var k = 0; k < n; k++) {
+    // Find pivot
+    var maxRow = k;
+    var maxVal = Math.abs(A[k][k]);
+    for (var r = k + 1; r < n; r++) {
+      if (Math.abs(A[r][k]) > maxVal) {
+        maxVal = Math.abs(A[r][k]);
+        maxRow = r;
+      }
+    }
+
+    if (maxVal < 1e-10) {
+      throw new Error('Singular matrix: points may be collinear');
+    }
+
+    // Swap rows
+    if (maxRow !== k) {
+      var tmpA = A[k]; A[k] = A[maxRow]; A[maxRow] = tmpA;
+      var tmpB = B[k]; B[k] = B[maxRow]; B[maxRow] = tmpB;
+    }
+
+    // Eliminate below
+    for (var row = k + 1; row < n; row++) {
+      var factor = A[row][k] / A[k][k];
+      B[row] -= factor * B[k];
+      for (var col = k; col < n; col++) {
+        A[row][col] -= factor * A[k][col];
+      }
+    }
+  }
+
+  // Back substitution
+  var h = new Array(8);
+  for (var i8 = n - 1; i8 >= 0; i8--) {
+    var sum = B[i8];
+    for (var j = i8 + 1; j < n; j++) {
+      sum -= A[i8][j] * h[j];
+    }
+    h[i8] = sum / A[i8][i8];
+  }
+
+  // Return row-major 3x3 matrix [h00, h01, h02, h10, h11, h12, h20, h21, 1]
+  return [h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], 1.0];
+}
+
+function invertHomography(H) {
+  var a = H[0], b = H[1], c = H[2];
+  var d = H[3], e = H[4], f = H[5];
+  var g = H[6], h = H[7], i = H[8];
+
+  var A = (e * i - f * h);
+  var B = -(d * i - f * g);
+  var C = (d * h - e * g);
+  var D = -(b * i - c * h);
+  var E = (a * i - c * g);
+  var F = -(a * h - b * g);
+  var G = (b * f - c * e);
+  var H_adj = -(a * f - c * d);
+  var I = (a * e - b * d);
+
+  var det = a * A + b * B + c * C;
+  if (Math.abs(det) < 1e-12) {
+    throw new Error('Matrix is not invertible');
+  }
+
+  var invDet = 1.0 / det;
+  return [
+    A * invDet, D * invDet, G * invDet,
+    B * invDet, E * invDet, H_adj * invDet,
+    C * invDet, F * invDet, I * invDet
+  ];
+}
+
+function warpImageData(sourceImageData, inverseHomography, outWidth, outHeight) {
+  if (!sourceImageData || !sourceImageData.data) {
+    throw new Error('sourceImageData is required');
+  }
+  if (!inverseHomography || inverseHomography.length !== 9) {
+    throw new Error('inverseHomography 3x3 matrix is required');
+  }
+
+  outWidth = Math.round(outWidth);
+  outHeight = Math.round(outHeight);
+
+  var srcW = sourceImageData.width;
+  var srcH = sourceImageData.height;
+  var srcData = sourceImageData.data;
+
+  var outData;
+  if (typeof ImageData !== 'undefined') {
+    outData = new ImageData(outWidth, outHeight);
+  } else {
+    outData = {
+      width: outWidth,
+      height: outHeight,
+      data: new Uint8ClampedArray(outWidth * outHeight * 4)
+    };
+  }
+
+  var dstData = outData.data;
+
+  var h0 = inverseHomography[0], h1 = inverseHomography[1], h2 = inverseHomography[2];
+  var h3 = inverseHomography[3], h4 = inverseHomography[4], h5 = inverseHomography[5];
+  var h6 = inverseHomography[6], h7 = inverseHomography[7], h8 = inverseHomography[8];
+
+  var outIdx = 0;
+  for (var y = 0; y < outHeight; y++) {
+    for (var x = 0; x < outWidth; x++) {
+      var w = h6 * x + h7 * y + h8;
+      if (Math.abs(w) < 1e-10) {
+        outIdx += 4;
+        continue;
+      }
+      var invW = 1.0 / w;
+      var srcX = (h0 * x + h1 * y + h2) * invW;
+      var srcY = (h3 * x + h4 * y + h5) * invW;
+
+      var x0 = Math.floor(srcX);
+      var y0 = Math.floor(srcY);
+      var x1 = x0 + 1;
+      var y1 = y0 + 1;
+
+      if (x0 >= 0 && x1 < srcW && y0 >= 0 && y1 < srcH) {
+        var wx1 = srcX - x0;
+        var wx0 = 1.0 - wx1;
+        var wy1 = srcY - y0;
+        var wy0 = 1.0 - wy1;
+
+        var w00 = wx0 * wy0;
+        var w01 = wx1 * wy0;
+        var w10 = wx0 * wy1;
+        var w11 = wx1 * wy1;
+
+        var idx00 = (y0 * srcW + x0) * 4;
+        var idx01 = (y0 * srcW + x1) * 4;
+        var idx10 = (y1 * srcW + x0) * 4;
+        var idx11 = (y1 * srcW + x1) * 4;
+
+        dstData[outIdx]     = (srcData[idx00] * w00 + srcData[idx01] * w01 + srcData[idx10] * w10 + srcData[idx11] * w11);
+        dstData[outIdx + 1] = (srcData[idx00 + 1] * w00 + srcData[idx01 + 1] * w01 + srcData[idx10 + 1] * w10 + srcData[idx11 + 1] * w11);
+        dstData[outIdx + 2] = (srcData[idx00 + 2] * w00 + srcData[idx01 + 2] * w01 + srcData[idx10 + 2] * w10 + srcData[idx11 + 2] * w11);
+        dstData[outIdx + 3] = (srcData[idx00 + 3] * w00 + srcData[idx01 + 3] * w01 + srcData[idx10 + 3] * w10 + srcData[idx11 + 3] * w11);
+      } else if (x0 >= 0 && x0 < srcW && y0 >= 0 && y0 < srcH) {
+        // Nearest neighbor fallback at boundary
+        var idx = (y0 * srcW + x0) * 4;
+        dstData[outIdx]     = srcData[idx];
+        dstData[outIdx + 1] = srcData[idx + 1];
+        dstData[outIdx + 2] = srcData[idx + 2];
+        dstData[outIdx + 3] = srcData[idx + 3];
+      }
+      // Out of bounds remains 0 (transparent)
+
+      outIdx += 4;
+    }
+  }
+
+  return outData;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    solveHomography: solveHomography,
+    invertHomography: invertHomography,
+    warpImageData: warpImageData
+  };
+}
+
+</script>
+
+  <script>
+  (function () {
+    var state = {
+      file: null,
+      fileName: 'document.jpg',
+      rawImageCanvas: null, // Readonly orientation-corrected canvas
+      rotatedCanvas: null,  // Current rotation canvas
+      rotationDeg: 0,       // 0, 90, 180, 270
+      corners: [            // Normalized [0, 1] coordinates: TL, TR, BR, BL
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 1, y: 1 },
+        { x: 0, y: 1 }
+      ],
+      activeCorner: -1,
+      cropRect: { x0: 0, y0: 0, x1: 1, y1: 1 }, // Normalized [0,1] crop box on warpedCanvas only
+      warpedCanvas: null,   // Output after solveHomography + warpImageData
+      isWarped: false,
+      isBeforeView: false,
+      filters: {
+        brightness: 0,
+        contrast: 0,
+        grayscale: false
+      }
+    };
+
+    var dropZone = document.getElementById('drop-zone');
+    var fileInput = document.getElementById('file-input');
+    var btnSelectFile = document.getElementById('btn-select-file');
+    var editorSection = document.getElementById('editor-section');
+    var canvasContainer = document.getElementById('canvas-container');
+    var mainCanvas = document.getElementById('main-canvas');
+    var mainCtx = mainCanvas ? mainCanvas.getContext('2d') : null;
+    var overlaySvg = document.getElementById('overlay-svg');
+    var polyGuide = document.getElementById('poly-guide');
+    var handles = [
+      document.getElementById('handle-tl'),
+      document.getElementById('handle-tr'),
+      document.getElementById('handle-br'),
+      document.getElementById('handle-bl')
+    ];
+
+    var btnRotLeft = document.getElementById('btn-rot-left');
+    var btnRotRight = document.getElementById('btn-rot-right');
+    var btnApplyWarp = document.getElementById('btn-apply-warp');
+    var btnApplyCrop = document.getElementById('btn-apply-crop');
+    var btnResetCrop = document.getElementById('btn-reset-crop');
+    var btnToggleView = document.getElementById('btn-toggle-view');
+    var btnRestore = document.getElementById('btn-restore');
+    var statusHint = document.getElementById('status-hint');
+
+    var cropRectEl = document.getElementById('crop-rect');
+    var cropHandles = [
+      document.getElementById('crop-handle-tl'),
+      document.getElementById('crop-handle-tr'),
+      document.getElementById('crop-handle-br'),
+      document.getElementById('crop-handle-bl')
+    ];
+    var activeCropHandle = -1;
+    // idx→[xKey,yKey]：拖曳該角點時要更新 cropRect 的哪兩個邊界值
+    var cropHandleKeys = [
+      ['x0', 'y0'], // tl
+      ['x1', 'y0'], // tr
+      ['x1', 'y1'], // br
+      ['x0', 'y1']  // bl
+    ];
+
+    var filterBrightness = document.getElementById('filter-brightness');
+    var valBrightness = document.getElementById('val-brightness');
+    var filterContrast = document.getElementById('filter-contrast');
+    var valContrast = document.getElementById('val-contrast');
+    var filterGrayscale = document.getElementById('filter-grayscale');
+
+    var btnDlJpg = document.getElementById('btn-dl-jpg');
+    var btnDlPng = document.getElementById('btn-dl-png');
+    var btnPrintPdf = document.getElementById('btn-print-pdf');
+    var btnCopySummary = document.getElementById('btn-copy-summary');
+    var btnDownloadOffline = document.getElementById('btn-download-offline');
+    var printArea = document.getElementById('print-area');
+    var printImg = document.getElementById('print-img');
+
+    var livePreviewPanel = document.getElementById('live-preview-panel');
+    var livePreviewImg = document.getElementById('live-preview-img');
+
+    function resetCorners() {
+      state.corners = [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 1, y: 1 },
+        { x: 0, y: 1 }
+      ];
+    }
+
+    function createRotatedCanvas(sourceCanvas, deg) {
+      var rad = (deg % 360) * Math.PI / 180;
+      var sin = Math.abs(Math.sin(rad));
+      var cos = Math.abs(Math.cos(rad));
+      var newW = Math.round(sourceCanvas.width * cos + sourceCanvas.height * sin);
+      var newH = Math.round(sourceCanvas.width * sin + sourceCanvas.height * cos);
+
+      var rotC = document.createElement('canvas');
+      rotC.width = newW;
+      rotC.height = newH;
+      var rotCtx = rotC.getContext('2d');
+
+      rotCtx.translate(newW / 2, newH / 2);
+      rotCtx.rotate(rad);
+      rotCtx.drawImage(sourceCanvas, -sourceCanvas.width / 2, -sourceCanvas.height / 2);
+
+      return rotC;
+    }
+
+    function updateHandlesPosition() {
+      if (!mainCanvas || state.isWarped || state.isBeforeView) {
+        handles.forEach(function (h) { if (h) h.style.display = 'none'; });
+        if (polyGuide) polyGuide.setAttribute('points', '');
+        return;
+      }
+
+      var rect = mainCanvas.getBoundingClientRect();
+      var containerRect = canvasContainer.getBoundingClientRect();
+      var offsetX = rect.left - containerRect.left;
+      var offsetY = rect.top - containerRect.top;
+
+      var points = [];
+      state.corners.forEach(function (pt, idx) {
+        var hx = offsetX + pt.x * rect.width;
+        var hy = offsetY + pt.y * rect.height;
+
+        if (handles[idx]) {
+          handles[idx].style.left = hx + 'px';
+          handles[idx].style.top = hy + 'px';
+          handles[idx].style.display = 'block';
+        }
+        points.push(hx + ',' + hy);
+      });
+
+      if (polyGuide) {
+        polyGuide.setAttribute('points', points.join(' '));
+      }
+    }
+
+    // 二次裁切框只在 Tier 3 校正完成（isWarped）且非 Before 檢視時顯示，
+    // 僅操作 state.cropRect（正規化座標），不動 corners / rawImageCanvas / rotatedCanvas
+    function updateCropHandlesPosition() {
+      var visible = state.isWarped && !state.isBeforeView && !!state.warpedCanvas;
+
+      if (!visible || !mainCanvas) {
+        cropHandles.forEach(function (h) { if (h) h.style.display = 'none'; });
+        if (cropRectEl) cropRectEl.style.display = 'none';
+        return;
+      }
+
+      var rect = mainCanvas.getBoundingClientRect();
+      var containerRect = canvasContainer.getBoundingClientRect();
+      var offsetX = rect.left - containerRect.left;
+      var offsetY = rect.top - containerRect.top;
+
+      var cr = state.cropRect;
+      var x0 = offsetX + cr.x0 * rect.width;
+      var y0 = offsetY + cr.y0 * rect.height;
+      var x1 = offsetX + cr.x1 * rect.width;
+      var y1 = offsetY + cr.y1 * rect.height;
+
+      var pts = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+      cropHandles.forEach(function (h, idx) {
+        if (!h) return;
+        h.style.left = pts[idx][0] + 'px';
+        h.style.top = pts[idx][1] + 'px';
+        h.style.display = 'block';
+      });
+
+      if (cropRectEl) {
+        cropRectEl.setAttribute('x', x0);
+        cropRectEl.setAttribute('y', y0);
+        cropRectEl.setAttribute('width', Math.max(0, x1 - x0));
+        cropRectEl.setAttribute('height', Math.max(0, y1 - y0));
+        cropRectEl.style.display = 'block';
+      }
+    }
+
+    function applyFiltersToCanvas(srcCanvas) {
+      var outC = document.createElement('canvas');
+      outC.width = srcCanvas.width;
+      outC.height = srcCanvas.height;
+      var ctx = outC.getContext('2d');
+      ctx.drawImage(srcCanvas, 0, 0);
+
+      var b = state.filters.brightness;
+      var c = state.filters.contrast;
+      var gray = state.filters.grayscale;
+
+      if (b === 0 && c === 0 && !gray) {
+        return outC;
+      }
+
+      var imgData = ctx.getImageData(0, 0, outC.width, outC.height);
+      var data = imgData.data;
+      var factor = (c !== 0) ? ((259 * (c + 255)) / (255 * (259 - c))) : 1;
+
+      for (var i = 0; i < data.length; i += 4) {
+        var r = data[i];
+        var g = data[i + 1];
+        var bVal = data[i + 2];
+
+        // Grayscale
+        if (gray) {
+          var gAvg = 0.299 * r + 0.587 * g + 0.114 * bVal;
+          r = g = bVal = gAvg;
+        }
+
+        // Contrast
+        if (c !== 0) {
+          r = factor * (r - 128) + 128;
+          g = factor * (g - 128) + 128;
+          bVal = factor * (bVal - 128) + 128;
+        }
+
+        // Brightness
+        if (b !== 0) {
+          r += b;
+          g += b;
+          bVal += b;
+        }
+
+        data[i] = Math.min(255, Math.max(0, r));
+        data[i + 1] = Math.min(255, Math.max(0, g));
+        data[i + 2] = Math.min(255, Math.max(0, bVal));
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+      return outC;
+    }
+
+    function renderDisplay() {
+      if (!mainCanvas || !mainCtx) return;
+
+      if (state.isBeforeView && state.rotatedCanvas) {
+        mainCanvas.width = state.rotatedCanvas.width;
+        mainCanvas.height = state.rotatedCanvas.height;
+        mainCtx.drawImage(state.rotatedCanvas, 0, 0);
+        updateHandlesPosition();
+        updateCropHandlesPosition();
+        setLivePreviewVisible(false);
+        if (statusHint) statusHint.textContent = '【目前為 Before 原圖檢視模式（旋轉後、校正前）】';
+        return;
+      }
+
+      if (state.isWarped && state.warpedCanvas) {
+        var filtered = applyFiltersToCanvas(state.warpedCanvas);
+        mainCanvas.width = filtered.width;
+        mainCanvas.height = filtered.height;
+        mainCtx.drawImage(filtered, 0, 0);
+        updateHandlesPosition();
+        updateCropHandlesPosition();
+        setLivePreviewVisible(false);
+        if (statusHint) statusHint.textContent = '已套用透視校正與濾鏡。可拖曳裁切框後按「套用裁切」，或直接下載/輸出 PDF。';
+        return;
+      }
+
+      if (state.rotatedCanvas) {
+        mainCanvas.width = state.rotatedCanvas.width;
+        mainCanvas.height = state.rotatedCanvas.height;
+        mainCtx.drawImage(state.rotatedCanvas, 0, 0);
+        updateHandlesPosition();
+        updateCropHandlesPosition();
+        setLivePreviewVisible(true);
+        applyTier1Preview();
+        if (statusHint) statusHint.textContent = '拖曳畫面中四個藍色角點以對齊文件四角';
+      }
+    }
+
+    function performPerspectiveWarp(sourceCanvas, normCorners) {
+      var w = sourceCanvas.width;
+      var h = sourceCanvas.height;
+
+      // img-perspective.js contract: solveHomography()/invertHomography() take
+      // [[x,y],[x,y],[x,y],[x,y]] arrays, not {x,y} objects (srcQuad[i][0]/[1]).
+      var srcPts = normCorners.map(function (p) {
+        return [p.x * w, p.y * h];
+      });
+
+      // Compute destination dimensions based on max width & height of edges
+      var topLen = Math.hypot(srcPts[1][0] - srcPts[0][0], srcPts[1][1] - srcPts[0][1]);
+      var botLen = Math.hypot(srcPts[2][0] - srcPts[3][0], srcPts[2][1] - srcPts[3][1]);
+      var leftLen = Math.hypot(srcPts[3][0] - srcPts[0][0], srcPts[3][1] - srcPts[0][1]);
+      var rightLen = Math.hypot(srcPts[2][0] - srcPts[1][0], srcPts[2][1] - srcPts[1][1]);
+
+      var dstW = Math.max(10, Math.round(Math.max(topLen, botLen)));
+      var dstH = Math.max(10, Math.round(Math.max(leftLen, rightLen)));
+
+      var dstPts = [
+        [0, 0],
+        [dstW, 0],
+        [dstW, dstH],
+        [0, dstH]
+      ];
+
+      var H = solveHomography(srcPts, dstPts);
+      var Hinv = invertHomography(H);
+
+      var srcCtx = sourceCanvas.getContext('2d');
+      var srcImgData = srcCtx.getImageData(0, 0, w, h);
+
+      var dstImgData = warpImageData(srcImgData, Hinv, dstW, dstH);
+
+      var outCanvas = document.createElement('canvas');
+      outCanvas.width = dstW;
+      outCanvas.height = dstH;
+      var outCtx = outCanvas.getContext('2d');
+      outCtx.putImageData(dstImgData, 0, 0);
+
+      return outCanvas;
+    }
+
+    // ---- Tier 1 / Tier 2 即時透視預覽（IMG_CONTRACT.md 第 6 節）----
+    // Tier 1（拖曳中每個 pointermove）：只算 homography，換成 CSS matrix3d 套在
+    // #live-preview-img（承載原圖的元素）上，不呼叫 warpImageData()。
+    // Tier 2（拖曳停止 debounce 150ms 後）：對長邊 800px 縮小 canvas 真正跑一次
+    // warpImageData()，取代 Tier 1 的 CSS 近似結果。
+
+    function homographyToMatrix3d(H) {
+      // 3x3 row-major homography [h0..h8] 嵌入 CSS matrix3d 的 4x4 column-major矩陣
+      // （z 軸不變，w 分量取代第三列做透視除法）。
+      return 'matrix3d(' +
+        H[0] + ',' + H[3] + ',0,' + H[6] + ',' +
+        H[1] + ',' + H[4] + ',0,' + H[7] + ',' +
+        '0,0,1,0,' +
+        H[2] + ',' + H[5] + ',0,' + H[8] +
+        ')';
+    }
+
+    function updateLivePreviewSource() {
+      if (!livePreviewImg || !state.rotatedCanvas) return;
+      livePreviewImg.style.transform = 'none';
+      livePreviewImg.src = state.rotatedCanvas.toDataURL('image/png');
+    }
+
+    function setLivePreviewVisible(visible) {
+      if (!livePreviewPanel) return;
+      livePreviewPanel.classList.toggle('visible', !!visible);
+    }
+
+    function applyTier1Preview() {
+      if (!livePreviewImg) return;
+      var w = livePreviewImg.clientWidth || livePreviewImg.naturalWidth;
+      var h = livePreviewImg.clientHeight || livePreviewImg.naturalHeight;
+      if (!w || !h) return;
+
+      var srcQuad = [[0, 0], [w, 0], [w, h], [0, h]];
+      var dstQuad = state.corners.map(function (p) {
+        return [p.x * w, p.y * h];
+      });
+
+      try {
+        var H = solveHomography(srcQuad, dstQuad);
+        livePreviewImg.style.transform = homographyToMatrix3d(H);
+      } catch (err) {
+        // 拖曳過程中角點暫時退化/共線時保留上一幀畫面，不中斷拖曳
+      }
+    }
+
+    var scheduleTier2Preview = debounce(function () {
+      if (!state.rotatedCanvas || !livePreviewImg) return;
+      try {
+        var smallSrc = resizeCanvas(state.rotatedCanvas, { maxLongEdge: 800 });
+        var warped = performPerspectiveWarp(smallSrc, state.corners);
+        livePreviewImg.style.transform = 'none';
+        livePreviewImg.src = warped.toDataURL('image/png');
+      } catch (err) {
+        // 角點退化/共線：保留目前畫面，不覆蓋成壞圖
+      }
+    }, 150);
+
+    function loadDocumentFile(file) {
+      var gate = checkImageFileSize(file.size);
+      if (!gate.ok) {
+        showToast(gate.message, 3000);
+        return;
+      } else if (gate.level === 'warn') {
+        showToast(gate.message, 2500);
+      }
+
+      loadImageFile(file).then(function (res) {
+        state.file = file;
+        state.fileName = file.name || 'document.jpg';
+        state.rawImageCanvas = res.canvas;
+        state.rotationDeg = 0;
+        state.rotatedCanvas = res.canvas;
+        state.warpedCanvas = null;
+        state.isWarped = false;
+        state.isBeforeView = false;
+        state.cropRect = { x0: 0, y0: 0, x1: 1, y1: 1 };
+        state.filters = { brightness: 0, contrast: 0, grayscale: false };
+
+        if (filterBrightness) filterBrightness.value = 0;
+        if (valBrightness) valBrightness.textContent = '0';
+        if (filterContrast) filterContrast.value = 0;
+        if (valContrast) valContrast.textContent = '0';
+        if (filterGrayscale) filterGrayscale.checked = false;
+
+        resetCorners();
+
+        if (editorSection) editorSection.style.display = 'block';
+        if (dropZone) dropZone.style.display = 'none';
+
+        updateLivePreviewSource();
+        renderDisplay();
+        showToast('文件照片載入成功！');
+      }).catch(function (err) {
+        showToast('載入失敗：' + (err.message || '未知錯誤'));
+      });
+    }
+
+    if (btnSelectFile && fileInput) {
+      btnSelectFile.addEventListener('click', function () {
+        fileInput.click();
+      });
+      fileInput.addEventListener('change', function () {
+        if (fileInput.files && fileInput.files[0]) {
+          loadDocumentFile(fileInput.files[0]);
+          fileInput.value = '';
+        }
+      });
+    }
+
+    if (dropZone) {
+      setupDropZone(dropZone, function () {}, {
+        accept: ['.jpg', '.jpeg', '.png', '.webp'],
+        gate: function (file) { return checkImageFileSize(file.size); },
+        onError: function (msg) { showToast(msg); }
+      });
+      dropZone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          loadDocumentFile(e.dataTransfer.files[0]);
+        }
+      });
+    }
+
+    // Corner dragging interaction
+    handles.forEach(function (handle, idx) {
+      if (!handle) return;
+      handle.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        state.activeCorner = idx;
+        handle.setPointerCapture(e.pointerId);
+      });
+
+      handle.addEventListener('pointermove', function (e) {
+        if (state.activeCorner !== idx || !mainCanvas) return;
+        var rect = mainCanvas.getBoundingClientRect();
+        var clientX = e.clientX;
+        var clientY = e.clientY;
+
+        var normX = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1);
+        var normY = Math.min(Math.max((clientY - rect.top) / rect.height, 0), 1);
+
+        state.corners[idx] = { x: normX, y: normY };
+        updateHandlesPosition();
+        applyTier1Preview();
+        scheduleTier2Preview();
+      });
+
+      handle.addEventListener('pointerup', function (e) {
+        if (state.activeCorner === idx) {
+          state.activeCorner = -1;
+          handle.releasePointerCapture(e.pointerId);
+          updateHandlesPosition();
+          scheduleTier2Preview();
+        }
+      });
+    });
+
+    // Crop-box dragging interaction（僅調整 state.cropRect，不動角點與原始畫布）
+    cropHandles.forEach(function (handle, idx) {
+      if (!handle) return;
+      handle.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        activeCropHandle = idx;
+        handle.setPointerCapture(e.pointerId);
+      });
+
+      handle.addEventListener('pointermove', function (e) {
+        if (activeCropHandle !== idx || !mainCanvas) return;
+        var rect = mainCanvas.getBoundingClientRect();
+        var normX = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+        var normY = Math.min(Math.max((e.clientY - rect.top) / rect.height, 0), 1);
+        var minGap = 0.03;
+        var keys = cropHandleKeys[idx];
+
+        if (keys[0] === 'x0') {
+          state.cropRect.x0 = Math.min(normX, state.cropRect.x1 - minGap);
+        } else {
+          state.cropRect.x1 = Math.max(normX, state.cropRect.x0 + minGap);
+        }
+        if (keys[1] === 'y0') {
+          state.cropRect.y0 = Math.min(normY, state.cropRect.y1 - minGap);
+        } else {
+          state.cropRect.y1 = Math.max(normY, state.cropRect.y0 + minGap);
+        }
+
+        updateCropHandlesPosition();
+      });
+
+      handle.addEventListener('pointerup', function (e) {
+        if (activeCropHandle === idx) {
+          activeCropHandle = -1;
+          handle.releasePointerCapture(e.pointerId);
+          updateCropHandlesPosition();
+        }
+      });
+    });
+
+    window.addEventListener('resize', function () {
+      updateHandlesPosition();
+      updateCropHandlesPosition();
+    });
+
+    if (btnRotLeft) {
+      btnRotLeft.addEventListener('click', function () {
+        if (!state.rawImageCanvas) return;
+        state.rotationDeg = (state.rotationDeg + 270) % 360;
+        state.rotatedCanvas = createRotatedCanvas(state.rawImageCanvas, state.rotationDeg);
+        state.isWarped = false;
+        state.warpedCanvas = null;
+        state.cropRect = { x0: 0, y0: 0, x1: 1, y1: 1 };
+        resetCorners();
+        updateLivePreviewSource();
+        renderDisplay();
+        showToast('已向左旋轉 90°');
+      });
+    }
+
+    if (btnRotRight) {
+      btnRotRight.addEventListener('click', function () {
+        if (!state.rawImageCanvas) return;
+        state.rotationDeg = (state.rotationDeg + 90) % 360;
+        state.rotatedCanvas = createRotatedCanvas(state.rawImageCanvas, state.rotationDeg);
+        state.isWarped = false;
+        state.warpedCanvas = null;
+        state.cropRect = { x0: 0, y0: 0, x1: 1, y1: 1 };
+        resetCorners();
+        updateLivePreviewSource();
+        renderDisplay();
+        showToast('已向右旋轉 90°');
+      });
+    }
+
+    if (btnApplyWarp) {
+      btnApplyWarp.addEventListener('click', function () {
+        if (!state.rotatedCanvas) return;
+        try {
+          state.warpedCanvas = performPerspectiveWarp(state.rotatedCanvas, state.corners);
+          state.isWarped = true;
+          state.isBeforeView = false;
+          state.cropRect = { x0: 0, y0: 0, x1: 1, y1: 1 };
+          renderDisplay();
+          showToast('透視校正完成！');
+        } catch (err) {
+          showToast('校正失敗（角點退化或共線）：' + (err.message || '未知錯誤'));
+        }
+      });
+    }
+
+    if (btnApplyCrop) {
+      btnApplyCrop.addEventListener('click', function () {
+        if (!state.isWarped || !state.warpedCanvas) return;
+        var cr = state.cropRect;
+        var w = state.warpedCanvas.width;
+        var h = state.warpedCanvas.height;
+        var sx = Math.round(cr.x0 * w);
+        var sy = Math.round(cr.y0 * h);
+        var sw = Math.max(1, Math.round((cr.x1 - cr.x0) * w));
+        var sh = Math.max(1, Math.round((cr.y1 - cr.y0) * h));
+
+        // 全範圍（未調整裁切框）時不需要重繪，直接跳過以保持輸出與未使用裁切功能時完全一致
+        if (sx === 0 && sy === 0 && sw === w && sh === h) {
+          showToast('裁切框維持全範圍，未套用裁切');
+          return;
+        }
+
+        var croppedCanvas = document.createElement('canvas');
+        croppedCanvas.width = sw;
+        croppedCanvas.height = sh;
+        croppedCanvas.getContext('2d').drawImage(state.warpedCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+
+        // 裁切只取代 state.warpedCanvas（Tier 3 校正輸出），不動角點資料或
+        // state.rawImageCanvas / state.rotatedCanvas
+        state.warpedCanvas = croppedCanvas;
+        state.cropRect = { x0: 0, y0: 0, x1: 1, y1: 1 };
+        renderDisplay();
+        showToast('已套用裁切');
+      });
+    }
+
+    if (btnResetCrop) {
+      btnResetCrop.addEventListener('click', function () {
+        state.cropRect = { x0: 0, y0: 0, x1: 1, y1: 1 };
+        updateCropHandlesPosition();
+        showToast('已重設裁切範圍');
+      });
+    }
+
+    if (btnToggleView) {
+      btnToggleView.addEventListener('click', function () {
+        state.isBeforeView = !state.isBeforeView;
+        btnToggleView.textContent = state.isBeforeView ? '👁️ 切換回校正 (After)' : '👁️ 檢視原圖 (Before)';
+        renderDisplay();
+      });
+    }
+
+    if (btnRestore) {
+      btnRestore.addEventListener('click', function () {
+        if (!state.rawImageCanvas) return;
+        state.rotationDeg = 0;
+        state.rotatedCanvas = state.rawImageCanvas;
+        state.warpedCanvas = null;
+        state.isWarped = false;
+        state.isBeforeView = false;
+        state.cropRect = { x0: 0, y0: 0, x1: 1, y1: 1 };
+        state.filters = { brightness: 0, contrast: 0, grayscale: false };
+
+        if (filterBrightness) filterBrightness.value = 0;
+        if (valBrightness) valBrightness.textContent = '0';
+        if (filterContrast) filterContrast.value = 0;
+        if (valContrast) valContrast.textContent = '0';
+        if (filterGrayscale) filterGrayscale.checked = false;
+
+        resetCorners();
+        updateLivePreviewSource();
+        renderDisplay();
+        showToast('已還原重置');
+      });
+    }
+
+    // Filters event listeners
+    if (filterBrightness) {
+      filterBrightness.addEventListener('input', function () {
+        state.filters.brightness = Number(filterBrightness.value);
+        if (valBrightness) valBrightness.textContent = filterBrightness.value;
+        renderDisplay();
+      });
+    }
+
+    if (filterContrast) {
+      filterContrast.addEventListener('input', function () {
+        state.filters.contrast = Number(filterContrast.value);
+        if (valContrast) valContrast.textContent = filterContrast.value;
+        renderDisplay();
+      });
+    }
+
+    if (filterGrayscale) {
+      filterGrayscale.addEventListener('change', function () {
+        state.filters.grayscale = filterGrayscale.checked;
+        renderDisplay();
+      });
+    }
+
+    function getFinalExportCanvas() {
+      if (state.warpedCanvas) {
+        return applyFiltersToCanvas(state.warpedCanvas);
+      } else if (state.rotatedCanvas) {
+        return applyFiltersToCanvas(state.rotatedCanvas);
+      }
+      return mainCanvas;
+    }
+
+    function getExportBaseName() {
+      var dot = state.fileName.lastIndexOf('.');
+      return (dot !== -1) ? state.fileName.substring(0, dot) : state.fileName;
+    }
+
+    if (btnDlJpg) {
+      btnDlJpg.addEventListener('click', function () {
+        var canvas = getFinalExportCanvas();
+        if (!canvas) return;
+        canvasToBlob(canvas, 'image/jpeg', 0.95).then(function (blob) {
+          downloadFile(getExportBaseName() + '_perspective.jpg', blob, 'image/jpeg');
+          showToast('已下載校正後 JPG');
+        });
+      });
+    }
+
+    if (btnDlPng) {
+      btnDlPng.addEventListener('click', function () {
+        var canvas = getFinalExportCanvas();
+        if (!canvas) return;
+        canvasToBlob(canvas, 'image/png', 0.95).then(function (blob) {
+          downloadFile(getExportBaseName() + '_perspective.png', blob, 'image/png');
+          showToast('已下載校正後 PNG');
+        });
+      });
+    }
+
+    if (btnPrintPdf) {
+      btnPrintPdf.addEventListener('click', function () {
+        var canvas = getFinalExportCanvas();
+        if (!canvas || !printImg) return;
+        canvasToBlob(canvas, 'image/png', 0.95).then(function (blob) {
+          var url = URL.createObjectURL(blob);
+          printImg.src = url;
+          if (printArea) printArea.style.display = 'block';
+          window.print();
+          setTimeout(function () {
+            if (printArea) printArea.style.display = 'none';
+            URL.revokeObjectURL(url);
+          }, 1000);
+        });
+      });
+    }
+
+    if (btnCopySummary) {
+      btnCopySummary.addEventListener('click', function () {
+        var text = '【文件照片透視校正報告】\n' +
+                   '檔案名稱：' + state.fileName + '\n' +
+                   '旋轉角度：' + state.rotationDeg + '°\n' +
+                   '透視校正狀態：' + (state.isWarped ? '已完成校正' : '尚未校正') + '\n' +
+                   '影像濾鏡：亮度 ' + state.filters.brightness + ', 對比 ' + state.filters.contrast + ', 灰階 ' + (state.filters.grayscale ? '開啟' : '關閉') + '\n';
+        copyToClipboard(text).then(function () {
+          showToast('已複製處理摘要');
+        });
+      });
+    }
+
+    function buildCleanHtmlCopy() {
+      var doc = document.documentElement.cloneNode(true);
+
+      var toast = doc.querySelector('#__shared_toast');
+      if (toast) toast.remove();
+
+      var navBack = doc.querySelector('.nav-back');
+      if (navBack) navBack.remove();
+
+      var offlineBtn = doc.querySelector('#btn-download-offline');
+      if (offlineBtn) offlineBtn.remove();
+
+      var edSection = doc.querySelector('#editor-section');
+      if (edSection) edSection.style.display = 'none';
+
+      var dZone = doc.querySelector('#drop-zone');
+      if (dZone) dZone.style.display = 'block';
+
+      var c = doc.querySelector('#main-canvas');
+      if (c) { c.width = 0; c.height = 0; }
+
+      return '<!DOCTYPE html>\n' + doc.outerHTML;
+    }
+
+    window.buildCleanHtmlCopy = buildCleanHtmlCopy;
+
+    if (btnDownloadOffline) {
+      btnDownloadOffline.addEventListener('click', function () {
+        var cleanHtml = buildCleanHtmlCopy();
+        downloadFile('document-perspective-corrector-offline.html', cleanHtml, 'text/html;charset=utf-8');
+        showToast('已下載離線版工具');
+      });
+    }
+  })();
+  </script>
+</body>
+</html>

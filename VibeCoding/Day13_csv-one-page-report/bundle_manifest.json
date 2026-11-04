@@ -1,0 +1,68 @@
+{
+  "util-escape": {
+    "source": "shared/util-escape.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "75d81be0a09695ceb071f7c338ae6b2b8e23fc660f2dffa2bf209cc8a480c231"
+  },
+  "ui-toast": {
+    "source": "shared/ui-toast.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "ae3a7ec34ac21b9d78809bc91300ec372d0443f4f668b5d9543c5c931f4bb9a4"
+  },
+  "io-download": {
+    "source": "shared/io-download.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "3da6c61784b1dd4b9b096cfa5e676b55efe56af706729865c0dd33aaa4a50ae1"
+  },
+  "io-clipboard": {
+    "source": "shared/io-clipboard.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "afa2866517ff6f41c92e5b7d9b1bd7b5a4b07c389d766ef5980711ff5841465a"
+  },
+  "io-dropzone": {
+    "source": "shared/io-dropzone.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "85732c4d7a5eea7a4a6113594da171ea166eee15c4682821c9788e6fa324aced"
+  },
+  "papaparse": {
+    "source": "../../shared/vendor/papaparse-5.6.0.min.js",
+    "version": "5.6.0",
+    "license": "MIT",
+    "sha256": "7a3550ac537992d0b83445028386e6aca956392e1a352ee985371795b78772d4"
+  },
+  "csv-parse": {
+    "source": "shared/csv-parse.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "bd441bae55f1884d098cb9ef4b1a7558dd65d1871d45fbbc52d8f6b411f2e433"
+  },
+  "csv-decode": {
+    "source": "shared/csv-decode.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "c8bbe207f322287e95d7e708c2de6335d35d718d9590d22074a1b2113f4bb138"
+  },
+  "csv-write": {
+    "source": "shared/csv-write.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "befdcdbcae79d4b1f49cc62100eea5ec95a387d8435d0b1f4160689e91c366d2"
+  },
+  "csv-types": {
+    "source": "shared/csv-types.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "89121be3d9a5db78c3da5d6bd4a2a0dfa1312477448df97707bf94353c5d968b"
+  },
+  "ui-chart-svg": {
+    "source": "shared/ui-chart-svg.js",
+    "version": "internal",
+    "license": "project-internal",
+    "sha256": "f3b4b1fecd739cebed03d806f881164e28c629ce399181e80d492ac239084464"
+  }
+}

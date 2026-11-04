@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF 頁碼 / 浮水印 / 送審章 — Day22</title>
+  <style>
+/* shared/base.css — 共用樣式基底 */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 { line-height: 1.3; }
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 1rem;
+}
+
+button, .btn {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+button:hover, .btn:hover { background: var(--color-bg); }
+
+button.primary, .btn.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover, .btn.primary:hover { background: var(--color-primary-hover); }
+
+button:disabled, .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #eff6ff;
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover { text-decoration: underline; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show { opacity: 1; }
+
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+.workspace-layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 16px;
+  margin-top: 1rem;
+}
+@media (max-width: 800px) {
+  .workspace-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.setting-group {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 12px;
+}
+.setting-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #1e293b;
+}
+
+.form-row {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+.form-row label {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.preset-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.chip {
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  background: #f8fafc;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.chip:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.preview-panel {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 480px;
+}
+
+.preview-viewport {
+  flex: 1;
+  width: 100%;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 12px;
+}
+.preview-viewport canvas {
+  max-width: 100%;
+  max-height: 520px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  background: #ffffff;
+}
+
+.preview-nav {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+
+.range-inputs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+.range-inputs input {
+  width: 50px;
+  padding: 2px 4px;
+  font-size: 0.85rem;
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav-back">
+      <a href="../index.html">← 回首頁</a>
+    </nav>
+
+    <header>
+      <h1>PDF 頁碼 / 浮水印 / 送審章</h1>
+      <p class="subtitle" style="color: var(--color-text-muted);">
+        為 PDF 加註送審章（草稿、密件、僅供參考）、中英文浮水印與自訂頁碼。內嵌 Noto Sans TC 中文字型，純本機端執行無外洩風險。
+      </p>
+    </header>
+
+    <div class="dropzone" id="drop-zone">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">🏷️</div>
+      <div style="margin-bottom: 0.75rem;">拖放 PDF 檔案至此，或點擊選取檔案</div>
+      <input type="file" id="file-input" accept="application/pdf,.pdf" style="display: none;">
+      <button type="button" class="btn secondary" id="btn-select-file">選擇 PDF 檔案</button>
+    </div>
+
+    <div id="editor-section" style="display: none;">
+      <div class="card" style="margin-bottom: 0.75rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <h3 style="margin: 0 0 4px 0; font-size: 1.1rem;" id="doc-filename">document.pdf</h3>
+            <div style="font-size: 0.85rem; color: #64748b;">
+              總頁數：<strong id="doc-page-count" style="color: #2563eb;">0</strong> 頁｜檔案大小：<span id="doc-file-size">0 KB</span>
+            </div>
+          </div>
+
+          <div class="btn-group">
+            <button type="button" class="btn secondary btn-sm" id="btn-preview-stamp">👁️ 產生套用預覽</button>
+            <button type="button" class="btn primary btn-sm" id="btn-export-pdf">🚀 下載加工後 PDF</button>
+            <button type="button" class="btn secondary btn-sm" id="btn-copy-summary">📋 複製設定摘要</button>
+            <button type="button" class="btn secondary btn-sm" id="btn-reset">重新上傳</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="workspace-layout">
+        <!-- Settings Panel -->
+        <div class="settings-panel">
+          <!-- Page Numbers Setting -->
+          <div class="setting-group">
+            <div class="setting-title">
+              <input type="checkbox" id="chk-enable-pagenum" checked>
+              <label for="chk-enable-pagenum">頁碼設定</label>
+            </div>
+
+            <div id="pagenum-fields">
+              <div class="form-row">
+                <label>位置：</label>
+                <label><input type="radio" name="pagenum-pos" value="footer" checked> 頁尾</label>
+                <label><input type="radio" name="pagenum-pos" value="header"> 頁首</label>
+              </div>
+
+              <div class="form-row">
+                <label>格式：</label>
+                <label><input type="radio" name="pagenum-fmt" value="X/Y" checked> X / Y (如 1/10)</label>
+                <label><input type="radio" name="pagenum-fmt" value="X"> X (如 1)</label>
+              </div>
+
+              <div class="form-row">
+                <label>套用範圍：</label><br>
+                <label><input type="radio" name="pagenum-range-type" value="all" checked> 全部頁面</label><br>
+                <label><input type="radio" name="pagenum-range-type" value="custom"> 指定範圍：</label>
+                <span class="range-inputs">
+                  第 <input type="number" id="input-pagenum-start" min="1" value="1"> 頁 至
+                  第 <input type="number" id="input-pagenum-end" min="1" value="1"> 頁
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Watermark Setting -->
+          <div class="setting-group">
+            <div class="setting-title">
+              <input type="checkbox" id="chk-enable-watermark" checked>
+              <label for="chk-enable-watermark">浮水印 / 送審章設定</label>
+            </div>
+
+            <div id="watermark-fields">
+              <div class="preset-chips">
+                <span class="chip" data-text="草稿">草稿</span>
+                <span class="chip" data-text="密件">密件</span>
+                <span class="chip" data-text="僅供參考">僅供參考</span>
+                <span class="chip" data-text="未核定">未核定</span>
+              </div>
+
+              <div class="form-row">
+                <label for="input-wm-text">浮水印文字：</label>
+                <input type="text" id="input-wm-text" value="草稿" style="width: 100%; padding: 6px; border: 1px solid var(--color-border); border-radius: 4px;">
+              </div>
+
+              <div class="form-row">
+                <label>位置：</label>
+                <label><input type="radio" name="wm-pos" value="diagonal" checked> 對角線</label>
+                <label><input type="radio" name="wm-pos" value="center"> 置中</label>
+                <label><input type="radio" name="wm-pos" value="top-left"> 左上</label>
+              </div>
+
+              <div class="form-row">
+                <label>透明度：<span id="val-wm-opacity">50%</span></label><br>
+                <input type="range" id="input-wm-opacity" min="0.1" max="1.0" step="0.05" value="0.5" style="width: 100%;">
+              </div>
+
+              <div class="form-row">
+                <label>旋轉角度：<span id="val-wm-angle">45°</span></label><br>
+                <input type="range" id="input-wm-angle" min="0" max="90" step="5" value="45" style="width: 100%;">
+              </div>
+
+              <div class="form-row">
+                <label>套用範圍：</label><br>
+                <label><input type="radio" name="wm-range-type" value="all" checked> 全部頁面</label><br>
+                <label><input type="radio" name="wm-range-type" value="custom"> 指定範圍：</label>
+                <span class="range-inputs">
+                  第 <input type="number" id="input-wm-start" min="1" value="1"> 頁 至
+                  第 <input type="number" id="input-wm-end" min="1" value="1"> 頁
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="preview-panel">
+          <div class="preview-viewport" id="preview-viewport">
+            <canvas id="preview-canvas"></canvas>
+          </div>
+
+          <div class="preview-nav">
+            <button type="button" class="btn btn-sm secondary" id="btn-prev-page">◀ 上一頁</button>
+            <span>第 <strong id="val-current-page">1</strong> / <span id="val-total-preview-page">1</span> 頁</span>
+            <button type="button" class="btn btn-sm secondary" id="btn-next-page">下一頁 ▶</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-group" style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+      <button type="button" class="btn secondary" id="btn-download-offline">💾 下載本工具離線版</button>
+    </div>
+
+    <!--{{LICENSES}}-->
+  </div>
+
+  <!--{{ASSET:pdfjs}}-->
+  <!--{{ASSET:pdfjs_worker}}-->
+  <!--{{ASSET:cantoo_pdf_lib}}-->
+  <!--{{ASSET:fontkit}}-->
+  <!--{{ASSET:noto_sans_tc}}-->
+  <!--{{SHARED:util-escape}}-->
+  <!--{{SHARED:ui-toast}}-->
+  <!--{{SHARED:ui-debounce}}-->
+  <!--{{SHARED:io-download}}-->
+  <!--{{SHARED:io-clipboard}}-->
+  <!--{{SHARED:io-dropzone}}-->
+  <!--{{SHARED:img-canvas}}-->
+  <!--{{SHARED:pdf-file-size}}-->
+  <!--{{SHARED:pdf-decode}}-->
+  <!--{{SHARED:pdf-build}}-->
+
+  <script>
+  (function () {
+    var state = {
+      file: null,
+      fileName: '',
+      pdfBytes: null,
+      totalPages: 0,
+      currentPage: 1,
+      cjkFontBytes: null
+    };
+
+    var dropZone = document.getElementById('drop-zone');
+    var fileInput = document.getElementById('file-input');
+    var btnSelectFile = document.getElementById('btn-select-file');
+    var editorSection = document.getElementById('editor-section');
+    var docFilename = document.getElementById('doc-filename');
+    var docPageCount = document.getElementById('doc-page-count');
+    var docFileSize = document.getElementById('doc-file-size');
+
+    var chkEnablePagenum = document.getElementById('chk-enable-pagenum');
+    var inputPagenumStart = document.getElementById('input-pagenum-start');
+    var inputPagenumEnd = document.getElementById('input-pagenum-end');
+
+    var chkEnableWatermark = document.getElementById('chk-enable-watermark');
+    var inputWmText = document.getElementById('input-wm-text');
+    var inputWmOpacity = document.getElementById('input-wm-opacity');
+    var valWmOpacity = document.getElementById('val-wm-opacity');
+    var inputWmAngle = document.getElementById('input-wm-angle');
+    var valWmAngle = document.getElementById('val-wm-angle');
+    var inputWmStart = document.getElementById('input-wm-start');
+    var inputWmEnd = document.getElementById('input-wm-end');
+
+    var previewCanvas = document.getElementById('preview-canvas');
+    var btnPrevPage = document.getElementById('btn-prev-page');
+    var btnNextPage = document.getElementById('btn-next-page');
+    var valCurrentPage = document.getElementById('val-current-page');
+    var valTotalPreviewPage = document.getElementById('val-total-preview-page');
+
+    var btnPreviewStamp = document.getElementById('btn-preview-stamp');
+    var btnExportPdf = document.getElementById('btn-export-pdf');
+    var btnCopySummary = document.getElementById('btn-copy-summary');
+    var btnReset = document.getElementById('btn-reset');
+    var btnDownloadOffline = document.getElementById('btn-download-offline');
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes <= 0) return '0 B';
+      var k = 1024;
+      var sizes = ['B', 'KB', 'MB', 'GB'];
+      var i = Math.floor(Math.log(bytes) / Math.log(k));
+      return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+    }
+
+    function getBaseName(fileName) {
+      var dot = fileName.lastIndexOf('.');
+      return (dot !== -1) ? fileName.substring(0, dot) : fileName;
+    }
+
+    function getCjkFontBytes() {
+      if (state.cjkFontBytes) return state.cjkFontBytes;
+      if (typeof NOTO_SANS_TC_BASE64 !== 'undefined' && NOTO_SANS_TC_BASE64) {
+        var binStr = atob(NOTO_SANS_TC_BASE64);
+        var len = binStr.length;
+        var bytes = new Uint8Array(len);
+        for (var i = 0; i < len; i++) {
+          bytes[i] = binStr.charCodeAt(i);
+        }
+        state.cjkFontBytes = bytes;
+        return bytes;
+      }
+      return null;
+    }
+
+    function getStamperOptions() {
+      var pagenumPos = document.querySelector('input[name="pagenum-pos"]:checked').value;
+      var pagenumFmt = document.querySelector('input[name="pagenum-fmt"]:checked').value;
+      var pagenumRangeType = document.querySelector('input[name="pagenum-range-type"]:checked').value;
+      var pagenumRange = null;
+      if (pagenumRangeType === 'custom') {
+        pagenumRange = [parseInt(inputPagenumStart.value, 10) || 1, parseInt(inputPagenumEnd.value, 10) || state.totalPages];
+      }
+
+      var wmPos = document.querySelector('input[name="wm-pos"]:checked').value;
+      var wmRangeType = document.querySelector('input[name="wm-range-type"]:checked').value;
+      var wmRange = null;
+      if (wmRangeType === 'custom') {
+        wmRange = [parseInt(inputWmStart.value, 10) || 1, parseInt(inputWmEnd.value, 10) || state.totalPages];
+      }
+
+      return {
+        enablePageNum: chkEnablePagenum.checked,
+        pageNumOpts: {
+          position: pagenumPos,
+          format: pagenumFmt,
+          pageRange: pagenumRange
+        },
+        enableWatermark: chkEnableWatermark.checked,
+        wmOpts: {
+          text: (inputWmText.value || '草稿').trim(),
+          position: wmPos,
+          opacity: parseFloat(inputWmOpacity.value) || 0.5,
+          angle: parseInt(inputWmAngle.value, 10) || 45,
+          pageRange: wmRange
+        }
+      };
+    }
+
+    function buildStampedPdfDoc() {
+      if (!state.pdfBytes) return Promise.reject(new Error('未載入 PDF'));
+      var opts = getStamperOptions();
+
+      return PDFLib.PDFDocument.load(state.pdfBytes).then(function (doc) {
+        if (typeof fontkit !== 'undefined') {
+          doc.registerFontkit(fontkit);
+        }
+
+        var processQueue = Promise.resolve();
+
+        // 1. Page Numbers
+        if (opts.enablePageNum) {
+          processQueue = processQueue.then(function () {
+            return addPageNumbers(doc, opts.pageNumOpts);
+          });
+        }
+
+        // 2. Watermark
+        if (opts.enableWatermark && opts.wmOpts.text) {
+          processQueue = processQueue.then(function () {
+            var fontBytes = getCjkFontBytes();
+            var fontPromise = fontBytes ? embedCjkFont(doc, fontBytes) : Promise.resolve(null);
+
+            return fontPromise.then(function (font) {
+              return addWatermarkText(doc, opts.wmOpts.text, {
+                font: font,
+                opacity: opts.wmOpts.opacity,
+                angle: opts.wmOpts.angle,
+                position: opts.wmOpts.position,
+                pageRange: opts.wmOpts.pageRange
+              });
+            });
+          });
+        }
+
+        return processQueue.then(function () {
+          return doc;
+        });
+      });
+    }
+
+    function renderCurrentPreview() {
+      if (!state.pdfBytes) return;
+      showToast('正在產生預覽畫面...');
+
+      buildStampedPdfDoc().then(function (stampedDoc) {
+        return stampedDoc.save();
+      }).then(function (stampedBytes) {
+        return loadPdfFile(stampedBytes);
+      }).then(function (pdfDocProxy) {
+        return renderPageToCanvas(pdfDocProxy, state.currentPage, { scale: 1.2 });
+      }).then(function (res) {
+        if (previewCanvas) {
+          previewCanvas.width = res.width;
+          previewCanvas.height = res.height;
+          var ctx = previewCanvas.getContext('2d');
+          ctx.drawImage(res.canvas, 0, 0);
+        }
+        if (valCurrentPage) valCurrentPage.textContent = state.currentPage;
+        if (valTotalPreviewPage) valTotalPreviewPage.textContent = state.totalPages;
+        showToast('預覽更新完成（第 ' + state.currentPage + ' 頁）');
+      }).catch(function (err) {
+        showToast('預覽失敗：' + err.message);
+      });
+    }
+
+    function loadPdf(file) {
+      var gate = checkPdfFileSize(file.size);
+      if (!gate.ok) {
+        showToast(gate.message, 3500);
+        return;
+      } else if (gate.level === 'warn') {
+        showToast(gate.message, 2500);
+      }
+
+      showToast('正在載入 PDF 文件...');
+
+      file.arrayBuffer().then(function (ab) {
+        var bytes = new Uint8Array(ab);
+        return loadPdfFile(bytes).then(function (pdfDoc) {
+          state.file = file;
+          state.fileName = file.name || 'document.pdf';
+          state.pdfBytes = bytes;
+          state.totalPages = getPageCount(pdfDoc);
+          state.currentPage = 1;
+
+          if (docFilename) docFilename.textContent = state.fileName;
+          if (docPageCount) docPageCount.textContent = state.totalPages;
+          if (docFileSize) docFileSize.textContent = formatBytes(file.size);
+
+          inputPagenumStart.value = 1;
+          inputPagenumEnd.value = state.totalPages;
+          inputWmStart.value = 1;
+          inputWmEnd.value = state.totalPages;
+
+          if (dropZone) dropZone.style.display = 'none';
+          if (editorSection) editorSection.style.display = 'block';
+
+          renderCurrentPreview();
+        });
+      }).catch(function (err) {
+        showToast('載入失敗：' + (err.message || '無效檔案'));
+      });
+    }
+
+    if (btnSelectFile && fileInput) {
+      btnSelectFile.addEventListener('click', function () {
+        fileInput.click();
+      });
+      fileInput.addEventListener('change', function () {
+        if (fileInput.files && fileInput.files[0]) {
+          loadPdf(fileInput.files[0]);
+          fileInput.value = '';
+        }
+      });
+    }
+
+    if (dropZone) {
+      setupDropZone(dropZone, function () {}, {
+        accept: ['.pdf', 'application/pdf'],
+        gate: function (file) { return checkPdfFileSize(file.size); },
+        onError: function (msg) { showToast(msg); }
+      });
+      dropZone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          loadPdf(e.dataTransfer.files[0]);
+        }
+      });
+    }
+
+    // Preset chips
+    document.querySelectorAll('.preset-chips .chip').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        var txt = chip.dataset.text;
+        if (inputWmText) inputWmText.value = txt;
+        showToast('已選取預設文字：「' + txt + '」');
+      });
+    });
+
+    if (inputWmOpacity && valWmOpacity) {
+      inputWmOpacity.addEventListener('input', function () {
+        valWmOpacity.textContent = Math.round(Number(inputWmOpacity.value) * 100) + '%';
+      });
+    }
+
+    if (inputWmAngle && valWmAngle) {
+      inputWmAngle.addEventListener('input', function () {
+        valWmAngle.textContent = inputWmAngle.value + '°';
+      });
+    }
+
+    if (btnPrevPage) {
+      btnPrevPage.addEventListener('click', function () {
+        if (state.currentPage > 1) {
+          state.currentPage--;
+          renderCurrentPreview();
+        }
+      });
+    }
+
+    if (btnNextPage) {
+      btnNextPage.addEventListener('click', function () {
+        if (state.currentPage < state.totalPages) {
+          state.currentPage++;
+          renderCurrentPreview();
+        }
+      });
+    }
+
+    if (btnPreviewStamp) {
+      btnPreviewStamp.addEventListener('click', function () {
+        renderCurrentPreview();
+      });
+    }
+
+    if (btnExportPdf) {
+      btnExportPdf.addEventListener('click', function () {
+        if (!state.pdfBytes) return;
+        showToast('正在產生並匯出加工後的 PDF...');
+
+        buildStampedPdfDoc().then(function (doc) {
+          return doc.save();
+        }).then(function (savedBytes) {
+          var blob = new Blob([savedBytes], { type: 'application/pdf' });
+          var fileName = getBaseName(state.fileName) + '_stamped.pdf';
+          downloadFile(fileName, blob, 'application/pdf');
+          showToast('已下載完成：' + fileName);
+        }).catch(function (err) {
+          showToast('匯出失敗：' + err.message);
+        });
+      });
+    }
+
+    if (btnCopySummary) {
+      btnCopySummary.addEventListener('click', function () {
+        var opts = getStamperOptions();
+        var text = '【PDF 頁碼 / 浮水印 / 送審章設定摘要】\n' +
+                   '檔案名稱：' + state.fileName + '\n' +
+                   '總頁數：' + state.totalPages + ' 頁\n' +
+                   '頁碼啟用：' + (opts.enablePageNum ? '是 (' + opts.pageNumOpts.position + ', ' + opts.pageNumOpts.format + ')' : '否') + '\n' +
+                   '浮水印啟用：' + (opts.enableWatermark ? '是 (文字: "' + opts.wmOpts.text + '", 透明度: ' + Math.round(opts.wmOpts.opacity * 100) + '%, 角度: ' + opts.wmOpts.angle + '°)' : '否') + '\n';
+        copyToClipboard(text).then(function () {
+          showToast('已複製設定摘要至剪貼簿');
+        });
+      });
+    }
+
+    if (btnReset) {
+      btnReset.addEventListener('click', function () {
+        state.file = null;
+        state.fileName = '';
+        state.pdfBytes = null;
+        state.totalPages = 0;
+        state.currentPage = 1;
+
+        if (editorSection) editorSection.style.display = 'none';
+        if (dropZone) dropZone.style.display = 'block';
+        if (previewCanvas) {
+          var ctx = previewCanvas.getContext('2d');
+          ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        }
+        showToast('已重置');
+      });
+    }
+
+    function buildCleanHtmlCopy() {
+      var doc = document.documentElement.cloneNode(true);
+
+      var toast = doc.querySelector('#__shared_toast');
+      if (toast) toast.remove();
+
+      var navBack = doc.querySelector('.nav-back');
+      if (navBack) navBack.remove();
+
+      var offlineBtn = doc.querySelector('#btn-download-offline');
+      if (offlineBtn) offlineBtn.remove();
+
+      var edSection = doc.querySelector('#editor-section');
+      if (edSection) edSection.style.display = 'none';
+
+      var dZone = doc.querySelector('#drop-zone');
+      if (dZone) dZone.style.display = 'block';
+
+      var pCount = doc.querySelector('#doc-page-count');
+      if (pCount) pCount.textContent = '0';
+
+      var fName = doc.querySelector('#doc-filename');
+      if (fName) fName.textContent = 'document.pdf';
+
+      var pCanvas = doc.querySelector('#preview-canvas');
+      if (pCanvas) {
+        pCanvas.width = 0;
+        pCanvas.height = 0;
+      }
+
+      return '<!DOCTYPE html>\n' + doc.outerHTML;
+    }
+
+    window.buildCleanHtmlCopy = buildCleanHtmlCopy;
+
+    if (btnDownloadOffline) {
+      btnDownloadOffline.addEventListener('click', function () {
+        var cleanHtml = buildCleanHtmlCopy();
+        downloadFile('pdf-review-stamper-offline.html', cleanHtml, 'text/html;charset=utf-8');
+        showToast('已下載離線版工具');
+      });
+    }
+  })();
+  </script>
+</body>
+</html>

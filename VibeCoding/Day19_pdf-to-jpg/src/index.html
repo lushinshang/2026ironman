@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF 轉高畫質 JPG 工具 — Day19</title>
+  <style>
+/* shared/base.css — 共用樣式基底 */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 { line-height: 1.3; }
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 1rem;
+}
+
+button, .btn {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+button:hover, .btn:hover { background: var(--color-bg); }
+
+button.primary, .btn.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover, .btn.primary:hover { background: var(--color-primary-hover); }
+
+button:disabled, .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #eff6ff;
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover { text-decoration: underline; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show { opacity: 1; }
+
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+.progress-container {
+  width: 100%;
+  background: #e2e8f0;
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+  margin: 0.75rem 0;
+  display: none;
+}
+.progress-bar {
+  height: 100%;
+  background: var(--color-primary);
+  width: 0%;
+  transition: width 0.2s ease;
+}
+
+.pages-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 1rem;
+}
+.page-card {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.page-thumb-wrap {
+  width: 100%;
+  height: 220px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.page-thumb-wrap canvas, .page-thumb-wrap img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.page-meta {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+.page-status {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav-back">
+      <a href="../index.html">← 回首頁</a>
+    </nav>
+
+    <header>
+      <h1>PDF 轉高畫質 JPG 工具</h1>
+      <p class="subtitle" style="color: var(--color-text-muted);">
+        將多頁 PDF 逐頁渲染為清晰高畫質 JPG 圖片（2x 渲染倍率），支援單頁獨立下載或一鍵打包 ZIP。純本機端處理，隱私無虞。
+      </p>
+    </header>
+
+    <div class="dropzone" id="drop-zone">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">📑</div>
+      <div style="margin-bottom: 0.75rem;">拖放 PDF 檔案至此，或點擊選取檔案</div>
+      <input type="file" id="file-input" accept="application/pdf,.pdf" style="display: none;">
+      <button type="button" class="btn secondary" id="btn-select-file">選擇 PDF 檔案</button>
+    </div>
+
+    <div id="editor-section" style="display: none;">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <h3 style="margin: 0 0 4px 0; font-size: 1.1rem;" id="doc-filename">document.pdf</h3>
+            <div style="font-size: 0.85rem; color: #64748b;">
+              總頁數：<strong id="doc-page-count" style="color: #2563eb;">0</strong> 頁｜檔案大小：<span id="doc-file-size">0 KB</span>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <label style="font-size: 0.9rem; font-weight: 600;">
+              JPG 品質：<span id="val-quality">0.85</span>
+              <input type="range" id="input-quality" min="0.1" max="1.0" step="0.05" value="0.85" style="vertical-align: middle; margin-left: 6px;">
+            </label>
+          </div>
+        </div>
+
+        <div class="progress-container" id="progress-container">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div style="font-size: 0.85rem; color: #475569; margin-top: 4px; display: none;" id="progress-text">準備轉換...</div>
+
+        <div class="btn-group" style="margin-top: 1rem; border-top: 1px solid #f1f5f9; padding-top: 0.75rem;">
+          <button type="button" class="btn primary" id="btn-start-convert">⚡ 開始轉換全部頁面</button>
+          <button type="button" class="btn secondary" id="btn-download-zip" disabled>📦 打包下載 ZIP</button>
+          <button type="button" class="btn secondary btn-sm" id="btn-copy-summary">📋 複製摘要</button>
+          <button type="button" class="btn secondary btn-sm" id="btn-reset">重新上傳</button>
+        </div>
+      </div>
+
+      <div class="pages-grid" id="pages-grid"></div>
+    </div>
+
+    <div class="btn-group" style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+      <button type="button" class="btn secondary" id="btn-download-offline">💾 下載本工具離線版</button>
+    </div>
+
+    <!--{{LICENSES}}-->
+  </div>
+
+  <!--{{ASSET:pdfjs}}-->
+  <!--{{ASSET:pdfjs_worker}}-->
+  <!--{{ASSET:fflate}}-->
+  <!--{{SHARED:util-escape}}-->
+  <!--{{SHARED:ui-toast}}-->
+  <!--{{SHARED:ui-debounce}}-->
+  <!--{{SHARED:io-download}}-->
+  <!--{{SHARED:io-clipboard}}-->
+  <!--{{SHARED:io-dropzone}}-->
+  <!--{{SHARED:io-zip}}-->
+  <!--{{SHARED:img-canvas}}-->
+  <!--{{SHARED:pdf-file-size}}-->
+  <!--{{SHARED:pdf-decode}}-->
+
+  <script>
+  (function () {
+    var state = {
+      file: null,
+      fileName: '',
+      pdfDoc: null,
+      totalPages: 0,
+      quality: 0.85,
+      isConverting: false,
+      pages: [] // Array<{ pageNum: number, thumbCanvas: HTMLCanvasElement, blob: Blob|null, dataUrl: string|null, status: 'pending'|'converting'|'done' }>
+    };
+
+    var dropZone = document.getElementById('drop-zone');
+    var fileInput = document.getElementById('file-input');
+    var btnSelectFile = document.getElementById('btn-select-file');
+    var editorSection = document.getElementById('editor-section');
+    var docFilename = document.getElementById('doc-filename');
+    var docPageCount = document.getElementById('doc-page-count');
+    var docFileSize = document.getElementById('doc-file-size');
+    var inputQuality = document.getElementById('input-quality');
+    var valQuality = document.getElementById('val-quality');
+    var btnStartConvert = document.getElementById('btn-start-convert');
+    var btnDownloadZip = document.getElementById('btn-download-zip');
+    var btnCopySummary = document.getElementById('btn-copy-summary');
+    var btnReset = document.getElementById('btn-reset');
+    var btnDownloadOffline = document.getElementById('btn-download-offline');
+    var progressContainer = document.getElementById('progress-container');
+    var progressBar = document.getElementById('progress-bar');
+    var progressText = document.getElementById('progress-text');
+    var pagesGrid = document.getElementById('pages-grid');
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes <= 0) return '0 B';
+      var k = 1024;
+      var sizes = ['B', 'KB', 'MB', 'GB'];
+      var i = Math.floor(Math.log(bytes) / Math.log(k));
+      return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+    }
+
+    function getBaseName(fileName) {
+      var dot = fileName.lastIndexOf('.');
+      return (dot !== -1) ? fileName.substring(0, dot) : fileName;
+    }
+
+    function padZero(num, total) {
+      var len = String(total).length;
+      if (len < 2) len = 2;
+      var s = String(num);
+      while (s.length < len) s = '0' + s;
+      return s;
+    }
+
+    function getPageJpgFileName(pageNum) {
+      var base = getBaseName(state.fileName || 'document');
+      return base + '_p' + padZero(pageNum, state.totalPages) + '.jpg';
+    }
+
+    function renderPagesGrid() {
+      if (!pagesGrid) return;
+      pagesGrid.innerHTML = '';
+
+      state.pages.forEach(function (p) {
+        var card = document.createElement('div');
+        card.className = 'page-card';
+        card.id = 'page-card-' + p.pageNum;
+
+        var meta = document.createElement('div');
+        meta.className = 'page-meta';
+        meta.innerHTML = '<strong>第 ' + p.pageNum + ' 頁</strong><span class="page-status" id="status-p-' + p.pageNum + '">' +
+                         (p.status === 'done' ? '✅ 已轉換' : (p.status === 'converting' ? '⏳ 轉換中...' : '待轉換')) + '</span>';
+
+        var thumbWrap = document.createElement('div');
+        thumbWrap.className = 'page-thumb-wrap';
+        thumbWrap.id = 'thumb-wrap-' + p.pageNum;
+        if (p.dataUrl) {
+          var img = document.createElement('img');
+          img.src = p.dataUrl;
+          img.alt = '第 ' + p.pageNum + ' 頁 JPG';
+          thumbWrap.appendChild(img);
+        } else if (p.thumbCanvas) {
+          thumbWrap.appendChild(p.thumbCanvas);
+        }
+
+        var btnDl = document.createElement('button');
+        btnDl.type = 'button';
+        btnDl.className = 'btn btn-sm secondary';
+        btnDl.id = 'btn-dl-p-' + p.pageNum;
+        btnDl.textContent = '⬇️ 下載此頁 JPG';
+        btnDl.disabled = (p.status !== 'done');
+        btnDl.addEventListener('click', function () {
+          if (p.blob) {
+            downloadFile(getPageJpgFileName(p.pageNum), p.blob, 'image/jpeg');
+            showToast('已下載第 ' + p.pageNum + ' 頁 JPG');
+          }
+        });
+
+        card.appendChild(meta);
+        card.appendChild(thumbWrap);
+        card.appendChild(btnDl);
+        pagesGrid.appendChild(card);
+      });
+    }
+
+    function loadPdf(file) {
+      var gate = checkPdfFileSize(file.size);
+      if (!gate.ok) {
+        showToast(gate.message, 3500);
+        return;
+      } else if (gate.level === 'warn') {
+        showToast(gate.message, 2500);
+      }
+
+      loadPdfFile(file).then(function (pdfDoc) {
+        state.file = file;
+        state.fileName = file.name || 'document.pdf';
+        state.pdfDoc = pdfDoc;
+        state.totalPages = getPageCount(pdfDoc);
+        state.pages = [];
+        state.isConverting = false;
+
+        if (docFilename) docFilename.textContent = state.fileName;
+        if (docPageCount) docPageCount.textContent = state.totalPages;
+        if (docFileSize) docFileSize.textContent = formatBytes(file.size);
+
+        if (btnDownloadZip) btnDownloadZip.disabled = true;
+        if (btnStartConvert) btnStartConvert.disabled = false;
+        if (progressContainer) progressContainer.style.display = 'none';
+        if (progressText) progressText.style.display = 'none';
+
+        if (dropZone) dropZone.style.display = 'none';
+        if (editorSection) editorSection.style.display = 'block';
+
+        // Initialize pages array
+        for (var i = 1; i <= state.totalPages; i++) {
+          state.pages.push({
+            pageNum: i,
+            thumbCanvas: null,
+            blob: null,
+            dataUrl: null,
+            status: 'pending'
+          });
+        }
+        renderPagesGrid();
+        showToast('PDF 載入成功，共 ' + state.totalPages + ' 頁！開始產生預覽縮圖...');
+
+        // Render thumbnails sequentially with scale: 0.3
+        var thumbQueue = Promise.resolve();
+        state.pages.forEach(function (p) {
+          thumbQueue = thumbQueue.then(function () {
+            return renderPageToCanvas(pdfDoc, p.pageNum, { scale: 0.3 }).then(function (res) {
+              p.thumbCanvas = res.canvas;
+              var wrap = document.getElementById('thumb-wrap-' + p.pageNum);
+              if (wrap && !p.dataUrl) {
+                wrap.innerHTML = '';
+                wrap.appendChild(res.canvas);
+              }
+            });
+          });
+        });
+      }).catch(function (err) {
+        showToast('PDF 載入失敗：' + (err.message || '無效檔案'));
+      });
+    }
+
+    if (btnSelectFile && fileInput) {
+      btnSelectFile.addEventListener('click', function () {
+        fileInput.click();
+      });
+      fileInput.addEventListener('change', function () {
+        if (fileInput.files && fileInput.files[0]) {
+          loadPdf(fileInput.files[0]);
+          fileInput.value = '';
+        }
+      });
+    }
+
+    if (dropZone) {
+      setupDropZone(dropZone, function () {}, {
+        accept: ['.pdf', 'application/pdf'],
+        gate: function (file) { return checkPdfFileSize(file.size); },
+        onError: function (msg) { showToast(msg); }
+      });
+      dropZone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          loadPdf(e.dataTransfer.files[0]);
+        }
+      });
+    }
+
+    if (inputQuality && valQuality) {
+      inputQuality.addEventListener('input', function () {
+        state.quality = Number(inputQuality.value);
+        valQuality.textContent = inputQuality.value;
+      });
+    }
+
+    function convertPage(idx) {
+      if (idx >= state.pages.length) {
+        state.isConverting = false;
+        if (btnStartConvert) btnStartConvert.disabled = false;
+        if (btnDownloadZip) btnDownloadZip.disabled = false;
+        if (progressText) progressText.textContent = '轉換完成！所有頁面已產出高畫質 JPG。';
+        showToast('全數 ' + state.totalPages + ' 頁轉換完成！');
+        return;
+      }
+
+      var p = state.pages[idx];
+      p.status = 'converting';
+      var stEl = document.getElementById('status-p-' + p.pageNum);
+      if (stEl) stEl.textContent = '⏳ 轉換中...';
+
+      var pct = Math.round(((idx) / state.pages.length) * 100);
+      if (progressBar) progressBar.style.width = pct + '%';
+      if (progressText) progressText.textContent = '正在轉換第 ' + p.pageNum + ' / ' + state.pages.length + ' 頁...';
+
+      renderPageToCanvas(state.pdfDoc, p.pageNum, { scale: 2.0 }).then(function (res) {
+        return canvasToBlob(res.canvas, 'image/jpeg', state.quality).then(function (blob) {
+          p.blob = blob;
+          p.dataUrl = URL.createObjectURL(blob);
+          p.status = 'done';
+
+          if (stEl) stEl.textContent = '✅ 已轉換 (' + formatBytes(blob.size) + ')';
+          var wrap = document.getElementById('thumb-wrap-' + p.pageNum);
+          if (wrap) {
+            wrap.innerHTML = '';
+            var img = document.createElement('img');
+            img.src = p.dataUrl;
+            img.alt = '第 ' + p.pageNum + ' 頁 JPG';
+            wrap.appendChild(img);
+          }
+          var btn = document.getElementById('btn-dl-p-' + p.pageNum);
+          if (btn) btn.disabled = false;
+
+          var nextPct = Math.round(((idx + 1) / state.pages.length) * 100);
+          if (progressBar) progressBar.style.width = nextPct + '%';
+
+          setTimeout(function () {
+            convertPage(idx + 1);
+          }, 10);
+        });
+      }).catch(function (err) {
+        p.status = 'pending';
+        if (stEl) stEl.textContent = '❌ 失敗';
+        showToast('第 ' + p.pageNum + ' 頁轉換失敗：' + err.message);
+        setTimeout(function () {
+          convertPage(idx + 1);
+        }, 10);
+      });
+    }
+
+    if (btnStartConvert) {
+      btnStartConvert.addEventListener('click', function () {
+        if (!state.pdfDoc || state.isConverting) return;
+        state.isConverting = true;
+        btnStartConvert.disabled = true;
+        if (btnDownloadZip) btnDownloadZip.disabled = true;
+
+        if (progressContainer) progressContainer.style.display = 'block';
+        if (progressText) {
+          progressText.style.display = 'block';
+          progressText.textContent = '開始高解析度轉換...';
+        }
+        if (progressBar) progressBar.style.width = '0%';
+
+        convertPage(0);
+      });
+    }
+
+    if (btnDownloadZip) {
+      btnDownloadZip.addEventListener('click', function () {
+        var completedPages = state.pages.filter(function (p) { return p.blob !== null; });
+        if (completedPages.length === 0) {
+          showToast('尚未有轉換完成的頁面');
+          return;
+        }
+
+        showToast('正在打包 ZIP...');
+        var blobPromises = completedPages.map(function (p) {
+          return p.blob.arrayBuffer().then(function (ab) {
+            return {
+              name: getPageJpgFileName(p.pageNum),
+              bytes: new Uint8Array(ab)
+            };
+          });
+        });
+
+        Promise.all(blobPromises).then(function (files) {
+          var zipBlob = createZipBlob(files);
+          var zipName = getBaseName(state.fileName) + '_jpg_all.zip';
+          downloadFile(zipName, zipBlob, 'application/zip');
+          showToast('已下載 ZIP 壓縮包！');
+        }).catch(function (err) {
+          showToast('打包 ZIP 失敗：' + err.message);
+        });
+      });
+    }
+
+    if (btnCopySummary) {
+      btnCopySummary.addEventListener('click', function () {
+        var completedCount = state.pages.filter(function (p) { return p.status === 'done'; }).length;
+        var text = '【PDF 轉 JPG 轉換摘要】\n' +
+                   '檔案名稱：' + state.fileName + '\n' +
+                   '總頁數：' + state.totalPages + ' 頁\n' +
+                   '已轉換頁數：' + completedCount + ' / ' + state.totalPages + ' 頁\n' +
+                   'JPG 品質：' + state.quality + '\n';
+        copyToClipboard(text).then(function () {
+          showToast('已複製摘要');
+        });
+      });
+    }
+
+    if (btnReset) {
+      btnReset.addEventListener('click', function () {
+        state.file = null;
+        state.fileName = '';
+        state.pdfDoc = null;
+        state.totalPages = 0;
+        state.pages = [];
+        state.isConverting = false;
+
+        if (editorSection) editorSection.style.display = 'none';
+        if (dropZone) dropZone.style.display = 'block';
+        if (pagesGrid) pagesGrid.innerHTML = '';
+        showToast('已重置');
+      });
+    }
+
+    function buildCleanHtmlCopy() {
+      var doc = document.documentElement.cloneNode(true);
+
+      var toast = doc.querySelector('#__shared_toast');
+      if (toast) toast.remove();
+
+      var navBack = doc.querySelector('.nav-back');
+      if (navBack) navBack.remove();
+
+      var offlineBtn = doc.querySelector('#btn-download-offline');
+      if (offlineBtn) offlineBtn.remove();
+
+      var edSection = doc.querySelector('#editor-section');
+      if (edSection) edSection.style.display = 'none';
+
+      var dZone = doc.querySelector('#drop-zone');
+      if (dZone) dZone.style.display = 'block';
+
+      var pGrid = doc.querySelector('#pages-grid');
+      if (pGrid) pGrid.innerHTML = '';
+
+      var pCount = doc.querySelector('#doc-page-count');
+      if (pCount) pCount.textContent = '0';
+
+      var fName = doc.querySelector('#doc-filename');
+      if (fName) fName.textContent = 'document.pdf';
+
+      var pBar = doc.querySelector('#progress-bar');
+      if (pBar) pBar.style.width = '0%';
+
+      var pContainer = doc.querySelector('#progress-container');
+      if (pContainer) pContainer.style.display = 'none';
+
+      return '<!DOCTYPE html>\n' + doc.outerHTML;
+    }
+
+    window.buildCleanHtmlCopy = buildCleanHtmlCopy;
+
+    if (btnDownloadOffline) {
+      btnDownloadOffline.addEventListener('click', function () {
+        var cleanHtml = buildCleanHtmlCopy();
+        downloadFile('pdf-to-jpg-offline.html', cleanHtml, 'text/html;charset=utf-8');
+        showToast('已下載離線版工具');
+      });
+    }
+  })();
+  </script>
+</body>
+</html>

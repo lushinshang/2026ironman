@@ -1,0 +1,2137 @@
+<!-- BUNDLED: util-escape@internal (project-internal) sha256:75d81be0a09695ce built 2026-08-27 -->
+<!-- BUNDLED: ui-toast@internal (project-internal) sha256:ae3a7ec34ac21b9d built 2026-08-27 -->
+<!-- BUNDLED: ui-debounce@internal (project-internal) sha256:7cfcafe8e57332df built 2026-08-27 -->
+<!-- BUNDLED: io-download@internal (project-internal) sha256:3da6c61784b1dd4b built 2026-08-27 -->
+<!-- BUNDLED: io-clipboard@internal (project-internal) sha256:afa2866517ff6f41 built 2026-08-27 -->
+<!-- BUNDLED: io-dropzone@internal (project-internal) sha256:85732c4d7a5eea7a built 2026-08-27 -->
+<!-- BUNDLED: img-file-size@internal (project-internal) sha256:929e0eb0798c901d built 2026-08-27 -->
+<!-- BUNDLED: img-exif@internal (project-internal) sha256:4dcee95ade7378ed built 2026-08-27 -->
+<!-- BUNDLED: img-decode@internal (project-internal) sha256:3f133fa8a5b4a6ab built 2026-08-27 -->
+<!-- BUNDLED: img-canvas@internal (project-internal) sha256:d46d1922fd0cc0fc built 2026-08-27 -->
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screenshot Privacy Sanitizer — Day16</title>
+  <style>
+/* shared/base.css — 共用樣式基底 */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 { line-height: 1.3; }
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+button, .btn {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+button:hover, .btn:hover { background: var(--color-bg); }
+
+button.primary, .btn.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover, .btn.primary:hover { background: var(--color-primary-hover); }
+
+button:disabled, .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #eff6ff;
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover { text-decoration: underline; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show { opacity: 1; }
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  background: #f8fafc;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 1rem;
+}
+.tool-btn {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.tool-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+.canvas-wrapper {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: #e2e8f0;
+  user-select: none;
+}
+#work-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  cursor: crosshair;
+}
+.selection-box {
+  position: absolute;
+  border: 2px dashed #2563eb;
+  background: rgba(37, 99, 235, 0.15);
+  pointer-events: none;
+  display: none;
+}
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav-back">
+      <a href="../index.html">← 回首頁</a>
+    </nav>
+
+    <header>
+      <h1>截圖敏感資訊遮蔽 (Screenshot Sanitizer)</h1>
+      <p class="subtitle" style="color: var(--color-text-muted);">
+        框選敏感個資、帳號、密碼或 QR Code，直接抹寫底層像素（黑箱／馬賽克／模糊），並清除所有 EXIF Metadata。
+      </p>
+    </header>
+
+    <div class="dropzone" id="drop-zone">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">✂️</div>
+      <div style="margin-bottom: 0.75rem;">拖放 JPG / PNG / WebP 截圖至此，或點擊選取檔案</div>
+      <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" style="display: none;">
+      <div style="display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+        <button type="button" class="btn secondary" id="btn-select-file">選擇圖片檔案</button>
+        <button type="button" class="btn primary" id="btn-paste">📋 從剪貼簿貼上</button>
+      </div>
+    </div>
+
+    <div id="editor-section" style="display: none; margin-top: 1.5rem;">
+      <div class="toolbar">
+        <div style="display: flex; gap: 0.25rem;">
+          <button type="button" class="tool-btn active" data-tool="box" id="tool-box">⬛ 黑箱遮蔽</button>
+          <button type="button" class="tool-btn" data-tool="pixelate" id="tool-pixelate">🧱 馬賽克 (Pixelate)</button>
+          <button type="button" class="tool-btn" data-tool="blur" id="tool-blur">🌫️ 高斯模糊 (Blur)</button>
+        </div>
+
+        <div style="height: 24px; width: 1px; background: #cbd5e1; margin: 0 0.5rem;"></div>
+
+        <div style="display: flex; gap: 0.25rem;">
+          <button type="button" class="btn btn-sm secondary" id="btn-undo" disabled>↩ 復原 (Undo)</button>
+          <button type="button" class="btn btn-sm secondary" id="btn-redo" disabled>↪ 重做 (Redo)</button>
+        </div>
+
+        <div style="height: 24px; width: 1px; background: #cbd5e1; margin: 0 0.5rem;"></div>
+
+        <button type="button" class="btn btn-sm secondary" id="btn-toggle-view">👁️ 檢視原圖 (Before)</button>
+
+        <div style="flex: 1;"></div>
+
+        <button type="button" class="btn btn-sm primary" id="btn-export">💾 匯出安全截圖</button>
+        <button type="button" class="btn btn-sm secondary" id="btn-copy-status">📋 複製摘要</button>
+        <button type="button" class="btn btn-sm secondary" id="btn-reset">重置</button>
+      </div>
+
+      <div style="margin-bottom: 0.5rem; font-size: 0.85rem; color: #64748b;" id="editor-status-text">
+        請在下方圖片上按住滑鼠左鍵並拖曳框選要遮蔽的區域。
+      </div>
+
+      <div class="canvas-wrapper" id="canvas-wrapper">
+        <canvas id="work-canvas"></canvas>
+        <div class="selection-box" id="selection-box"></div>
+      </div>
+    </div>
+
+    <div class="btn-group" style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+      <button type="button" class="btn secondary" id="btn-download-offline">💾 下載本工具離線版</button>
+    </div>
+
+    
+  </div>
+
+  <script>
+// shared/util-escape.js
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+</script>
+  <script>
+// shared/ui-toast.js
+function showToast(msg, ms) {
+  if (ms === undefined) ms = 2000;
+  var el = document.getElementById('__shared_toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '__shared_toast';
+    el.className = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  if (el.__hideTimer) {
+    clearTimeout(el.__hideTimer);
+  }
+  el.__hideTimer = setTimeout(function () {
+    el.classList.remove('show');
+  }, ms);
+}
+
+</script>
+  <script>
+// shared/ui-debounce.js
+function debounce(fn, ms) {
+  if (ms === undefined) ms = 150;
+  var timer = null;
+  return function () {
+    var args = arguments;
+    var ctx = this;
+    if (timer) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(function () {
+      fn.apply(ctx, args);
+    }, ms);
+  };
+}
+
+</script>
+  <script>
+// shared/io-download.js
+function downloadFile(filename, content, mime) {
+  if (mime === undefined) mime = 'text/plain;charset=utf-8';
+  var blob = new Blob([content], { type: mime });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () {
+    URL.revokeObjectURL(url);
+  }, 0);
+}
+
+</script>
+  <script>
+// shared/io-clipboard.js
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).then(function () {
+      return true;
+    }).catch(function () {
+      return false;
+    });
+  }
+  return new Promise(function (resolve) {
+    var textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    var ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch (e) {
+      ok = false;
+    }
+    document.body.removeChild(textarea);
+    resolve(ok);
+  });
+}
+
+function pasteImageFromClipboard() {
+  if (!navigator.clipboard || !navigator.clipboard.read) {
+    return Promise.resolve(null);
+  }
+  return navigator.clipboard.read().then(function (items) {
+    if (!items || items.length === 0) return null;
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (item && item.types) {
+        for (var t = 0; t < item.types.length; t++) {
+          if (item.types[t].indexOf('image/') === 0) {
+            return item.getType(item.types[t]);
+          }
+        }
+      }
+    }
+    return null;
+  }).catch(function () {
+    return null;
+  });
+}
+
+
+</script>
+  <script>
+// shared/io-dropzone.js
+function ioDropzoneHandleFile(file, onData, opts) {
+  opts = opts || {};
+  // 預設只收 .txt / .md（契約第 3 節）。不要改成 [] ——那會變成靜默全收。
+  var accept = opts.accept || ['.txt', '.md'];
+  var onError = opts.onError || function () {};
+
+  function isAccepted(fileName) {
+    if (accept.length === 0) return true;
+    var lower = fileName.toLowerCase();
+    for (var i = 0; i < accept.length; i++) {
+      if (lower.indexOf(accept[i].toLowerCase(), lower.length - accept[i].length) !== -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  if (!isAccepted(file.name)) {
+    onError('不支援的檔案類型：' + file.name);
+    return;
+  }
+
+  if (opts.gate) {
+    var gateResult = opts.gate(file);
+    if (!gateResult.ok) {
+      onError(gateResult.message);
+      return;
+    }
+  }
+
+  var reader = new FileReader();
+  reader.onload = function () {
+    onData(reader.result, file.name);
+  };
+  reader.onerror = function () {
+    onError('讀取檔案失敗：' + file.name);
+  };
+  if (opts.mode === 'bytes') {
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.readAsText(file);
+  }
+}
+
+function setupDropZone(dropEl, onData, opts) {
+  opts = opts || {};
+
+  dropEl.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    dropEl.classList.add('dragover');
+  });
+
+  dropEl.addEventListener('dragleave', function () {
+    dropEl.classList.remove('dragover');
+  });
+
+  dropEl.addEventListener('drop', function (e) {
+    e.preventDefault();
+    dropEl.classList.remove('dragover');
+    var files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    if (opts.multiple === true) {
+      if (opts.gateBatch) {
+        var batchResult = opts.gateBatch(files);
+        if (!batchResult.ok) {
+          (opts.onError || function () {})(batchResult.message);
+          return;
+        }
+      }
+      var total = files.length;
+      for (var i = 0; i < total; i++) {
+        (function (idx) {
+          var meta = { index: idx, total: total };
+          var wrappedOnData = function (result, fileName) {
+            onData(result, fileName, meta);
+          };
+          ioDropzoneHandleFile(files[idx], wrappedOnData, opts);
+        })(i);
+      }
+    } else {
+      ioDropzoneHandleFile(files[0], onData, opts);
+    }
+  });
+}
+
+function setupFilePicker(inputEl, onData, opts) {
+  opts = opts || {};
+
+  inputEl.addEventListener('change', function () {
+    var files = inputEl.files;
+    if (!files || files.length === 0) return;
+
+    if (opts.multiple === true) {
+      if (opts.gateBatch) {
+        var batchResult = opts.gateBatch(files);
+        if (!batchResult.ok) {
+          (opts.onError || function () {})(batchResult.message);
+          return;
+        }
+      }
+      var total = files.length;
+      for (var i = 0; i < total; i++) {
+        (function (idx) {
+          var meta = { index: idx, total: total };
+          var wrappedOnData = function (result, fileName) {
+            onData(result, fileName, meta);
+          };
+          ioDropzoneHandleFile(files[idx], wrappedOnData, opts);
+        })(i);
+      }
+    } else {
+      ioDropzoneHandleFile(files[0], onData, opts);
+    }
+  });
+}
+
+
+</script>
+  <script>
+// shared/img-file-size.js
+
+function checkImageFileSize(byteLength) {
+  var bytes = Number(byteLength) || 0;
+  var MB = 1024 * 1024;
+
+  if (bytes <= 30 * MB) {
+    return {
+      ok: true,
+      level: 'ok',
+      message: '檔案大小正常'
+    };
+  } else if (bytes <= 80 * MB) {
+    return {
+      ok: true,
+      level: 'warn',
+      message: '檔案較大（' + (bytes / MB).toFixed(1) + 'MB），處理可能需要數秒'
+    };
+  } else {
+    return {
+      ok: false,
+      level: 'reject',
+      message: '檔案超過 80MB 上限（' + (bytes / MB).toFixed(1) + 'MB），已拒絕載入'
+    };
+  }
+}
+
+function checkBatchSize(totalByteLength, fileCount) {
+  var bytes = Number(totalByteLength) || 0;
+  var count = Number(fileCount) || 0;
+  var MB = 1024 * 1024;
+
+  if (bytes <= 200 * MB) {
+    return {
+      ok: true,
+      level: 'ok',
+      message: '批次大小正常（共 ' + count + ' 檔，' + (bytes / MB).toFixed(1) + 'MB）'
+    };
+  } else if (bytes <= 500 * MB) {
+    return {
+      ok: true,
+      level: 'warn',
+      message: '批次較大（共 ' + count + ' 檔，' + (bytes / MB).toFixed(1) + 'MB），批次處理可能需要較長時間'
+    };
+  } else {
+    return {
+      ok: false,
+      level: 'reject',
+      message: '批次總量超過 500MB 上限（' + (bytes / MB).toFixed(1) + 'MB），已拒絕整批載入'
+    };
+  }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    checkImageFileSize: checkImageFileSize,
+    checkBatchSize: checkBatchSize
+  };
+}
+
+</script>
+  <script>
+// shared/img-exif.js
+
+// 共用的 TIFF/EXIF IFD 解析器：輸入一段從 TIFF byte-order marker 開始的 DataView
+// （不論這段資料原本是嵌在 JPEG 的 APP1、PNG 的 eXIf chunk、還是 WebP 的 EXIF chunk），
+// 解析出 IFD0／Exif SubIFD／GPS IFD 三張表，回傳跟 readExifTags() 同樣形狀的欄位。
+// 錯誤不外拋，回傳目前已解析到的部分結果（container 格式各自的呼叫端沿用這個容錯行為）。
+function _parseTiffTags(view) {
+  var result = {
+    orientation: null,
+    dateTimeOriginal: null,
+    make: null,
+    model: null,
+    gpsLatitude: null,
+    gpsLongitude: null,
+    hasGPS: false
+  };
+
+  try {
+    var tiffLen = view.byteLength;
+    if (tiffLen < 8) return result;
+
+    var byteOrder = view.getUint16(0, false);
+    var littleEndian = false;
+    if (byteOrder === 0x4949) {
+      littleEndian = true;
+    } else if (byteOrder === 0x4D4D) {
+      littleEndian = false;
+    } else {
+      return result;
+    }
+
+    if (view.getUint16(2, littleEndian) !== 0x002A) {
+      return result;
+    }
+
+    var ifd0Offset = view.getUint32(4, littleEndian);
+    if (ifd0Offset >= tiffLen) return result;
+
+    function getStringValue(offsetVal, count) {
+      var str = '';
+      for (var i = 0; i < count; i++) {
+        if (offsetVal + i >= tiffLen) break;
+        var code = view.getUint8(offsetVal + i);
+        if (code === 0) break; // null-terminated
+        str += String.fromCharCode(code);
+      }
+      return str.trim();
+    }
+
+    function getRationalValue(offsetVal) {
+      if (offsetVal + 8 > tiffLen) return 0;
+      var num = view.getUint32(offsetVal, littleEndian);
+      var den = view.getUint32(offsetVal + 4, littleEndian);
+      if (den === 0) return 0;
+      return num / den;
+    }
+
+    var exifSubIFDOffset = null;
+    var gpsIFDOffset = null;
+
+    // Read IFD0
+    if (ifd0Offset + 2 <= tiffLen) {
+      var numEntries0 = view.getUint16(ifd0Offset, littleEndian);
+      var entryOffset = ifd0Offset + 2;
+
+      for (var e = 0; e < numEntries0 && entryOffset + 12 <= tiffLen; e++, entryOffset += 12) {
+        var tag = view.getUint16(entryOffset, littleEndian);
+        var count = view.getUint32(entryOffset + 4, littleEndian);
+        var valOrOffset = entryOffset + 8;
+        var valOffset = view.getUint32(valOrOffset, littleEndian);
+
+        if (tag === 0x0112) { // Orientation
+          result.orientation = view.getUint16(valOrOffset, littleEndian);
+        } else if (tag === 0x010F) { // Make
+          var strOffset = (count <= 4) ? valOrOffset : valOffset;
+          result.make = getStringValue(strOffset, count);
+        } else if (tag === 0x0110) { // Model
+          var strOffset = (count <= 4) ? valOrOffset : valOffset;
+          result.model = getStringValue(strOffset, count);
+        } else if (tag === 0x8769) { // ExifIFDPointer
+          exifSubIFDOffset = valOffset;
+        } else if (tag === 0x8825) { // GPSInfoIFDPointer
+          gpsIFDOffset = valOffset;
+        }
+      }
+    }
+
+    // Read Exif SubIFD
+    if (exifSubIFDOffset !== null && exifSubIFDOffset + 2 <= tiffLen) {
+      var numSubEntries = view.getUint16(exifSubIFDOffset, littleEndian);
+      var subEntryOffset = exifSubIFDOffset + 2;
+
+      for (var se = 0; se < numSubEntries && subEntryOffset + 12 <= tiffLen; se++, subEntryOffset += 12) {
+        var subTag = view.getUint16(subEntryOffset, littleEndian);
+        var subCount = view.getUint32(subEntryOffset + 4, littleEndian);
+        var subValOrOffset = subEntryOffset + 8;
+        var subValOffset = view.getUint32(subValOrOffset, littleEndian);
+
+        if (subTag === 0x9003) { // DateTimeOriginal
+          var dateOffset = (subCount <= 4) ? subValOrOffset : subValOffset;
+          result.dateTimeOriginal = getStringValue(dateOffset, subCount);
+        }
+      }
+    }
+
+    // Read GPS IFD
+    if (gpsIFDOffset !== null && gpsIFDOffset + 2 <= tiffLen) {
+      var numGpsEntries = view.getUint16(gpsIFDOffset, littleEndian);
+      var gpsEntryOffset = gpsIFDOffset + 2;
+
+      var latRef = null;
+      var latDeg = null, latMin = null, latSec = null;
+      var lonRef = null;
+      var lonDeg = null, lonMin = null, lonSec = null;
+
+      for (var ge = 0; ge < numGpsEntries && gpsEntryOffset + 12 <= tiffLen; ge++, gpsEntryOffset += 12) {
+        var gTag = view.getUint16(gpsEntryOffset, littleEndian);
+        var gCount = view.getUint32(gpsEntryOffset + 4, littleEndian);
+        var gValOrOffset = gpsEntryOffset + 8;
+        var gValOffset = view.getUint32(gValOrOffset, littleEndian);
+
+        if (gTag === 0x0001) { // GPSLatitudeRef ('N' or 'S')
+          latRef = String.fromCharCode(view.getUint8(gValOrOffset)).toUpperCase();
+        } else if (gTag === 0x0002 && gCount === 3) { // GPSLatitude (3 rationals)
+          var ratOffset = gValOffset;
+          latDeg = getRationalValue(ratOffset);
+          latMin = getRationalValue(ratOffset + 8);
+          latSec = getRationalValue(ratOffset + 16);
+        } else if (gTag === 0x0003) { // GPSLongitudeRef ('E' or 'W')
+          lonRef = String.fromCharCode(view.getUint8(gValOrOffset)).toUpperCase();
+        } else if (gTag === 0x0004 && gCount === 3) { // GPSLongitude (3 rationals)
+          var ratOffsetLon = gValOffset;
+          lonDeg = getRationalValue(ratOffsetLon);
+          lonMin = getRationalValue(ratOffsetLon + 8);
+          lonSec = getRationalValue(ratOffsetLon + 16);
+        }
+      }
+
+      if (latDeg !== null && latMin !== null && latSec !== null) {
+        var latVal = latDeg + (latMin / 60) + (latSec / 3600);
+        if (latRef === 'S') latVal = -latVal;
+        result.gpsLatitude = latVal;
+      }
+      if (lonDeg !== null && lonMin !== null && lonSec !== null) {
+        var lonVal = lonDeg + (lonMin / 60) + (lonSec / 3600);
+        if (lonRef === 'W') lonVal = -lonVal;
+        result.gpsLongitude = lonVal;
+      }
+
+      if (result.gpsLatitude !== null && result.gpsLongitude !== null) {
+        result.hasGPS = true;
+      }
+    }
+
+  } catch (err) {
+    // Non-fatal error during parsing, return whatever was parsed so far
+  }
+
+  return result;
+}
+
+// PNG chunk 序列走訪器：從第 8 byte（PNG 簽章之後）開始，每個 chunk 是
+// 4 bytes 長度 + 4 bytes chunk type + data + 4 bytes CRC32。對每個 chunk
+// 呼叫 callback(type, chunkStart, dataStart, dataLength, chunkEnd)；
+// 遇到 IEND 或資料被截斷就停止。
+function _pngChunkWalker(dataView, callback) {
+  var length = dataView.byteLength;
+  if (length < 8) return;
+  var offset = 8;
+  while (offset + 8 <= length) {
+    var dataLength = dataView.getUint32(offset, false);
+    var typeStart = offset + 4;
+    var dataStart = typeStart + 4;
+    var chunkEnd = dataStart + dataLength + 4; // + CRC32
+    if (dataLength < 0 || chunkEnd > length) break; // malformed / truncated
+    var type = String.fromCharCode(
+      dataView.getUint8(typeStart),
+      dataView.getUint8(typeStart + 1),
+      dataView.getUint8(typeStart + 2),
+      dataView.getUint8(typeStart + 3)
+    );
+    callback(type, offset, dataStart, dataLength, chunkEnd);
+    if (type === 'IEND') break;
+    offset = chunkEnd;
+  }
+}
+
+function _isPng(dataView) {
+  return dataView.byteLength >= 8 &&
+    dataView.getUint32(0, false) === 0x89504E47 &&
+    dataView.getUint32(4, false) === 0x0D0A1A0A;
+}
+
+// 讀取 PNG 的 eXIf chunk（完整 EXIF/TIFF blob）與 iTXt 裡 keyword 為
+// XML:com.adobe.xmp 的 XMP 標記，回傳跟 JPEG 分支相同形狀的欄位。
+function _readPngExifTags(dataView, result) {
+  var exifView = null;
+
+  _pngChunkWalker(dataView, function (type, chunkStart, dataStart, dataLength, chunkEnd) {
+    if (type === 'eXIf' && !exifView && dataLength >= 8) {
+      exifView = new DataView(dataView.buffer, dataView.byteOffset + dataStart, dataLength);
+    } else if (type === 'iTXt') {
+      var keyword = '';
+      var limit = dataStart + dataLength;
+      for (var i = dataStart; i < limit; i++) {
+        var code = dataView.getUint8(i);
+        if (code === 0) break; // keyword 是 null-terminated
+        keyword += String.fromCharCode(code);
+      }
+      if (keyword === 'XML:com.adobe.xmp') {
+        result.hasXMP = true;
+      }
+    }
+  });
+
+  if (exifView) {
+    var tiffTags = _parseTiffTags(exifView);
+    result.orientation = tiffTags.orientation;
+    result.dateTimeOriginal = tiffTags.dateTimeOriginal;
+    result.make = tiffTags.make;
+    result.model = tiffTags.model;
+    result.gpsLatitude = tiffTags.gpsLatitude;
+    result.gpsLongitude = tiffTags.gpsLongitude;
+    result.hasGPS = tiffTags.hasGPS;
+  }
+
+  return result;
+}
+
+// WebP（RIFF 容器）chunk 序列走訪器：從第 12 byte（RIFF header 8 bytes + "WEBP" 4 bytes
+// 之後）開始，每個 chunk 是 4 bytes FourCC + 4 bytes little-endian 長度 + data，長度為奇數
+// 時補 1 byte padding。對每個 chunk 呼叫 callback(fourcc, chunkStart, dataStart, dataLength, chunkEnd)。
+function _riffChunkWalker(dataView, callback) {
+  var length = dataView.byteLength;
+  if (length < 12) return;
+  var offset = 12;
+  while (offset + 8 <= length) {
+    var dataLength = dataView.getUint32(offset + 4, true); // RIFF chunk size 是 little-endian
+    var dataStart = offset + 8;
+    var dataEnd = dataStart + dataLength;
+    var chunkEnd = dataEnd + (dataLength % 2 === 1 ? 1 : 0); // 奇數長度補 1 byte padding
+    if (dataLength < 0 || chunkEnd > length) break; // malformed / truncated
+    var fourcc = String.fromCharCode(
+      dataView.getUint8(offset),
+      dataView.getUint8(offset + 1),
+      dataView.getUint8(offset + 2),
+      dataView.getUint8(offset + 3)
+    );
+    callback(fourcc, offset, dataStart, dataLength, chunkEnd);
+    offset = chunkEnd;
+  }
+}
+
+function _isWebp(dataView) {
+  return dataView.byteLength >= 12 &&
+    dataView.getUint32(0, false) === 0x52494646 && // "RIFF"
+    dataView.getUint32(8, false) === 0x57454250;    // "WEBP"
+}
+
+// readExifTags()/stripMetadataSegments() 目前認得的格式：JPEG／PNG／WebP。
+// 呼叫端（例如 Day15）用這個判斷要不要把某個檔案當「支援清除」處理，
+// 避免各自重複寫一份 magic bytes 判斷邏輯。
+function isSupportedImageFormat(arrayBuffer) {
+  if (!arrayBuffer || !(arrayBuffer instanceof ArrayBuffer) || arrayBuffer.byteLength < 4) {
+    return false;
+  }
+  var dataView = new DataView(arrayBuffer);
+  if (_isPng(dataView) || _isWebp(dataView)) {
+    return true;
+  }
+  return dataView.byteLength >= 2 && dataView.getUint16(0, false) === 0xFFD8;
+}
+
+// 讀取 WebP 的 EXIF chunk（完整 EXIF/TIFF blob）與 XMP chunk（FourCC 為 "XMP "，
+// 含尾端空白），回傳跟 JPEG/PNG 分支相同形狀的欄位。
+function _readWebpExifTags(dataView, result) {
+  var exifView = null;
+
+  _riffChunkWalker(dataView, function (fourcc, chunkStart, dataStart, dataLength, chunkEnd) {
+    if (fourcc === 'EXIF' && !exifView && dataLength >= 8) {
+      exifView = new DataView(dataView.buffer, dataView.byteOffset + dataStart, dataLength);
+    } else if (fourcc === 'XMP ') {
+      result.hasXMP = true;
+    }
+  });
+
+  if (exifView) {
+    var tiffTags = _parseTiffTags(exifView);
+    result.orientation = tiffTags.orientation;
+    result.dateTimeOriginal = tiffTags.dateTimeOriginal;
+    result.make = tiffTags.make;
+    result.model = tiffTags.model;
+    result.gpsLatitude = tiffTags.gpsLatitude;
+    result.gpsLongitude = tiffTags.gpsLongitude;
+    result.hasGPS = tiffTags.hasGPS;
+  }
+
+  return result;
+}
+
+function readExifTags(arrayBuffer) {
+  var result = {
+    orientation: null,
+    dateTimeOriginal: null,
+    make: null,
+    model: null,
+    gpsLatitude: null,
+    gpsLongitude: null,
+    hasGPS: false,
+    hasXMP: false
+  };
+
+  if (!arrayBuffer || !(arrayBuffer instanceof ArrayBuffer) || arrayBuffer.byteLength < 4) {
+    return result;
+  }
+
+  var dataView = new DataView(arrayBuffer);
+
+  if (_isPng(dataView)) {
+    return _readPngExifTags(dataView, result);
+  }
+
+  if (_isWebp(dataView)) {
+    return _readWebpExifTags(dataView, result);
+  }
+
+  // Check JPEG SOI (0xFFD8)
+  if (dataView.getUint16(0, false) !== 0xFFD8) {
+    return result;
+  }
+
+  var offset = 2;
+  var length = arrayBuffer.byteLength;
+  var exifDataView = null;
+  var tiffHeaderOffset = 0;
+
+  while (offset + 4 <= length) {
+    if (dataView.getUint8(offset) !== 0xFF) {
+      break;
+    }
+    var marker = dataView.getUint8(offset + 1);
+    // Ignore fill bytes 0xFF
+    if (marker === 0xFF) {
+      offset += 1;
+      continue;
+    }
+    // Standalone markers without length: SOI(0xD8), EOI(0xD9), RST0-7(0xD0-0xD7), TEM(0x01)
+    if (marker === 0xD8 || marker === 0xD9 || (marker >= 0xD0 && marker <= 0xD7) || marker === 0x01) {
+      offset += 2;
+      continue;
+    }
+
+    var segmentLength = dataView.getUint16(offset + 2, false);
+    if (segmentLength < 2 || offset + 2 + segmentLength > length) {
+      break;
+    }
+
+    // Check APP1 (0xE1)
+    if (marker === 0xE1 && segmentLength >= 8) {
+      // Check for Exif\0\0 header: 0x45, 0x78, 0x69, 0x66, 0x00, 0x00
+      var isExif = dataView.getUint8(offset + 4) === 0x45 &&
+                   dataView.getUint8(offset + 5) === 0x78 &&
+                   dataView.getUint8(offset + 6) === 0x69 &&
+                   dataView.getUint8(offset + 7) === 0x66 &&
+                   dataView.getUint8(offset + 8) === 0x00 &&
+                   dataView.getUint8(offset + 9) === 0x00;
+
+      if (isExif && !exifDataView) {
+        tiffHeaderOffset = offset + 10;
+        var tiffLength = segmentLength - 8;
+        if (tiffHeaderOffset + tiffLength <= length && tiffLength >= 8) {
+          exifDataView = new DataView(arrayBuffer, tiffHeaderOffset, tiffLength);
+        }
+      }
+
+      // Check for XMP: http://ns.adobe.com/xap/1.0/
+      var xmpSignature = 'http://ns.adobe.com/xap/1.0/';
+      if (segmentLength >= 4 + xmpSignature.length) {
+        var matchXMP = true;
+        for (var i = 0; i < xmpSignature.length; i++) {
+          if (dataView.getUint8(offset + 4 + i) !== xmpSignature.charCodeAt(i)) {
+            matchXMP = false;
+            break;
+          }
+        }
+        if (matchXMP) {
+          result.hasXMP = true;
+        }
+      }
+    }
+
+    // SOS (Start of Scan 0xDA) marks beginning of image data, segments end here
+    if (marker === 0xDA) {
+      break;
+    }
+
+    offset += 2 + segmentLength;
+  }
+
+  if (!exifDataView) {
+    return result;
+  }
+
+  var tiffTags = _parseTiffTags(exifDataView);
+  result.orientation = tiffTags.orientation;
+  result.dateTimeOriginal = tiffTags.dateTimeOriginal;
+  result.make = tiffTags.make;
+  result.model = tiffTags.model;
+  result.gpsLatitude = tiffTags.gpsLatitude;
+  result.gpsLongitude = tiffTags.gpsLongitude;
+  result.hasGPS = tiffTags.hasGPS;
+
+  return result;
+}
+
+// 移除 PNG 的 eXIf chunk 與 XMP iTXt chunk，其餘 chunk（含各自的 CRC32）原樣保留、
+// 不重算、不重組——因為是整個 chunk 跳過而非修改內容，其餘 chunk 的 CRC32 本來就沒變。
+function _stripPngMetadata(arrayBuffer, dataView) {
+  var length = arrayBuffer.byteLength;
+  var keptChunks = [];
+  var lastKeptEnd = 8; // Keep PNG signature (first 8 bytes)
+  var modified = false;
+
+  _pngChunkWalker(dataView, function (type, chunkStart, dataStart, dataLength, chunkEnd) {
+    var isXmpText = false;
+    if (type === 'iTXt') {
+      var keyword = '';
+      var limit = dataStart + dataLength;
+      for (var i = dataStart; i < limit; i++) {
+        var code = dataView.getUint8(i);
+        if (code === 0) break;
+        keyword += String.fromCharCode(code);
+      }
+      isXmpText = (keyword === 'XML:com.adobe.xmp');
+    }
+
+    if (type === 'eXIf' || isXmpText) {
+      modified = true;
+      if (chunkStart > lastKeptEnd) {
+        keptChunks.push(new Uint8Array(arrayBuffer, lastKeptEnd, chunkStart - lastKeptEnd));
+      }
+      lastKeptEnd = chunkEnd;
+    }
+  });
+
+  if (!modified) {
+    return arrayBuffer;
+  }
+
+  if (lastKeptEnd < length) {
+    keptChunks.push(new Uint8Array(arrayBuffer, lastKeptEnd, length - lastKeptEnd));
+  }
+
+  var totalLength = 8; // PNG signature
+  for (var c = 0; c < keptChunks.length; c++) {
+    totalLength += keptChunks[c].byteLength;
+  }
+
+  var newBuffer = new ArrayBuffer(totalLength);
+  var outView = new Uint8Array(newBuffer);
+  outView.set(new Uint8Array(arrayBuffer, 0, 8), 0); // copy PNG signature
+
+  var currentPos = 8;
+  for (var k = 0; k < keptChunks.length; k++) {
+    outView.set(keptChunks[k], currentPos);
+    currentPos += keptChunks[k].byteLength;
+  }
+
+  return newBuffer;
+}
+
+// WebP VP8X chunk 的 flags byte（chunk data 的第 1 個 byte）裡，bit3 是 Exif 存在旗標
+// （0x08），bit2 是 XMP 存在旗標（0x04）。移除 EXIF/XMP chunk 後，若還留著 VP8X（它同時
+// 帶 canvas 尺寸與 Alpha/Animation 旗標，這兩者本次不動，所以整個 VP8X chunk 不能刪），
+// 就要把這兩個旗標位元清掉，否則解碼器會依照旗標去找一個已經不存在的 chunk。
+var _WEBP_VP8X_EXIF_XMP_MASK = 0x08 | 0x04;
+
+function _stripWebpMetadata(arrayBuffer, dataView) {
+  var length = arrayBuffer.byteLength;
+  var pieces = [];
+  var lastKeptEnd = 12; // after "RIFF" + size(4) + "WEBP"
+  var metadataRemoved = false;
+  var vp8xFlagsPieceIndex = null;
+
+  _riffChunkWalker(dataView, function (fourcc, chunkStart, dataStart, dataLength, chunkEnd) {
+    if (fourcc === 'VP8X' && dataLength >= 1) {
+      // 把 flags byte 切成獨立一塊，方便之後直接覆寫，不用另外算它在輸出 buffer 裡的位移
+      if (dataStart > lastKeptEnd) {
+        pieces.push(new Uint8Array(arrayBuffer, lastKeptEnd, dataStart - lastKeptEnd));
+      }
+      vp8xFlagsPieceIndex = pieces.length;
+      pieces.push(new Uint8Array([dataView.getUint8(dataStart)]));
+      lastKeptEnd = dataStart + 1;
+      return;
+    }
+    if (fourcc === 'EXIF' || fourcc === 'XMP ') {
+      metadataRemoved = true;
+      if (chunkStart > lastKeptEnd) {
+        pieces.push(new Uint8Array(arrayBuffer, lastKeptEnd, chunkStart - lastKeptEnd));
+      }
+      lastKeptEnd = chunkEnd;
+    }
+  });
+
+  if (!metadataRemoved) {
+    return arrayBuffer;
+  }
+
+  if (lastKeptEnd < length) {
+    pieces.push(new Uint8Array(arrayBuffer, lastKeptEnd, length - lastKeptEnd));
+  }
+
+  if (vp8xFlagsPieceIndex !== null) {
+    pieces[vp8xFlagsPieceIndex] = new Uint8Array([
+      pieces[vp8xFlagsPieceIndex][0] & ~_WEBP_VP8X_EXIF_XMP_MASK
+    ]);
+  }
+
+  var bodyLength = 4; // "WEBP"
+  for (var c = 0; c < pieces.length; c++) {
+    bodyLength += pieces[c].byteLength;
+  }
+
+  var newBuffer = new ArrayBuffer(8 + bodyLength);
+  var outView = new Uint8Array(newBuffer);
+  var outDataView = new DataView(newBuffer);
+  outView[0] = 0x52; outView[1] = 0x49; outView[2] = 0x46; outView[3] = 0x46; // "RIFF"
+  outDataView.setUint32(4, bodyLength, true); // RIFF size field 是 little-endian
+  outView[8] = 0x57; outView[9] = 0x45; outView[10] = 0x42; outView[11] = 0x50; // "WEBP"
+
+  var currentPos = 12;
+  for (var k = 0; k < pieces.length; k++) {
+    outView.set(pieces[k], currentPos);
+    currentPos += pieces[k].byteLength;
+  }
+
+  return newBuffer;
+}
+
+function stripMetadataSegments(arrayBuffer) {
+  if (!arrayBuffer || !(arrayBuffer instanceof ArrayBuffer) || arrayBuffer.byteLength < 4) {
+    return arrayBuffer;
+  }
+
+  var dataView = new DataView(arrayBuffer);
+
+  if (_isPng(dataView)) {
+    return _stripPngMetadata(arrayBuffer, dataView);
+  }
+
+  if (_isWebp(dataView)) {
+    return _stripWebpMetadata(arrayBuffer, dataView);
+  }
+
+  // If not JPEG SOI (0xFFD8), return as-is
+  if (dataView.getUint16(0, false) !== 0xFFD8) {
+    return arrayBuffer;
+  }
+
+  var length = arrayBuffer.byteLength;
+  var offset = 2;
+  var keptChunks = [];
+  var lastKeptEnd = 2; // Keep SOI (first 2 bytes)
+  var modified = false;
+
+  var xmpSignature = 'http://ns.adobe.com/xap/1.0/';
+
+  // Entropy-coded scan data (after SOS) uses byte stuffing: any literal
+  // 0xFF byte inside the compressed data is followed by 0x00, and restart
+  // markers (0xD0-0xD7) are also legal inside the stream. A 0xFF followed by
+  // anything else is the real start of the next marker segment. Real-world
+  // JPEGs (esp. from iPhones) can have a second, fully-formed JPEG
+  // (SOI...EOI, with its own APP1 Exif/XMP segments) appended after the
+  // primary image's entropy data - this walks past the entropy data without
+  // touching it, so the main marker-scanning loop can continue into
+  // whatever segments follow, including nested JPEG structures.
+  function findEntropyDataEnd(startOffset) {
+    var p = startOffset;
+    while (p < length) {
+      if (dataView.getUint8(p) === 0xFF) {
+        if (p + 1 >= length) {
+          return length;
+        }
+        var nextByte = dataView.getUint8(p + 1);
+        if (nextByte === 0x00 || (nextByte >= 0xD0 && nextByte <= 0xD7)) {
+          // Stuffed literal 0xFF, or a restart marker: still scan data.
+          p += 2;
+          continue;
+        }
+        if (nextByte === 0xFF) {
+          // Fill byte before the real marker; keep looking.
+          p += 1;
+          continue;
+        }
+        // Real marker segment starts here.
+        return p;
+      }
+      p += 1;
+    }
+    return length;
+  }
+
+  while (offset + 4 <= length) {
+    if (dataView.getUint8(offset) !== 0xFF) {
+      break;
+    }
+    var marker = dataView.getUint8(offset + 1);
+    if (marker === 0xFF) {
+      offset += 1;
+      continue;
+    }
+    if (marker === 0xD8 || marker === 0xD9 || (marker >= 0xD0 && marker <= 0xD7) || marker === 0x01) {
+      offset += 2;
+      continue;
+    }
+
+    var segmentLength = dataView.getUint16(offset + 2, false);
+    if (segmentLength < 2 || offset + 2 + segmentLength > length) {
+      break;
+    }
+
+    var shouldStrip = false;
+
+    // Check APP1 (0xE1)
+    if (marker === 0xE1 && segmentLength >= 8) {
+      // Exif check
+      var isExif = dataView.getUint8(offset + 4) === 0x45 &&
+                   dataView.getUint8(offset + 5) === 0x78 &&
+                   dataView.getUint8(offset + 6) === 0x69 &&
+                   dataView.getUint8(offset + 7) === 0x66 &&
+                   dataView.getUint8(offset + 8) === 0x00 &&
+                   dataView.getUint8(offset + 9) === 0x00;
+
+      if (isExif) {
+        shouldStrip = true;
+      }
+
+      // XMP check
+      if (!shouldStrip && segmentLength >= 4 + xmpSignature.length) {
+        var matchXMP = true;
+        for (var i = 0; i < xmpSignature.length; i++) {
+          if (dataView.getUint8(offset + 4 + i) !== xmpSignature.charCodeAt(i)) {
+            matchXMP = false;
+            break;
+          }
+        }
+        if (matchXMP) {
+          shouldStrip = true;
+        }
+      }
+    }
+
+    if (shouldStrip) {
+      modified = true;
+      if (offset > lastKeptEnd) {
+        keptChunks.push(new Uint8Array(arrayBuffer, lastKeptEnd, offset - lastKeptEnd));
+      }
+      lastKeptEnd = offset + 2 + segmentLength;
+    }
+
+    // SOS: entropy-coded data follows. Skip over it (without touching it)
+    // using byte-stuffing rules, then keep scanning for more marker
+    // segments - there may be a nested second JPEG structure appended
+    // after this one's entropy data (e.g. iPhone embedded preview images).
+    if (marker === 0xDA) {
+      offset = findEntropyDataEnd(offset + 2 + segmentLength);
+      continue;
+    }
+
+    offset += 2 + segmentLength;
+  }
+
+  if (!modified) {
+    return arrayBuffer;
+  }
+
+  if (lastKeptEnd < length) {
+    keptChunks.push(new Uint8Array(arrayBuffer, lastKeptEnd, length - lastKeptEnd));
+  }
+
+  // Prepend SOI chunk if not included
+  var totalLength = 2; // for SOI
+  for (var c = 0; c < keptChunks.length; c++) {
+    totalLength += keptChunks[c].byteLength;
+  }
+
+  var newBuffer = new ArrayBuffer(totalLength);
+  var outView = new Uint8Array(newBuffer);
+  outView[0] = 0xFF;
+  outView[1] = 0xD8;
+
+  var currentPos = 2;
+  for (var k = 0; k < keptChunks.length; k++) {
+    outView.set(keptChunks[k], currentPos);
+    currentPos += keptChunks[k].byteLength;
+  }
+
+  return newBuffer;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    readExifTags: readExifTags,
+    stripMetadataSegments: stripMetadataSegments,
+    isSupportedImageFormat: isSupportedImageFormat,
+    // 內部函式：僅供測資驗證腳本使用，正式呼叫端一律走上面兩個公開函式
+    _parseTiffTags: _parseTiffTags,
+    _pngChunkWalker: _pngChunkWalker,
+    _isPng: _isPng,
+    _readPngExifTags: _readPngExifTags,
+    _stripPngMetadata: _stripPngMetadata,
+    _riffChunkWalker: _riffChunkWalker,
+    _isWebp: _isWebp,
+    _readWebpExifTags: _readWebpExifTags,
+    _stripWebpMetadata: _stripWebpMetadata
+  };
+}
+
+</script>
+  <script>
+// shared/img-decode.js
+
+// Tiny 2x1 real JPEG (EXIF Orientation=6, distinct width/height so a swap
+// is observable) used to self-test whether this browser's
+// createImageBitmap({imageOrientation:'none'}) actually returns the raw,
+// un-rotated pixels. Verified against real browsers (2026-08): Chromium 141,
+// Firefox 142 and WebKit 26 all ACCEPT the option without error but SILENTLY
+// IGNORE it and still auto-apply EXIF rotation (bitmap comes back rotated,
+// same as calling createImageBitmap() with no options at all). Because
+// feature-detecting the option's mere existence would be wrong on every
+// current engine, this probe measures actual behavior instead.
+var IMG_DECODE_ORIENTATION_PROBE_JPEG_BASE64 =
+  '/9j/4AAQSkZJRgABAQAAAQABAAD/4QAiRXhpZgAATU0AKgAAAAgAAQESAAMAAAABAAYAAAAAAAD/2wBD' +
+  'AAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYU' +
+  'GBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU' +
+  'FBQUFBQUFBQUFBQUFBT/wAARCAABAAIDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQF' +
+  'BgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAk' +
+  'M2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWG' +
+  'h4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx' +
+  '8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQA' +
+  'AQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5' +
+  'OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmq' +
+  'srO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDo' +
+  'vBn/ACJ+hf8AXhB/6LWiiiv4mr/xZ+r/ADP4J4p/5H+P/wCv1X/0uR//2Q==';
+
+// Memoized (module-scope) detection result: true if
+// createImageBitmap(blob, {imageOrientation:'none'}) genuinely returns
+// un-rotated pixels on this browser; false if it silently auto-rotates
+// anyway (current behavior on all major engines as of 2026-08); null if not
+// yet tested. Cached as a Promise so concurrent loadImageFile() calls share
+// one probe decode instead of racing multiple probes.
+var _imgDecodeRawBitmapSupportPromise = null;
+
+function _imgDecodeDetectRawBitmapSupport() {
+  if (_imgDecodeRawBitmapSupportPromise) {
+    return _imgDecodeRawBitmapSupportPromise;
+  }
+  if (typeof createImageBitmap !== 'function') {
+    _imgDecodeRawBitmapSupportPromise = Promise.resolve(false);
+    return _imgDecodeRawBitmapSupportPromise;
+  }
+  _imgDecodeRawBitmapSupportPromise = Promise.resolve().then(function () {
+    var binary = atob(IMG_DECODE_ORIENTATION_PROBE_JPEG_BASE64);
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    var probeBlob = new Blob([bytes], { type: 'image/jpeg' });
+    return createImageBitmap(probeBlob, { imageOrientation: 'none' }).then(function (bmp) {
+      // Raw (un-rotated) probe is 2 wide x 1 tall. If 'none' were honored,
+      // the bitmap must still be 2x1. If the browser rotated it anyway
+      // (per Orientation=6), it comes back 1x2.
+      var supported = (bmp.width === 2 && bmp.height === 1);
+      if (typeof bmp.close === 'function') {
+        bmp.close();
+      }
+      return supported;
+    }).catch(function () {
+      return false;
+    });
+  }).catch(function () {
+    return false;
+  });
+  return _imgDecodeRawBitmapSupportPromise;
+}
+
+function loadImageFile(file, opts) {
+  opts = opts || {};
+  return new Promise(function (resolve, reject) {
+    if (!file) {
+      return reject(new Error('No file provided'));
+    }
+
+    var mimeType = file.type || 'image/jpeg';
+    var reader = new FileReader();
+
+    reader.onerror = function () {
+      reject(new Error('Failed to read file'));
+    };
+
+    reader.onload = function () {
+      var arrayBuffer = reader.result;
+      var orientation = 1;
+      try {
+        if (typeof readExifTags === 'function') {
+          var exif = readExifTags(arrayBuffer);
+          if (exif && exif.orientation) {
+            orientation = exif.orientation;
+          }
+        }
+      } catch (e) {
+        orientation = 1;
+      }
+
+      var blob = new Blob([arrayBuffer], { type: mimeType });
+
+      // drawSource: draws either an ImageBitmap (unrotated raw pixels, when
+      // createImageBitmap({imageOrientation:'none'}) is available) or a plain
+      // <img> element (browsers auto-apply EXIF orientation when decoding to
+      // <img>, so in that fallback path we must NOT re-apply orientation
+      // ourselves - ctxOrientation is forced to 1 for that case).
+      function drawSource(source, ctxOrientation, cleanup) {
+        var origW = source.naturalWidth || source.width;
+        var origH = source.naturalHeight || source.height;
+        var orientation = ctxOrientation;
+
+        var isSwapped = (orientation >= 5 && orientation <= 8);
+        var rotatedW = isSwapped ? origH : origW;
+        var rotatedH = isSwapped ? origW : origH;
+
+        var targetW = rotatedW;
+        var targetH = rotatedH;
+
+        if (opts.maxDimension && opts.maxDimension > 0) {
+          var maxSide = Math.max(rotatedW, rotatedH);
+          if (maxSide > opts.maxDimension) {
+            var scale = opts.maxDimension / maxSide;
+            targetW = Math.max(1, Math.round(rotatedW * scale));
+            targetH = Math.max(1, Math.round(rotatedH * scale));
+          }
+        }
+
+        var canvas = document.createElement('canvas');
+        canvas.width = targetW;
+        canvas.height = targetH;
+        var ctx = canvas.getContext('2d');
+
+        var scaleX = targetW / rotatedW;
+        var scaleY = targetH / rotatedH;
+
+        ctx.save();
+        ctx.scale(scaleX, scaleY);
+
+        switch (orientation) {
+          case 2: // Horizontal flip
+            ctx.translate(rotatedW, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(source, 0, 0);
+            break;
+          case 3: // 180 rotate
+            ctx.translate(rotatedW, rotatedH);
+            ctx.rotate(Math.PI);
+            ctx.drawImage(source, 0, 0);
+            break;
+          case 4: // Vertical flip
+            ctx.translate(0, rotatedH);
+            ctx.scale(1, -1);
+            ctx.drawImage(source, 0, 0);
+            break;
+          case 5: // Transpose
+            ctx.rotate(0.5 * Math.PI);
+            ctx.scale(1, -1);
+            ctx.drawImage(source, 0, 0);
+            break;
+          case 6: // 90 CW rotate
+            ctx.translate(rotatedW, 0);
+            ctx.rotate(0.5 * Math.PI);
+            ctx.drawImage(source, 0, 0);
+            break;
+          case 7: // Transverse
+            ctx.translate(rotatedW, rotatedH);
+            ctx.rotate(0.5 * Math.PI);
+            ctx.scale(1, -1);
+            ctx.drawImage(source, 0, 0);
+            break;
+          case 8: // 270 CW (90 CCW) rotate
+            ctx.translate(0, rotatedH);
+            ctx.rotate(-0.5 * Math.PI);
+            ctx.drawImage(source, 0, 0);
+            break;
+          default: // 1 or others (Normal)
+            ctx.drawImage(source, 0, 0);
+            break;
+        }
+
+        ctx.restore();
+
+        if (cleanup) {
+          cleanup();
+        }
+
+        resolve({
+          canvas: canvas,
+          width: targetW,
+          height: targetH,
+          mimeType: mimeType,
+          orientationApplied: orientation
+        });
+      }
+
+      // Fallback path: decode via <img> element. Browsers auto-apply EXIF
+      // orientation when decoding JPEG into an <img> (CSS image-orientation
+      // default is 'from-image'), so naturalWidth/naturalHeight and the
+      // painted pixels are ALREADY orientation-corrected. Passing the real
+      // EXIF orientation into drawSource here would double-apply the
+      // transform - so this path always draws with ctxOrientation = 1.
+      function loadViaImgElement() {
+        var blobUrl = URL.createObjectURL(blob);
+        var img = new Image();
+
+        img.onerror = function () {
+          URL.revokeObjectURL(blobUrl);
+          reject(new Error('Failed to load image element'));
+        };
+
+        img.onload = function () {
+          drawSource(img, 1, function () {
+            URL.revokeObjectURL(blobUrl);
+          });
+        };
+
+        img.src = blobUrl;
+      }
+
+      if (typeof createImageBitmap === 'function') {
+        _imgDecodeDetectRawBitmapSupport().then(function (rawBitmapSupported) {
+          if (!rawBitmapSupported) {
+            // This browser accepts {imageOrientation:'none'} but ignores it
+            // (auto-rotates anyway) - decoding via createImageBitmap here
+            // would double-apply orientation just like the old <img> bug.
+            // Fall back to the <img> path, which is known-correct for
+            // browser-auto-rotated sources (ctxOrientation forced to 1).
+            loadViaImgElement();
+            return;
+          }
+          createImageBitmap(blob, { imageOrientation: 'none' }).then(function (bitmap) {
+            drawSource(bitmap, orientation, function () {
+              if (typeof bitmap.close === 'function') {
+                bitmap.close();
+              }
+            });
+          }).catch(function () {
+            // Failed to decode this specific file - fall back to <img>.
+            loadViaImgElement();
+          });
+        }).catch(function () {
+          loadViaImgElement();
+        });
+      } else {
+        loadViaImgElement();
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    loadImageFile: loadImageFile
+  };
+}
+
+</script>
+  <script>
+// shared/img-canvas.js
+
+function resizeCanvas(sourceCanvas, opts) {
+  opts = opts || {};
+  if (!sourceCanvas) {
+    throw new Error('sourceCanvas is required');
+  }
+
+  var srcW = sourceCanvas.width;
+  var srcH = sourceCanvas.height;
+  var maxLongEdge = opts.maxLongEdge;
+  var allowUpscale = opts.allowUpscale === true;
+
+  var targetW = srcW;
+  var targetH = srcH;
+
+  if (maxLongEdge && maxLongEdge > 0) {
+    var longEdge = Math.max(srcW, srcH);
+    if (longEdge > maxLongEdge || (longEdge < maxLongEdge && allowUpscale)) {
+      var scale = maxLongEdge / longEdge;
+      targetW = Math.max(1, Math.round(srcW * scale));
+      targetH = Math.max(1, Math.round(srcH * scale));
+    }
+  }
+
+  var outCanvas = document.createElement('canvas');
+  outCanvas.width = targetW;
+  outCanvas.height = targetH;
+  var ctx = outCanvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(sourceCanvas, 0, 0, targetW, targetH);
+
+  return outCanvas;
+}
+
+function canvasToBlob(canvas, mimeType, quality) {
+  mimeType = mimeType || 'image/jpeg';
+  if (quality === undefined) {
+    quality = 0.92;
+  }
+
+  return new Promise(function (resolve, reject) {
+    if (!canvas || typeof canvas.toBlob !== 'function') {
+      return reject(new Error('Invalid canvas'));
+    }
+    canvas.toBlob(function (blob) {
+      if (!blob) {
+        return reject(new Error('canvas.toBlob returned null'));
+      }
+      resolve(blob);
+    }, mimeType, quality);
+  });
+}
+
+function compressToTargetSize(canvas, opts) {
+  opts = opts || {};
+  var targetBytes = opts.targetBytes;
+  var mimeType = opts.mimeType || 'image/jpeg';
+  var maxIterations = opts.maxIterations || 8;
+
+  if (!canvas) {
+    return Promise.reject(new Error('Canvas is required'));
+  }
+  if (!targetBytes || targetBytes <= 0) {
+    return Promise.reject(new Error('targetBytes must be positive'));
+  }
+  if (mimeType === 'image/png') {
+    return Promise.reject(new Error('PNG 不支援目標容量壓縮'));
+  }
+
+  return new Promise(function (resolve, reject) {
+    var currentCanvas = canvas;
+    var dimensionRounds = 0;
+    var maxDimensionRounds = 3;
+    var totalIterations = 0;
+    var bestBlob = null;
+    var bestQuality = 0.5;
+
+    function runRound() {
+      var low = 0.1;
+      var high = 0.95;
+      var roundBestBlob = null;
+      var roundBestQuality = low;
+      var roundIter = 0;
+
+      function binaryStep() {
+        if (roundIter >= maxIterations || (high - low) < 0.02) {
+          if (roundBestBlob && roundBestBlob.size <= targetBytes) {
+            return resolve({
+              blob: roundBestBlob,
+              quality: roundBestQuality,
+              achieved: true,
+              iterations: totalIterations
+            });
+          }
+
+          // If not achieved in this round, check if we can reduce dimensions
+          if (dimensionRounds < maxDimensionRounds) {
+            dimensionRounds++;
+            var curLongEdge = Math.max(currentCanvas.width, currentCanvas.height);
+            var newLongEdge = Math.max(32, Math.round(curLongEdge * 0.7));
+            currentCanvas = resizeCanvas(currentCanvas, { maxLongEdge: newLongEdge, allowUpscale: false });
+            return runRound();
+          } else {
+            // Failed after all rounds, return closest blob
+            return resolve({
+              blob: bestBlob || roundBestBlob,
+              quality: bestQuality || roundBestQuality,
+              achieved: false,
+              iterations: totalIterations
+            });
+          }
+        }
+
+        var mid = (low + high) / 2;
+        roundIter++;
+        totalIterations++;
+
+        canvasToBlob(currentCanvas, mimeType, mid).then(function (blob) {
+          if (!bestBlob || Math.abs(blob.size - targetBytes) < Math.abs(bestBlob.size - targetBytes) || blob.size <= targetBytes) {
+            bestBlob = blob;
+            bestQuality = mid;
+          }
+
+          if (blob.size <= targetBytes) {
+            roundBestBlob = blob;
+            roundBestQuality = mid;
+            // Can try higher quality
+            low = mid;
+          } else {
+            // Oversized, need lower quality
+            high = mid;
+          }
+          binaryStep();
+        }).catch(reject);
+      }
+
+      binaryStep();
+    }
+
+    runRound();
+  });
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    resizeCanvas: resizeCanvas,
+    canvasToBlob: canvasToBlob,
+    compressToTargetSize: compressToTargetSize
+  };
+}
+
+</script>
+
+  <script>
+  (function () {
+    var state = {
+      file: null,
+      fileName: 'screenshot.png',
+      cleanCanvas: null, // Readonly baseline canvas
+      maskOps: [], // Array<{ type: 'box'|'pixelate'|'blur', x, y, w, h }>
+      redoStack: [],
+      currentTool: 'box', // 'box' | 'pixelate' | 'blur'
+      isBeforeView: false,
+      isDragging: false,
+      startX: 0,
+      startY: 0
+    };
+
+    var dropZone = document.getElementById('drop-zone');
+    var fileInput = document.getElementById('file-input');
+    var btnSelectFile = document.getElementById('btn-select-file');
+    var btnPaste = document.getElementById('btn-paste');
+    var editorSection = document.getElementById('editor-section');
+    var canvasWrapper = document.getElementById('canvas-wrapper');
+    var workCanvas = document.getElementById('work-canvas');
+    var selectionBox = document.getElementById('selection-box');
+    var workCtx = workCanvas ? workCanvas.getContext('2d') : null;
+
+    var toolBox = document.getElementById('tool-box');
+    var toolPixelate = document.getElementById('tool-pixelate');
+    var toolBlur = document.getElementById('tool-blur');
+    var btnUndo = document.getElementById('btn-undo');
+    var btnRedo = document.getElementById('btn-redo');
+    var btnToggleView = document.getElementById('btn-toggle-view');
+    var btnExport = document.getElementById('btn-export');
+    var btnCopyStatus = document.getElementById('btn-copy-status');
+    var btnReset = document.getElementById('btn-reset');
+    var btnDownloadOffline = document.getElementById('btn-download-offline');
+    var editorStatusText = document.getElementById('editor-status-text');
+
+    function applyPixelate(ctx, x, y, w, h, blockSize) {
+      if (w <= 0 || h <= 0) return;
+      blockSize = blockSize || 10;
+      var imgData = ctx.getImageData(x, y, w, h);
+      var data = imgData.data;
+
+      for (var by = 0; by < h; by += blockSize) {
+        for (var bx = 0; bx < w; bx += blockSize) {
+          var curW = Math.min(blockSize, w - bx);
+          var curH = Math.min(blockSize, h - by);
+          var sumR = 0, sumG = 0, sumB = 0, count = 0;
+
+          for (var py = 0; py < curH; py++) {
+            for (var px = 0; px < curW; px++) {
+              var idx = ((by + py) * w + (bx + px)) * 4;
+              sumR += data[idx];
+              sumG += data[idx + 1];
+              sumB += data[idx + 2];
+              count++;
+            }
+          }
+
+          var avgR = Math.round(sumR / count);
+          var avgG = Math.round(sumG / count);
+          var avgB = Math.round(sumB / count);
+
+          for (var rpy = 0; rpy < curH; rpy++) {
+            for (var rpx = 0; rpx < curW; rpx++) {
+              var ridx = ((by + rpy) * w + (bx + rpx)) * 4;
+              data[ridx] = avgR;
+              data[ridx + 1] = avgG;
+              data[ridx + 2] = avgB;
+              data[ridx + 3] = 255;
+            }
+          }
+        }
+      }
+
+      ctx.putImageData(imgData, x, y);
+    }
+
+    function applyBlur(ctx, x, y, w, h, radius) {
+      if (w <= 0 || h <= 0) return;
+      radius = radius || 4;
+      var imgData = ctx.getImageData(x, y, w, h);
+      var srcData = imgData.data;
+      var outBuffer = new Uint8ClampedArray(srcData.length);
+
+      for (var py = 0; py < h; py++) {
+        for (var px = 0; px < w; px++) {
+          var sumR = 0, sumG = 0, sumB = 0, count = 0;
+          for (var dy = -radius; dy <= radius; dy++) {
+            var sy = Math.min(Math.max(py + dy, 0), h - 1);
+            for (var dx = -radius; dx <= radius; dx++) {
+              var sx = Math.min(Math.max(px + dx, 0), w - 1);
+              var sidx = (sy * w + sx) * 4;
+              sumR += srcData[sidx];
+              sumG += srcData[sidx + 1];
+              sumB += srcData[sidx + 2];
+              count++;
+            }
+          }
+          var outIdx = (py * w + px) * 4;
+          outBuffer[outIdx] = Math.round(sumR / count);
+          outBuffer[outIdx + 1] = Math.round(sumG / count);
+          outBuffer[outIdx + 2] = Math.round(sumB / count);
+          outBuffer[outIdx + 3] = srcData[outIdx + 3];
+        }
+      }
+
+      imgData.data.set(outBuffer);
+      ctx.putImageData(imgData, x, y);
+    }
+
+    function redrawFromOps() {
+      if (!state.cleanCanvas || !workCanvas || !workCtx) return;
+
+      workCtx.clearRect(0, 0, workCanvas.width, workCanvas.height);
+
+      if (state.isBeforeView) {
+        workCtx.drawImage(state.cleanCanvas, 0, 0);
+        if (btnUndo) btnUndo.disabled = true;
+        if (btnRedo) btnRedo.disabled = true;
+        if (btnExport) btnExport.disabled = true;
+        if (editorStatusText) editorStatusText.textContent = '【目前為 Before 原圖檢視模式】（已暫時鎖定匯出，切回 After 即可匯出遮蔽結果）';
+        return;
+      }
+
+      workCtx.drawImage(state.cleanCanvas, 0, 0);
+
+      state.maskOps.forEach(function (op) {
+        var rx = Math.round(op.x);
+        var ry = Math.round(op.y);
+        var rw = Math.round(op.w);
+        var rh = Math.round(op.h);
+
+        if (op.type === 'box') {
+          workCtx.fillStyle = '#000000';
+          workCtx.fillRect(rx, ry, rw, rh);
+        } else if (op.type === 'pixelate') {
+          applyPixelate(workCtx, rx, ry, rw, rh, 10);
+        } else if (op.type === 'blur') {
+          applyBlur(workCtx, rx, ry, rw, rh, 4);
+        }
+      });
+
+      if (btnUndo) btnUndo.disabled = (state.maskOps.length === 0);
+      if (btnRedo) btnRedo.disabled = (state.redoStack.length === 0);
+      if (btnExport) btnExport.disabled = false;
+      if (editorStatusText) editorStatusText.textContent = '已套用 ' + state.maskOps.length + ' 個遮蔽區域。拖曳滑鼠可新增遮蔽。';
+    }
+
+    function loadCleanImage(fileOrBlob, fileName) {
+      var gate = checkImageFileSize(fileOrBlob.size);
+      if (!gate.ok) {
+        showToast(gate.message, 3000);
+        return;
+      } else if (gate.level === 'warn') {
+        showToast(gate.message, 2500);
+      }
+
+      loadImageFile(fileOrBlob).then(function (res) {
+        state.file = fileOrBlob;
+        state.fileName = fileName || 'screenshot.png';
+        state.cleanCanvas = res.canvas;
+        state.maskOps = [];
+        state.redoStack = [];
+        state.isBeforeView = false;
+
+        workCanvas.width = res.canvas.width;
+        workCanvas.height = res.canvas.height;
+
+        if (editorSection) editorSection.style.display = 'block';
+        if (dropZone) dropZone.style.display = 'none';
+
+        redrawFromOps();
+        showToast('圖片載入成功！');
+      }).catch(function (err) {
+        showToast('載入圖片失敗：' + (err.message || '未知錯誤'));
+      });
+    }
+
+    if (btnSelectFile && fileInput) {
+      btnSelectFile.addEventListener('click', function () {
+        fileInput.click();
+      });
+      fileInput.addEventListener('change', function () {
+        if (fileInput.files && fileInput.files[0]) {
+          loadCleanImage(fileInput.files[0], fileInput.files[0].name);
+          fileInput.value = '';
+        }
+      });
+    }
+
+    if (dropZone) {
+      setupDropZone(dropZone, function (result, fileName) {}, {
+        accept: ['.jpg', '.jpeg', '.png', '.webp'],
+        gate: function (file) { return checkImageFileSize(file.size); },
+        onError: function (msg) { showToast(msg); }
+      });
+
+      dropZone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          loadCleanImage(e.dataTransfer.files[0], e.dataTransfer.files[0].name);
+        }
+      });
+    }
+
+    if (btnPaste) {
+      btnPaste.addEventListener('click', function () {
+        pasteImageFromClipboard().then(function (blob) {
+          if (!blob) {
+            showToast('剪貼簿沒有圖片內容');
+            return;
+          }
+          loadCleanImage(blob, 'pasted_screenshot.png');
+        });
+      });
+    }
+
+    function setTool(toolName) {
+      state.currentTool = toolName;
+      [toolBox, toolPixelate, toolBlur].forEach(function (btn) {
+        if (btn) {
+          if (btn.getAttribute('data-tool') === toolName) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        }
+      });
+    }
+
+    if (toolBox) toolBox.addEventListener('click', function () { setTool('box'); });
+    if (toolPixelate) toolPixelate.addEventListener('click', function () { setTool('pixelate'); });
+    if (toolBlur) toolBlur.addEventListener('click', function () { setTool('blur'); });
+
+    if (btnUndo) {
+      btnUndo.addEventListener('click', function () {
+        if (state.maskOps.length > 0) {
+          state.redoStack.push(state.maskOps.pop());
+          redrawFromOps();
+          showToast('已復原上一個遮蔽');
+        }
+      });
+    }
+
+    if (btnRedo) {
+      btnRedo.addEventListener('click', function () {
+        if (state.redoStack.length > 0) {
+          state.maskOps.push(state.redoStack.pop());
+          redrawFromOps();
+          showToast('已重做遮蔽');
+        }
+      });
+    }
+
+    if (btnToggleView) {
+      btnToggleView.addEventListener('click', function () {
+        state.isBeforeView = !state.isBeforeView;
+        btnToggleView.textContent = state.isBeforeView ? '👁️ 切換回遮蔽 (After)' : '👁️ 檢視原圖 (Before)';
+        redrawFromOps();
+      });
+    }
+
+    if (workCanvas) {
+      workCanvas.addEventListener('mousedown', function (e) {
+        if (!state.cleanCanvas || state.isBeforeView) return;
+        state.isDragging = true;
+        var rect = workCanvas.getBoundingClientRect();
+        state.startX = e.clientX - rect.left;
+        state.startY = e.clientY - rect.top;
+
+        if (selectionBox) {
+          selectionBox.style.left = state.startX + 'px';
+          selectionBox.style.top = state.startY + 'px';
+          selectionBox.style.width = '0px';
+          selectionBox.style.height = '0px';
+          selectionBox.style.display = 'block';
+        }
+      });
+
+      window.addEventListener('mousemove', function (e) {
+        if (!state.isDragging || !workCanvas) return;
+        var rect = workCanvas.getBoundingClientRect();
+        var curX = Math.min(Math.max(e.clientX - rect.left, 0), rect.width);
+        var curY = Math.min(Math.max(e.clientY - rect.top, 0), rect.height);
+
+        var boxX = Math.min(state.startX, curX);
+        var boxY = Math.min(state.startY, curY);
+        var boxW = Math.abs(curX - state.startX);
+        var boxH = Math.abs(curY - state.startY);
+
+        if (selectionBox) {
+          selectionBox.style.left = boxX + 'px';
+          selectionBox.style.top = boxY + 'px';
+          selectionBox.style.width = boxW + 'px';
+          selectionBox.style.height = boxH + 'px';
+        }
+      });
+
+      window.addEventListener('mouseup', function (e) {
+        if (!state.isDragging || !workCanvas) return;
+        state.isDragging = false;
+        if (selectionBox) selectionBox.style.display = 'none';
+
+        var rect = workCanvas.getBoundingClientRect();
+        var curX = Math.min(Math.max(e.clientX - rect.left, 0), rect.width);
+        var curY = Math.min(Math.max(e.clientY - rect.top, 0), rect.height);
+
+        var cssX = Math.min(state.startX, curX);
+        var cssY = Math.min(state.startY, curY);
+        var cssW = Math.abs(curX - state.startX);
+        var cssH = Math.abs(curY - state.startY);
+
+        if (cssW < 4 || cssH < 4) return; // Ignore tiny accidental clicks
+
+        var scaleX = workCanvas.width / rect.width;
+        var scaleY = workCanvas.height / rect.height;
+
+        var actualX = cssX * scaleX;
+        var actualY = cssY * scaleY;
+        var actualW = cssW * scaleX;
+        var actualH = cssH * scaleY;
+
+        state.maskOps.push({
+          type: state.currentTool,
+          x: actualX,
+          y: actualY,
+          w: actualW,
+          h: actualH
+        });
+        state.redoStack = [];
+
+        redrawFromOps();
+      });
+    }
+
+    if (btnExport) {
+      btnExport.addEventListener('click', function () {
+        if (!workCanvas || !state.cleanCanvas || state.isBeforeView) return;
+
+        var mime = (state.file && state.file.type) ? state.file.type : 'image/png';
+        if (mime !== 'image/jpeg' && mime !== 'image/webp') mime = 'image/png';
+
+        canvasToBlob(workCanvas, mime, 0.95).then(function (blob) {
+          var reader = new FileReader();
+          reader.onload = function () {
+            var rawBuf = reader.result;
+            var cleanBuf = stripMetadataSegments(rawBuf);
+            var cleanBlob = new Blob([cleanBuf], { type: mime });
+
+            var dot = state.fileName.lastIndexOf('.');
+            var base = (dot !== -1) ? state.fileName.substring(0, dot) : state.fileName;
+            var ext = (dot !== -1) ? state.fileName.substring(dot) : ((mime === 'image/jpeg') ? '.jpg' : '.png');
+            var outName = base + '_sanitized' + ext;
+
+            downloadFile(outName, cleanBlob, mime);
+            showToast('已匯出遮蔽後安全圖片（已清除 Metadata）');
+          };
+          reader.readAsArrayBuffer(blob);
+        });
+      });
+    }
+
+    if (btnCopyStatus) {
+      btnCopyStatus.addEventListener('click', function () {
+        var boxCount = state.maskOps.filter(function (o) { return o.type === 'box'; }).length;
+        var pixCount = state.maskOps.filter(function (o) { return o.type === 'pixelate'; }).length;
+        var blurCount = state.maskOps.filter(function (o) { return o.type === 'blur'; }).length;
+
+        var text = '【截圖敏感資訊遮蔽報告】\n' +
+                   '檔案名稱：' + state.fileName + '\n' +
+                   '總遮蔽區域：' + state.maskOps.length + ' 處\n' +
+                   '- 黑箱遮蔽：' + boxCount + ' 處\n' +
+                   '- 馬賽克：' + pixCount + ' 處\n' +
+                   '- 模糊處理：' + blurCount + ' 處\n' +
+                   '狀態：已寫入底層像素並抹除 EXIF/XMP Metadata\n';
+
+        copyToClipboard(text).then(function () {
+          showToast('已複製處理摘要');
+        });
+      });
+    }
+
+    if (btnReset) {
+      btnReset.addEventListener('click', function () {
+        state.file = null;
+        state.cleanCanvas = null;
+        state.maskOps = [];
+        state.redoStack = [];
+        state.isBeforeView = false;
+        if (workCtx && workCanvas) {
+          workCtx.clearRect(0, 0, workCanvas.width, workCanvas.height);
+          workCanvas.width = 0;
+          workCanvas.height = 0;
+        }
+        if (editorSection) editorSection.style.display = 'none';
+        if (dropZone) dropZone.style.display = 'block';
+        showToast('已重置工作台');
+      });
+    }
+
+    function buildCleanHtmlCopy() {
+      var doc = document.documentElement.cloneNode(true);
+
+      var toast = doc.querySelector('#__shared_toast');
+      if (toast) toast.remove();
+
+      var navBack = doc.querySelector('.nav-back');
+      if (navBack) navBack.remove();
+
+      var offlineBtn = doc.querySelector('#btn-download-offline');
+      if (offlineBtn) offlineBtn.remove();
+
+      var edSection = doc.querySelector('#editor-section');
+      if (edSection) edSection.style.display = 'none';
+
+      var dZone = doc.querySelector('#drop-zone');
+      if (dZone) dZone.style.display = 'block';
+
+      var c = doc.querySelector('#work-canvas');
+      if (c) {
+        c.width = 0;
+        c.height = 0;
+      }
+
+      return '<!DOCTYPE html>\n' + doc.outerHTML;
+    }
+
+    window.buildCleanHtmlCopy = buildCleanHtmlCopy;
+
+    if (btnDownloadOffline) {
+      btnDownloadOffline.addEventListener('click', function () {
+        var cleanHtml = buildCleanHtmlCopy();
+        downloadFile('screenshot-sanitizer-offline.html', cleanHtml, 'text/html;charset=utf-8');
+        showToast('已下載離線版工具');
+      });
+    }
+  })();
+  </script>
+</body>
+</html>

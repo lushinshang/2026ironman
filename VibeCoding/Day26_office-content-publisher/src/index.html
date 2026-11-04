@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Office Content Publisher — Day26</title>
+  <style>
+/* shared/base.css — 共用樣式基底 */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 { line-height: 1.3; }
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 1rem;
+}
+
+button, .btn {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+button:hover, .btn:hover { background: var(--color-bg); }
+
+button.primary, .btn.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover, .btn.primary:hover { background: var(--color-primary-hover); }
+
+button:disabled, .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #eff6ff;
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover { text-decoration: underline; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show { opacity: 1; }
+
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+/* shared/print.css — 共用列印樣式基底 */
+/* 依據 sdd/LEVEL1D_RULINGS.md 裁示 19 建立 */
+
+@page {
+  size: A4 portrait;
+  margin: 10mm;
+}
+
+@media print {
+  body {
+    background: #fff !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-page-break {
+    page-break-after: always;
+    break-inside: avoid;
+  }
+}
+
+.mode-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid var(--color-border);
+  margin-bottom: 16px;
+}
+.mode-tab {
+  padding: 10px 18px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  color: #64748b;
+}
+.mode-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.split-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 800px) {
+  .split-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.editor-textarea {
+  width: 100%;
+  height: 480px;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  resize: vertical;
+  background: #ffffff;
+}
+
+.preview-box {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 20px;
+  min-height: 480px;
+  max-height: 700px;
+  overflow-y: auto;
+  line-height: 1.7;
+}
+
+/* Rendered preview styling */
+.preview-box h1, .preview-box h2, .preview-box h3, .preview-box h4 {
+  color: #0f172a;
+  margin-top: 1.2rem;
+  margin-bottom: 0.6rem;
+}
+.preview-box p { margin: 0.8rem 0; }
+.preview-box pre {
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+.preview-box code {
+  font-family: var(--font-mono);
+  background: #f1f5f9;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+.preview-box pre code {
+  background: transparent;
+  padding: 0;
+}
+.preview-box ul, .preview-box ol {
+  padding-left: 24px;
+  margin: 0.8rem 0;
+}
+.preview-box table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+.preview-box th, .preview-box td {
+  border: 1px solid #cbd5e1;
+  padding: 8px 12px;
+  text-align: left;
+}
+.preview-box th {
+  background: #f8fafc;
+  font-weight: 600;
+}
+
+.column-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0;
+}
+.col-chk-item {
+  background: #f8fafc;
+  border: 1px solid var(--color-border);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav-back no-print">
+      <a href="../index.html">← 回首頁</a>
+    </nav>
+
+    <header class="no-print">
+      <h1>Office Content Publisher</h1>
+      <p class="subtitle" style="color: var(--color-text-muted);">
+        將 Markdown/TXT 筆記與 CSV 數據表格快速發布為 Markdown 表格、獨立 HTML 網頁或乾淨列印版。
+      </p>
+    </header>
+
+    <div class="mode-tabs no-print">
+      <div class="mode-tab active" id="tab-markdown">📝 Markdown / 筆記模式</div>
+      <div class="mode-tab" id="tab-csv">📊 CSV / 數據表格模式</div>
+    </div>
+
+    <!-- Actions Bar -->
+    <div class="card no-print" style="margin-bottom: 1rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div class="btn-group" style="margin: 0;">
+          <button type="button" class="btn primary btn-sm" id="btn-copy-md">📋 複製 Markdown</button>
+          <button type="button" class="btn primary btn-sm" id="btn-copy-html">📋 複製 HTML</button>
+          <button type="button" class="btn secondary btn-sm" id="btn-download-html">🌐 下載獨立 HTML</button>
+          <button type="button" class="btn secondary btn-sm" id="btn-print">🖨️ 列印 / 存為 PDF</button>
+        </div>
+        <div class="btn-group" style="margin: 0;">
+          <button type="button" class="btn secondary btn-sm" id="btn-clear">清空內容</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mode 1: Markdown Panel -->
+    <div id="panel-markdown" class="split-layout">
+      <div class="no-print">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <label style="font-weight: 700; font-size: 0.95rem;">輸入 Markdown / 純文字：</label>
+          <small style="color: #64748b;">支援標題、粗斜體、清單、連結與代碼塊</small>
+        </div>
+        <p style="font-size: 0.8rem; color: var(--color-text-muted); margin: 0 0 6px;">
+          ⚠️ 本工具採用簡化版 Markdown 語法子集（手寫 parser，非完整 CommonMark 實作），僅支援標題、粗體、斜體、清單、連結與代碼塊；不支援表格、巢狀清單、圖片等進階語法，複雜語法可能無法正確渲染。
+        </p>
+        <textarea id="input-markdown" class="editor-textarea" placeholder="# 會議紀錄 / 專案備忘錄&#10;&#10;## 討論重點&#10;- 完成 **核心架構** 設計與驗收&#10;- 更新 *開發進度* 與發布時程&#10;&#10;參考連結：[專案首頁](https://github.com)&#10;&#10;```javascript&#10;console.log('Office Content Publisher');&#10;```"></textarea>
+      </div>
+
+      <div>
+        <div style="margin-bottom: 6px; font-weight: 700; font-size: 0.95rem;" class="no-print">即時預覽：</div>
+        <div id="preview-markdown" class="preview-box"></div>
+      </div>
+    </div>
+
+    <!-- Mode 2: CSV Panel -->
+    <div id="panel-csv" style="display: none;">
+      <div class="card no-print" id="csv-upload-card">
+        <div class="dropzone" id="csv-drop-zone">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">📊</div>
+          <div style="margin-bottom: 0.75rem;">拖放 CSV 檔案至此，或點擊選取</div>
+          <input type="file" id="csv-file-input" accept=".csv,text/csv" style="display: none;">
+          <button type="button" class="btn secondary" id="btn-select-csv">選擇 CSV 檔案</button>
+        </div>
+        <div id="csv-file-error" style="display: none; margin-top: 10px; padding: 8px 12px; background: #fee2e2; border: 1px solid var(--color-danger); border-radius: 6px; font-size: 0.85rem; color: var(--color-danger); text-align: left;"></div>
+      </div>
+
+      <div id="csv-controls-card" class="card no-print" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong id="csv-doc-info">檔案名稱.csv</strong>
+          <small style="color: #64748b;" id="csv-stats-info">共 0 欄 0 列</small>
+        </div>
+        <div id="csv-ragged-warning" style="display: none; margin-bottom: 10px; padding: 8px 12px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; font-size: 0.85rem; color: #92400e;"></div>
+
+        <div style="margin-bottom: 6px; font-weight: 600; font-size: 0.9rem;">挑選輸出欄位：</div>
+        <div class="column-checks" id="csv-columns-container"></div>
+
+        <div style="display: flex; gap: 12px; align-items: center; margin-top: 10px; flex-wrap: wrap;">
+          <label style="font-size: 0.9rem; font-weight: 600;">排序欄位：</label>
+          <select id="select-sort-col" style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--color-border); font-size: 0.9rem;"></select>
+          <select id="select-sort-dir" style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--color-border); font-size: 0.9rem;">
+            <option value="asc">升冪 (A-Z / 小到大)</option>
+            <option value="desc">降冪 (Z-A / 大到小)</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="csv-preview-container" class="card" style="display: none;">
+        <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 8px;" class="no-print">表格預覽：</div>
+        <div id="preview-csv" style="overflow-x: auto;"></div>
+      </div>
+    </div>
+
+    <div class="btn-group no-print" style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+      <button type="button" class="btn secondary" id="btn-download-offline">💾 下載本工具離線版</button>
+    </div>
+
+    <!--{{LICENSES}}-->
+  </div>
+
+  <!--{{ASSET:papaparse}}-->
+  <!--{{SHARED:util-escape}}-->
+  <!--{{SHARED:ui-toast}}-->
+  <!--{{SHARED:ui-debounce}}-->
+  <!--{{SHARED:io-download}}-->
+  <!--{{SHARED:io-clipboard}}-->
+  <!--{{SHARED:io-dropzone}}-->
+  <!--{{SHARED:csv-decode}}-->
+  <!--{{SHARED:csv-parse}}-->
+  <!--{{SHARED:csv-types}}-->
+
+  <script>
+  (function () {
+    var state = {
+      mode: 'markdown', // 'markdown' | 'csv'
+      markdownText: '',
+      csvTable: null,   // { headers: string[], rows: string[][] }
+      csvSelectedCols: [], // boolean[]
+      csvSortCol: 0,
+      csvSortDir: 'asc'
+    };
+
+    var tabMarkdown = document.getElementById('tab-markdown');
+    var tabCsv = document.getElementById('tab-csv');
+    var panelMarkdown = document.getElementById('panel-markdown');
+    var panelCsv = document.getElementById('panel-csv');
+
+    var inputMarkdown = document.getElementById('input-markdown');
+    var previewMarkdown = document.getElementById('preview-markdown');
+
+    var csvDropZone = document.getElementById('csv-drop-zone');
+    var csvFileInput = document.getElementById('csv-file-input');
+    var btnSelectCsv = document.getElementById('btn-select-csv');
+    var csvControlsCard = document.getElementById('csv-controls-card');
+    var csvDocInfo = document.getElementById('csv-doc-info');
+    var csvStatsInfo = document.getElementById('csv-stats-info');
+    var csvRaggedWarning = document.getElementById('csv-ragged-warning');
+    var csvFileError = document.getElementById('csv-file-error');
+    var csvColumnsContainer = document.getElementById('csv-columns-container');
+    var selectSortCol = document.getElementById('select-sort-col');
+    var selectSortDir = document.getElementById('select-sort-dir');
+    var csvPreviewContainer = document.getElementById('csv-preview-container');
+    var previewCsv = document.getElementById('preview-csv');
+
+    var btnCopyMd = document.getElementById('btn-copy-md');
+    var btnCopyHtml = document.getElementById('btn-copy-html');
+    var btnDownloadHtml = document.getElementById('btn-download-html');
+    var btnPrint = document.getElementById('btn-print');
+    var btnClear = document.getElementById('btn-clear');
+    var btnDownloadOffline = document.getElementById('btn-download-offline');
+
+    function setTab(mode) {
+      state.mode = mode;
+      if (mode === 'markdown') {
+        tabMarkdown.classList.add('active');
+        tabCsv.classList.remove('active');
+        panelMarkdown.style.display = 'grid';
+        panelCsv.style.display = 'none';
+      } else {
+        tabMarkdown.classList.remove('active');
+        tabCsv.classList.add('active');
+        panelMarkdown.style.display = 'none';
+        panelCsv.style.display = 'block';
+      }
+    }
+
+    if (tabMarkdown) tabMarkdown.addEventListener('click', function () { setTab('markdown'); });
+    if (tabCsv) tabCsv.addEventListener('click', function () { setTab('csv'); });
+
+    // Lightweight Markdown Parser
+    function parseMarkdownToHtml(md) {
+      if (!md) return '';
+      var lines = md.split(/\r?\n/);
+      var outHtml = [];
+      var inCodeFence = false;
+      var codeBuffer = [];
+      var inUl = false;
+      var inOl = false;
+
+      function closeLists() {
+        if (inUl) { outHtml.push('</ul>'); inUl = false; }
+        if (inOl) { outHtml.push('</ol>'); inOl = false; }
+      }
+
+      function safeHttpUrl(u) {
+        try {
+          var parsed = new URL(u, location.href);
+          return (parsed.protocol === 'https:' || parsed.protocol === 'http:') ? parsed.href : '#';
+        } catch (e) {
+          return '#';
+        }
+      }
+
+      function inlineFormat(text) {
+        var res = escapeHtml(text);
+        // Code inline `code`
+        res = res.replace(/`([^`]+)`/g, '<code>$1</code>');
+        // Bold **text**
+        res = res.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        // Italic *text*
+        res = res.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        // Links [text](url)——只允許 http/https，防止夾帶 javascript: 等危險 scheme
+        res = res.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (m, label, url) {
+          return '<a href="' + safeHttpUrl(url) + '" target="_blank" rel="noopener">' + label + '</a>';
+        });
+        return res;
+      }
+
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+
+        // Code fence
+        if (/^```/.test(line)) {
+          if (inCodeFence) {
+            closeLists();
+            outHtml.push('<pre><code>' + escapeHtml(codeBuffer.join('\n')) + '</code></pre>');
+            codeBuffer = [];
+            inCodeFence = false;
+          } else {
+            closeLists();
+            inCodeFence = true;
+            codeBuffer = [];
+          }
+          continue;
+        }
+
+        if (inCodeFence) {
+          codeBuffer.push(line);
+          continue;
+        }
+
+        // Empty line
+        if (!line.trim()) {
+          closeLists();
+          continue;
+        }
+
+        // Headers
+        var hMatch = line.match(/^(#{1,6})\s+(.+)$/);
+        if (hMatch) {
+          closeLists();
+          var lvl = hMatch[1].length;
+          outHtml.push('<h' + lvl + '>' + inlineFormat(hMatch[2]) + '</h' + lvl + '>');
+          continue;
+        }
+
+        // Unordered list - or *
+        var ulMatch = line.match(/^[\*\-]\s+(.+)$/);
+        if (ulMatch) {
+          if (inOl) { outHtml.push('</ol>'); inOl = false; }
+          if (!inUl) { outHtml.push('<ul>'); inUl = true; }
+          outHtml.push('<li>' + inlineFormat(ulMatch[1]) + '</li>');
+          continue;
+        }
+
+        // Ordered list 1.
+        var olMatch = line.match(/^\d+\.\s+(.+)$/);
+        if (olMatch) {
+          if (inUl) { outHtml.push('</ul>'); inUl = false; }
+          if (!inOl) { outHtml.push('<ol>'); inOl = true; }
+          outHtml.push('<li>' + inlineFormat(olMatch[1]) + '</li>');
+          continue;
+        }
+
+        // Normal paragraph
+        closeLists();
+        outHtml.push('<p>' + inlineFormat(line) + '</p>');
+      }
+
+      if (inCodeFence) {
+        outHtml.push('<pre><code>' + escapeHtml(codeBuffer.join('\n')) + '</code></pre>');
+      }
+      closeLists();
+
+      return outHtml.join('\n');
+    }
+
+    function updateMarkdownPreview() {
+      state.markdownText = inputMarkdown.value || '';
+      var html = parseMarkdownToHtml(state.markdownText);
+      if (previewMarkdown) {
+        previewMarkdown.innerHTML = html || '<p style="color: #94a3b8;">預覽畫面將即時呈現在此...</p>';
+      }
+    }
+
+    var debouncedUpdateMd = debounce(updateMarkdownPreview, 150);
+    if (inputMarkdown) {
+      inputMarkdown.addEventListener('input', debouncedUpdateMd);
+      updateMarkdownPreview();
+    }
+
+    // CSV Processing
+    function getProcessedCsvData() {
+      if (!state.csvTable) return null;
+      var origHeaders = state.csvTable.headers || [];
+      var origRows = state.csvTable.rows || [];
+
+      // Filter columns
+      var activeColIndices = [];
+      var headers = [];
+      origHeaders.forEach(function (h, idx) {
+        if (state.csvSelectedCols[idx]) {
+          activeColIndices.push(idx);
+          headers.push(h);
+        }
+      });
+
+      // Filter & Sort rows
+      var sortColIdx = state.csvSortCol;
+      var sortDir = state.csvSortDir;
+
+      var rows = origRows.map(function (r) {
+        var rawCells = r.cells || r;
+        return activeColIndices.map(function (cIdx) { return rawCells[cIdx] || ''; });
+      });
+
+      // Type-aware sort
+      if (sortColIdx >= 0 && sortColIdx < origHeaders.length) {
+        var activeSortIdx = activeColIndices.indexOf(sortColIdx);
+        if (activeSortIdx !== -1) {
+          var colType = 'text';
+          try {
+            if (typeof inferColumnTypes === 'function') {
+              var types = inferColumnTypes(state.csvTable);
+              if (types && types[sortColIdx]) colType = types[sortColIdx].kind;
+            }
+          } catch (e) {}
+
+          rows.sort(function (a, b) {
+            var vA = a[activeSortIdx];
+            var vB = b[activeSortIdx];
+            if (colType === 'number') {
+              var nA = parseFloat(vA) || 0;
+              var nB = parseFloat(vB) || 0;
+              return sortDir === 'asc' ? nA - nB : nB - nA;
+            } else {
+              return sortDir === 'asc' ? String(vA).localeCompare(String(vB), 'zh-TW') : String(vB).localeCompare(String(vA), 'zh-TW');
+            }
+          });
+        }
+      }
+
+      return { headers: headers, rows: rows };
+    }
+
+    function renderCsvPreview() {
+      var data = getProcessedCsvData();
+      if (!data || !previewCsv) return;
+
+      var tableHtml = '<table class="comparison-table"><thead><tr>';
+      data.headers.forEach(function (h) {
+        tableHtml += '<th>' + escapeHtml(h) + '</th>';
+      });
+      tableHtml += '</tr></thead><tbody>';
+
+      data.rows.forEach(function (row) {
+        tableHtml += '<tr>';
+        row.forEach(function (cell) {
+          tableHtml += '<td>' + escapeHtml(cell) + '</td>';
+        });
+        tableHtml += '</tr>';
+      });
+      tableHtml += '</tbody></table>';
+
+      previewCsv.innerHTML = tableHtml;
+    }
+
+    function generateCsvMarkdownTable(data) {
+      if (!data || data.headers.length === 0) return '';
+      var lines = [];
+      lines.push('| ' + data.headers.map(function (h) { return escapeHtml(h).replace(/\|/g, '\\|'); }).join(' | ') + ' |');
+      lines.push('| ' + data.headers.map(function () { return '---'; }).join(' | ') + ' |');
+      data.rows.forEach(function (row) {
+        lines.push('| ' + row.map(function (c) { return escapeHtml(String(c)).replace(/\|/g, '\\|'); }).join(' | ') + ' |');
+      });
+      return lines.join('\n');
+    }
+
+    function generateCsvHtmlTable(data) {
+      if (!data || data.headers.length === 0) return '';
+      var html = '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; font-family: sans-serif;">\n  <thead>\n    <tr style="background:#f1f5f9;">\n';
+      data.headers.forEach(function (h) {
+        html += '      <th>' + escapeHtml(h) + '</th>\n';
+      });
+      html += '    </tr>\n  </thead>\n  <tbody>\n';
+      data.rows.forEach(function (row) {
+        html += '    <tr>\n';
+        row.forEach(function (c) {
+          html += '      <td>' + escapeHtml(c) + '</td>\n';
+        });
+        html += '    </tr>\n';
+      });
+      html += '  </tbody>\n</table>';
+      return html;
+    }
+
+    function handleCsvLoaded(fileName, table) {
+      state.csvTable = table;
+      state.csvSelectedCols = table.headers.map(function () { return true; });
+      state.csvSortCol = 0;
+      state.csvSortDir = 'asc';
+
+      if (csvDocInfo) csvDocInfo.textContent = fileName;
+      if (csvStatsInfo) csvStatsInfo.textContent = '共 ' + table.headers.length + ' 欄 ' + table.rows.length + ' 列';
+
+      if (csvRaggedWarning) {
+        var raggedLines = (table.meta && table.meta.raggedRows) || [];
+        if (raggedLines.length) {
+          csvRaggedWarning.textContent = '⚠️ 第 ' + raggedLines.join('、') + ' 列的欄位數與表頭不符（可能多出或缺少欄位），該列多餘欄位已略過顯示，請自行核對原始檔案。';
+          csvRaggedWarning.style.display = 'block';
+        } else {
+          csvRaggedWarning.textContent = '';
+          csvRaggedWarning.style.display = 'none';
+        }
+      }
+
+      if (csvColumnsContainer) {
+        csvColumnsContainer.innerHTML = '';
+        table.headers.forEach(function (h, idx) {
+          var lbl = document.createElement('label');
+          lbl.className = 'col-chk-item';
+          var chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.checked = true;
+          chk.dataset.colIdx = idx;
+          chk.addEventListener('change', function () {
+            state.csvSelectedCols[idx] = chk.checked;
+            renderCsvPreview();
+          });
+          lbl.appendChild(chk);
+          lbl.appendChild(document.createTextNode(' ' + h));
+          csvColumnsContainer.appendChild(lbl);
+        });
+      }
+
+      if (selectSortCol) {
+        selectSortCol.innerHTML = '';
+        table.headers.forEach(function (h, idx) {
+          var opt = document.createElement('option');
+          opt.value = idx;
+          opt.textContent = h;
+          selectSortCol.appendChild(opt);
+        });
+        selectSortCol.value = 0;
+      }
+
+      if (csvControlsCard) csvControlsCard.style.display = 'block';
+      if (csvPreviewContainer) csvPreviewContainer.style.display = 'block';
+      renderCsvPreview();
+      showToast('CSV 載入完成，共 ' + table.rows.length + ' 列資料');
+    }
+
+    // 粗略判斷解碼後的文字是否「不像」CSV：內容偏二進位（大量控制字元），
+    // 或完全找不到常見分隔符卻又有多列內容（暗示副檔名被竄改的非文字檔案）。
+    function looksLikeNonCsvContent(text) {
+      if (!text) return true;
+      var sample = text.slice(0, 4000);
+      var controlCount = 0;
+      for (var i = 0; i < sample.length; i++) {
+        var code = sample.charCodeAt(i);
+        if (code === 0xfffd || (code < 32 && code !== 9 && code !== 10 && code !== 13)) {
+          controlCount++;
+        }
+      }
+      if (sample.length > 0 && (controlCount / sample.length) > 0.02) {
+        return true;
+      }
+      var lines = sample.split(/\r?\n/).filter(function (l) { return l.trim().length > 0; });
+      var hasDelimiter = /[,;\t]/.test(sample);
+      if (lines.length > 1 && !hasDelimiter) {
+        return true;
+      }
+      return false;
+    }
+
+    function showCsvFileError(msg) {
+      if (csvFileError) {
+        csvFileError.textContent = msg;
+        csvFileError.style.display = 'block';
+      }
+      showToast(msg, 4000);
+    }
+
+    function clearCsvFileError() {
+      if (csvFileError) {
+        csvFileError.textContent = '';
+        csvFileError.style.display = 'none';
+      }
+    }
+
+    function readCsvFile(file) {
+      var gate = checkCsvFileSize(file.size);
+      if (!gate.ok) {
+        showToast(gate.message, 3500);
+        return;
+      }
+
+      var isCsvExt = /\.csv$/i.test(file.name || '');
+      if (!isCsvExt) {
+        showCsvFileError('檔案副檔名不是 .csv，請確認上傳的是 CSV 檔案。');
+        return;
+      }
+
+      showToast('正在讀取 CSV 檔案...');
+      file.arrayBuffer().then(function (ab) {
+        var decoded = decodeCsvBytes(ab);
+        if (looksLikeNonCsvContent(decoded.text)) {
+          showCsvFileError('檔案內容不像有效的 CSV（偵測到大量二進位內容或找不到常見分隔符），請確認檔案格式後再試。');
+          return;
+        }
+        var table = parseCsv(decoded.text);
+        clearCsvFileError();
+        handleCsvLoaded(file.name, table);
+      }).catch(function (err) {
+        showToast('CSV 解析失敗：' + err.message);
+      });
+    }
+
+    if (btnSelectCsv && csvFileInput) {
+      btnSelectCsv.addEventListener('click', function () { csvFileInput.click(); });
+      csvFileInput.addEventListener('change', function () {
+        if (csvFileInput.files && csvFileInput.files[0]) {
+          readCsvFile(csvFileInput.files[0]);
+          csvFileInput.value = '';
+        }
+      });
+    }
+
+    if (csvDropZone) {
+      setupDropZone(csvDropZone, function () {}, {
+        accept: ['.csv', 'text/csv'],
+        onError: function (msg) { showToast(msg); }
+      });
+      csvDropZone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        csvDropZone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          readCsvFile(e.dataTransfer.files[0]);
+        }
+      });
+    }
+
+    if (selectSortCol) {
+      selectSortCol.addEventListener('change', function () {
+        state.csvSortCol = parseInt(selectSortCol.value, 10) || 0;
+        renderCsvPreview();
+      });
+    }
+    if (selectSortDir) {
+      selectSortDir.addEventListener('change', function () {
+        state.csvSortDir = selectSortDir.value;
+        renderCsvPreview();
+      });
+    }
+
+    // Export Handlers
+    if (btnCopyMd) {
+      btnCopyMd.addEventListener('click', function () {
+        var text = '';
+        if (state.mode === 'markdown') {
+          text = inputMarkdown.value || '';
+        } else {
+          var data = getProcessedCsvData();
+          text = generateCsvMarkdownTable(data);
+        }
+        if (!text) { showToast('無內容可複製'); return; }
+        copyToClipboard(text).then(function () {
+          showToast('已複製 Markdown 至剪貼簿');
+        });
+      });
+    }
+
+    if (btnCopyHtml) {
+      btnCopyHtml.addEventListener('click', function () {
+        var html = '';
+        if (state.mode === 'markdown') {
+          html = parseMarkdownToHtml(inputMarkdown.value || '');
+        } else {
+          var data = getProcessedCsvData();
+          html = generateCsvHtmlTable(data);
+        }
+        if (!html) { showToast('無內容可複製'); return; }
+        copyToClipboard(html).then(function () {
+          showToast('已複製 HTML 至剪貼簿');
+        });
+      });
+    }
+
+    if (btnDownloadHtml) {
+      btnDownloadHtml.addEventListener('click', function () {
+        var content = '';
+        var title = 'Published Document';
+        if (state.mode === 'markdown') {
+          content = parseMarkdownToHtml(inputMarkdown.value || '');
+          title = 'Markdown Note';
+        } else {
+          var data = getProcessedCsvData();
+          content = generateCsvHtmlTable(data);
+          title = 'CSV Data Table';
+        }
+
+        var fullHtml = '<!DOCTYPE html>\n<html lang="zh-TW">\n<head>\n' +
+                       '  <meta charset="UTF-8">\n' +
+                       '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+                       '  <title>' + escapeHtml(title) + '</title>\n' +
+                       '  <style>\n' +
+                       '    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif; line-height: 1.6; color: #1e293b; max-width: 860px; margin: 40px auto; padding: 0 16px; background: #ffffff; }\n' +
+                       '    table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.95rem; }\n' +
+                       '    th, td { border: 1px solid #cbd5e1; padding: 10px 14px; text-align: left; }\n' +
+                       '    th { background: #f8fafc; font-weight: 600; }\n' +
+                       '    pre { background: #1e293b; color: #f8fafc; padding: 14px; border-radius: 6px; overflow-x: auto; font-family: monospace; }\n' +
+                       '    code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: monospace; }\n' +
+                       '    pre code { background: transparent; padding: 0; }\n' +
+                       '  </style>\n' +
+                       '</head>\n<body>\n' + content + '\n</body>\n</html>';
+
+        downloadFile((state.mode === 'markdown' ? 'published_note.html' : 'published_table.html'), fullHtml, 'text/html;charset=utf-8');
+        showToast('已下載獨立 HTML 檔案');
+      });
+    }
+
+    if (btnPrint) {
+      btnPrint.addEventListener('click', function () {
+        window.print();
+      });
+    }
+
+    if (btnClear) {
+      btnClear.addEventListener('click', function () {
+        if (state.mode === 'markdown') {
+          inputMarkdown.value = '';
+          updateMarkdownPreview();
+        } else {
+          state.csvTable = null;
+          if (csvControlsCard) csvControlsCard.style.display = 'none';
+          if (csvPreviewContainer) csvPreviewContainer.style.display = 'none';
+        }
+        showToast('已清空');
+      });
+    }
+
+    function buildCleanHtmlCopy() {
+      var doc = document.documentElement.cloneNode(true);
+
+      var toast = doc.querySelector('#__shared_toast');
+      if (toast) toast.remove();
+
+      var navBack = doc.querySelector('.nav-back');
+      if (navBack) navBack.remove();
+
+      var offlineBtn = doc.querySelector('#btn-download-offline');
+      if (offlineBtn) offlineBtn.remove();
+
+      var inMd = doc.querySelector('#input-markdown');
+      if (inMd) inMd.value = '';
+
+      var prevMd = doc.querySelector('#preview-markdown');
+      if (prevMd) prevMd.innerHTML = '';
+
+      var csvCtrl = doc.querySelector('#csv-controls-card');
+      if (csvCtrl) csvCtrl.style.display = 'none';
+
+      var csvPrev = doc.querySelector('#csv-preview-container');
+      if (csvPrev) csvPrev.style.display = 'none';
+
+      return '<!DOCTYPE html>\n' + doc.outerHTML;
+    }
+
+    window.buildCleanHtmlCopy = buildCleanHtmlCopy;
+
+    if (btnDownloadOffline) {
+      btnDownloadOffline.addEventListener('click', function () {
+        var cleanHtml = buildCleanHtmlCopy();
+        downloadFile('office-content-publisher-offline.html', cleanHtml, 'text/html;charset=utf-8');
+        showToast('已下載離線版工具');
+      });
+    }
+  })();
+  </script>
+</body>
+</html>

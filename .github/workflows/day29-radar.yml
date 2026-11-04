@@ -1,0 +1,59 @@
+name: Day29 Public Data Change Radar (iThome)
+
+on:
+  schedule:
+    # 每小時一次（UTC），避開整點排程尖峰；30 分鐘頻率下 GitHub schedule 觸發
+    # 連續多次中斷（2026-08-27/28 實測），降頻換取穩定性，使用者已裁示
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: "day29-news-radar"
+  cancel-in-progress: false
+
+jobs:
+  check:
+    # 資料源：iThome RSS（https://www.ithome.com.tw/rss.xml），免金鑰公開端點，
+    # 已實測 ubuntu-latest 可正常存取（細節見 sdd/public-data-snapshot/proposal.md）。
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Check feed for new articles
+        working-directory: VibeCoding/Day29_public-data-snapshot
+        run: bash scripts/check_feed.sh
+
+      - name: Create summary issue if new articles found
+        working-directory: VibeCoding/Day29_public-data-snapshot
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f data/pending-issue.md ]; then
+            NEW_COUNT="$(grep -c '^- \[' data/pending-issue.md || true)"
+            TODAY="$(date -u +%Y-%m-%d)"
+            gh issue create \
+              --title "iThome 新文章通知（${NEW_COUNT} 篇，${TODAY}）" \
+              --body-file data/pending-issue.md
+          else
+            echo "沒有 pending-issue.md，本次無新文章，不建立 Issue"
+          fi
+
+      - name: Commit and push data changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          for f in VibeCoding/Day29_public-data-snapshot/data/seen.json \
+                   VibeCoding/Day29_public-data-snapshot/data/history.jsonl; do
+            if [ -f "$f" ]; then git add "$f"; fi
+          done
+          if git diff --cached --quiet; then
+            echo "無異動跳過 commit"
+          else
+            git commit -m "chore(day29): news radar update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push
+          fi

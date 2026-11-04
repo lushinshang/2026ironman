@@ -1,0 +1,10 @@
+{
+  "assets": {
+    "jsdiff": {
+      "path": "diff.js",
+      "version": "diff@9.0.0",
+      "license": "BSD-3-Clause",
+      "escape_mode": "raw_js"
+    }
+  }
+}

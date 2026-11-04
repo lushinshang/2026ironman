@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>兩期清冊異動報告</title>
+<style>
+/* shared/base.css — 共用樣式基底，逐字複製，勿手動修改（改請去 shared/base.css 源頭並重新複製） */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 {
+  line-height: 1.3;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+textarea,
+input[type="text"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 160px;
+}
+
+button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--color-bg);
+}
+
+button.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover {
+  background: var(--color-primary-hover);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover {
+  text-decoration: underline;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+/* ---- 本題（csv-period-diff）專屬樣式 ---- */
+.page-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.page-header h1 {
+  font-size: 1.4rem;
+  margin: 0 0 16px;
+}
+
+.section-gap {
+  margin-top: 16px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.col-label {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.file-input-row {
+  margin-top: 8px;
+}
+
+.status-line {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.hidden {
+  display: none;
+}
+
+.encoding-fallback {
+  font-size: 0.85rem;
+  background: #fdf3e0;
+  color: #8a5a00;
+  border: 1px solid #e8c99a;
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  margin-top: 6px;
+}
+
+.encoding-fallback button {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
+.swatch-added { background: #d1fae5; }
+.swatch-removed { background: #fee2e2; }
+.swatch-modified { background: #fef3c7; }
+.swatch-unchanged { background: var(--color-surface); }
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--color-border);
+  font-size: 0.95rem;
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-row .stat-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.key-checkbox-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.key-checkbox-list label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.field-diff-block {
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
+.field-diff-block .empty {
+  color: var(--color-text-muted);
+}
+
+.result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-list .empty {
+  color: var(--color-text-muted);
+  padding: 8px 0;
+}
+
+.result-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+}
+
+.result-item .result-key {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 8px;
+  font-size: 0.88rem;
+  padding: 2px 0;
+}
+
+.field-row .field-name {
+  color: var(--color-text-muted);
+}
+
+.field-row .field-value {
+  word-break: break-word;
+}
+
+.diff-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 1fr;
+  gap: 8px;
+  font-size: 0.88rem;
+  padding: 2px 0;
+  align-items: start;
+}
+
+.diff-row .field-name {
+  color: var(--color-text-muted);
+}
+
+.diff-row .diff-old,
+.diff-row .diff-new {
+  word-break: break-word;
+  border-radius: 3px;
+  padding: 2px 4px;
+}
+
+.pager {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.warn-list {
+  font-size: 0.88rem;
+}
+
+.warn-list .empty {
+  color: var(--color-text-muted);
+}
+
+.warn-item {
+  padding: 2px 0;
+  border-bottom: 1px dashed var(--color-border);
+}
+
+.warn-item:last-child {
+  border-bottom: none;
+}
+
+.about-box {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="nav-back" href="../index.html">← 返回作品集</a>
+
+  <div class="page-header">
+    <h1>兩期清冊異動報告</h1>
+  </div>
+
+  <p class="section-gap" style="color: var(--color-text-muted); font-size: 0.9rem; margin-top: 0;">
+    分別上傳前期與本期兩份 CSV 清冊，勾選 Primary Key 欄位後按「開始比對」，找出新增、移除與欄位異動的列。
+  </p>
+
+  <div class="grid-2">
+    <div>
+      <div class="col-label">前期 CSV</div>
+      <div id="dropzone-a" class="dropzone">拖曳前期 .csv 檔案到此</div>
+      <div class="file-input-row">
+        <input type="file" id="file-a" accept=".csv">
+      </div>
+      <div class="status-line" id="status-a">尚未上傳</div>
+      <div class="encoding-fallback hidden" id="encoding-fallback-a"></div>
+    </div>
+    <div>
+      <div class="col-label">本期 CSV</div>
+      <div id="dropzone-b" class="dropzone">拖曳本期 .csv 檔案到此</div>
+      <div class="file-input-row">
+        <input type="file" id="file-b" accept=".csv">
+      </div>
+      <div class="status-line" id="status-b">尚未上傳</div>
+      <div class="encoding-fallback hidden" id="encoding-fallback-b"></div>
+    </div>
+  </div>
+
+  <div class="section-gap card" id="field-diff-card">
+    <h3>欄位結構差異</h3>
+    <div class="field-diff-block" id="field-diff"><div class="empty">尚未上傳兩份檔案</div></div>
+  </div>
+
+  <div class="section-gap card" id="key-card">
+    <h3>Key 欄位（勾選 1 至多欄）</h3>
+    <div class="key-checkbox-list" id="key-checkbox-list"><div class="empty">尚未上傳兩份檔案</div></div>
+  </div>
+
+  <div class="section-gap button-row">
+    <button type="button" id="btn-compare" class="primary">開始比對</button>
+  </div>
+
+  <div class="section-gap card">
+    <h3>統計摘要</h3>
+    <div class="stat-row"><span>新增</span><span class="stat-value" id="stat-added">0</span></div>
+    <div class="stat-row"><span>移除</span><span class="stat-value" id="stat-removed">0</span></div>
+    <div class="stat-row"><span>異動</span><span class="stat-value" id="stat-modified">0</span></div>
+    <div class="stat-row"><span>無異動</span><span class="stat-value" id="stat-unchanged">0</span></div>
+    <div class="stat-row"><span>略過（Key 重複）</span><span class="stat-value" id="stat-dup">0</span></div>
+    <div class="stat-row"><span>略過（Key 缺值）</span><span class="stat-value" id="stat-missing">0</span></div>
+  </div>
+
+  <div class="section-gap card">
+    <h3>Key 重複，略過比對</h3>
+    <div class="warn-list" id="warn-dup"><div class="empty">尚未比對</div></div>
+  </div>
+
+  <div class="section-gap card">
+    <h3>Key 缺值，略過比對</h3>
+    <div class="warn-list" id="warn-missing"><div class="empty">尚未比對</div></div>
+  </div>
+
+  <div class="section-gap card">
+    <h3>新增</h3>
+    <div class="result-list" id="list-added"><div class="empty">尚未比對</div></div>
+    <div class="pager" id="pager-added"></div>
+  </div>
+
+  <div class="section-gap card">
+    <h3>移除</h3>
+    <div class="result-list" id="list-removed"><div class="empty">尚未比對</div></div>
+    <div class="pager" id="pager-removed"></div>
+  </div>
+
+  <div class="section-gap card">
+    <h3>異動</h3>
+    <div class="result-list" id="list-modified"><div class="empty">尚未比對</div></div>
+    <div class="pager" id="pager-modified"></div>
+  </div>
+
+  <div class="section-gap button-row">
+    <button type="button" id="btn-download-added">下載新增 CSV</button>
+    <button type="button" id="btn-download-removed">下載移除 CSV</button>
+    <button type="button" id="btn-download-modified">下載異動 CSV</button>
+    <button type="button" id="btn-download-report">下載 HTML 摘要報告</button>
+    <button type="button" id="btn-download-offline">下載本工具離線版</button>
+  </div>
+
+  <div class="about-box" id="about-box">
+    <p style="margin: 0 0 8px;">本工具全程在瀏覽器本機執行，不上傳任何內容。</p>
+    <!--{{LICENSES}}-->
+  </div>
+</div>
+
+<!--{{SHARED:util-escape}}-->
+<!--{{SHARED:ui-toast}}-->
+<!--{{SHARED:io-download}}-->
+<!--{{SHARED:io-clipboard}}-->
+<!--{{SHARED:io-dropzone}}-->
+<!--{{SHARED:csv-decode}}-->
+<!--{{ASSET:papaparse}}-->
+<!--{{SHARED:csv-parse}}-->
+<!--{{SHARED:csv-types}}-->
+<!--{{SHARED:csv-write}}-->
+
+<script>
+(function () {
+  "use strict";
+
+  var PAGE_SIZE = 50;
+  var KEY_SEP = "\u0000";
+
+  // ---- T2：兩區各自的模組層 size 變數與大小門檻 gate ----
+
+  var periodASize = null;
+  var periodBSize = null;
+
+  function gateFor(getOtherSize, setOwnSize) {
+    return function (file) {
+      var single = checkCsvFileSize(file.size);
+      if (!single.ok) return single;
+      var otherSize = getOtherSize();
+      if (otherSize !== null) {
+        var total = checkCsvFileSize(otherSize + file.size);
+        if (!total.ok) {
+          return { ok: false, level: "reject", message: "兩檔合計超過 20 MB 上限，請縮小檔案後再試。" };
+        }
+      }
+      setOwnSize(file.size);
+      return single;
+    };
+  }
+
+  var gateA = gateFor(function () { return periodBSize; }, function (size) { periodASize = size; });
+  var gateB = gateFor(function () { return periodASize; }, function (size) { periodBSize = size; });
+
+  // ---- 狀態 ----
+
+  var tableA = null;
+  var tableB = null;
+  var fileNameA = null;
+  var fileNameB = null;
+  var arrayBufferA = null;
+  var arrayBufferB = null;
+
+  var lastResult = null; // { added, removed, modified, unchangedCount, dupA, dupB, missingA, missingB, keyCols }
+  var pageState = { added: 1, removed: 1, modified: 1 };
+
+  // ---- DOM ----
+
+  var dropzoneA = document.getElementById("dropzone-a");
+  var dropzoneB = document.getElementById("dropzone-b");
+  var fileInputA = document.getElementById("file-a");
+  var fileInputB = document.getElementById("file-b");
+  var statusA = document.getElementById("status-a");
+  var statusB = document.getElementById("status-b");
+  var fieldDiffEl = document.getElementById("field-diff");
+  var keyCheckboxList = document.getElementById("key-checkbox-list");
+
+  var statAdded = document.getElementById("stat-added");
+  var statRemoved = document.getElementById("stat-removed");
+  var statModified = document.getElementById("stat-modified");
+  var statUnchanged = document.getElementById("stat-unchanged");
+  var statDup = document.getElementById("stat-dup");
+  var statMissing = document.getElementById("stat-missing");
+
+  var warnDupEl = document.getElementById("warn-dup");
+  var warnMissingEl = document.getElementById("warn-missing");
+
+  var listAdded = document.getElementById("list-added");
+  var listRemoved = document.getElementById("list-removed");
+  var listModified = document.getElementById("list-modified");
+  var pagerAdded = document.getElementById("pager-added");
+  var pagerRemoved = document.getElementById("pager-removed");
+  var pagerModified = document.getElementById("pager-modified");
+
+  // ---- 上傳與解析 ----
+
+  function statusText(table, fileName) {
+    return fileName + "（" + table.headers.length + " 欄，" + table.rows.length + " 列，編碼 " + table.meta.encoding + "）";
+  }
+
+  function fallbackElFor(which) {
+    return document.getElementById(which === "A" ? "encoding-fallback-a" : "encoding-fallback-b");
+  }
+
+  function resetComparisonResult() {
+    lastResult = null;
+    pageState = { added: 1, removed: 1, modified: 1 };
+    statAdded.textContent = "0";
+    statRemoved.textContent = "0";
+    statModified.textContent = "0";
+    statUnchanged.textContent = "0";
+    statDup.textContent = "0";
+    statMissing.textContent = "0";
+    warnDupEl.innerHTML = '<div class="empty">尚未比對</div>';
+    warnMissingEl.innerHTML = '<div class="empty">尚未比對</div>';
+    listAdded.innerHTML = '<div class="empty">尚未比對</div>';
+    listRemoved.innerHTML = '<div class="empty">尚未比對</div>';
+    listModified.innerHTML = '<div class="empty">尚未比對</div>';
+    pagerAdded.innerHTML = "";
+    pagerRemoved.innerHTML = "";
+    pagerModified.innerHTML = "";
+  }
+
+  // 編碼偵測為 fallback（猜的）或使用者手動切換後，都顯示切換橫幅，
+  // 讓使用者可在 UTF-8／Big5 間來回切換以救回猜錯的情形（CSV_CONTRACT.md 第 7.2 節）。
+  function renderEncodingFallback(which, decoded) {
+    var el = fallbackElFor(which);
+    if (!el) return;
+    if (decoded.confidence !== "fallback" && decoded.confidence !== "manual") {
+      el.classList.add("hidden");
+      el.innerHTML = "";
+      return;
+    }
+    var label = decoded.confidence === "fallback"
+      ? "偵測為 Big5，若顯示為亂碼請手動切換編碼："
+      : "已手動切換為 " + decoded.encoding.toUpperCase() + "，如仍為亂碼可再切換：";
+    el.classList.remove("hidden");
+    el.innerHTML = escapeHtml(label) +
+      '<button type="button" class="btn-switch-utf8">切換為 UTF-8</button> ' +
+      '<button type="button" class="btn-switch-big5">切換為 Big5</button>';
+    el.querySelector(".btn-switch-utf8").addEventListener("click", function () {
+      loadTable(which, which === "A" ? arrayBufferA : arrayBufferB, which === "A" ? fileNameA : fileNameB, "utf-8");
+    });
+    el.querySelector(".btn-switch-big5").addEventListener("click", function () {
+      loadTable(which, which === "A" ? arrayBufferA : arrayBufferB, which === "A" ? fileNameA : fileNameB, "big5");
+    });
+  }
+
+  // which: "A" 或 "B"，兩份檔案各自獨立切換編碼（互不影響另一份）。
+  // forcedEncoding 非空時代表使用者手動切換：因為其中一份資料已用不同編碼重新解碼，
+  // 舊比對結果可能是根據錯誤解碼的文字算出來的，會誤導使用者，故一律清空、要求重新按「開始比對」。
+  function loadTable(which, arrayBuffer, fileName, forcedEncoding) {
+    var decoded;
+    if (forcedEncoding) {
+      decoded = {
+        text: new TextDecoder(forcedEncoding).decode(arrayBuffer),
+        encoding: forcedEncoding,
+        hadBom: false,
+        confidence: "manual"
+      };
+    } else {
+      decoded = decodeCsvBytes(arrayBuffer);
+    }
+
+    var table = parseCsv(decoded.text, { encoding: decoded.encoding, hadBom: decoded.hadBom });
+
+    var seen = {};
+    for (var i = 0; i < table.headers.length; i++) {
+      if (Object.prototype.hasOwnProperty.call(seen, table.headers[i])) {
+        showToast("偵測到重複欄名，請先用 CSV 健檢清理後再比對");
+        return;
+      }
+      seen[table.headers[i]] = true;
+    }
+
+    if (which === "A") {
+      arrayBufferA = arrayBuffer;
+      tableA = table;
+      fileNameA = fileName;
+      statusA.textContent = statusText(table, fileName);
+    } else {
+      arrayBufferB = arrayBuffer;
+      tableB = table;
+      fileNameB = fileName;
+      statusB.textContent = statusText(table, fileName);
+    }
+
+    renderEncodingFallback(which, decoded);
+    if (forcedEncoding) {
+      resetComparisonResult();
+    }
+    renderFieldDiffAndKeys();
+  }
+
+  function makeOnData(which) {
+    return function (arrayBuffer, fileName) {
+      loadTable(which, arrayBuffer, fileName, null);
+    };
+  }
+
+  function makeOnError() {
+    return function (msg) { showToast(msg); };
+  }
+
+  var optsA = { mode: "bytes", accept: [".csv"], gate: gateA, onError: makeOnError() };
+  var optsB = { mode: "bytes", accept: [".csv"], gate: gateB, onError: makeOnError() };
+
+  setupDropZone(dropzoneA, makeOnData("A"), optsA);
+  setupFilePicker(fileInputA, makeOnData("A"), optsA);
+  setupDropZone(dropzoneB, makeOnData("B"), optsB);
+  setupFilePicker(fileInputB, makeOnData("B"), optsB);
+
+  // ---- T3：欄位結構差異 + Key 候選 ----
+
+  function renderFieldDiffAndKeys() {
+    if (!tableA || !tableB) {
+      fieldDiffEl.innerHTML = '<div class="empty">尚未上傳兩份檔案</div>';
+      keyCheckboxList.innerHTML = '<div class="empty">尚未上傳兩份檔案</div>';
+      return;
+    }
+
+    var setA = {};
+    tableA.headers.forEach(function (h) { setA[h] = true; });
+    var setB = {};
+    tableB.headers.forEach(function (h) { setB[h] = true; });
+
+    var common = tableA.headers.filter(function (h) { return setB[h]; });
+    var onlyA = tableA.headers.filter(function (h) { return !setB[h]; });
+    var onlyB = tableB.headers.filter(function (h) { return !setA[h]; });
+
+    var parts = [];
+    if (onlyA.length === 0 && onlyB.length === 0) {
+      parts.push('<div>兩期欄位結構相同</div>');
+    } else {
+      if (onlyA.length > 0) parts.push('<div>僅前期有：' + escapeHtml(onlyA.join("、")) + '</div>');
+      if (onlyB.length > 0) parts.push('<div>僅本期有：' + escapeHtml(onlyB.join("、")) + '</div>');
+    }
+    fieldDiffEl.innerHTML = parts.join("");
+
+    if (common.length === 0) {
+      keyCheckboxList.innerHTML = '<div class="empty">兩期沒有共同欄位，無法選取 Key</div>';
+      return;
+    }
+    keyCheckboxList.innerHTML = common.map(function (h, idx) {
+      var id = "key-cb-" + idx;
+      return '<label><input type="checkbox" class="key-checkbox" id="' + id + '" value="' + escapeHtml(h) + '">' + escapeHtml(h) + '</label>';
+    }).join("");
+  }
+
+  // ---- T4–T6：比對 ----
+
+  function getSelectedKeyCols() {
+    var boxes = keyCheckboxList.querySelectorAll(".key-checkbox:checked");
+    var result = [];
+    for (var i = 0; i < boxes.length; i++) result.push(boxes[i].value);
+    return result;
+  }
+
+  function buildPeriodMap(table, keyCols) {
+    var idxs = keyCols.map(function (name) { return table.headers.indexOf(name); });
+    var map = {};
+    table.rows.forEach(function (row) {
+      var hasEmpty = false;
+      var parts = idxs.map(function (i) {
+        var v = cellAt(row, i);
+        if (v === "") hasEmpty = true;
+        return v;
+      });
+      var key = parts.join(KEY_SEP);
+      if (!map[key]) map[key] = [];
+      map[key].push({ row: row, hasEmpty: hasEmpty });
+    });
+    return map;
+  }
+
+  function classifyMap(map) {
+    var clean = {};
+    var dup = [];
+    var missing = [];
+    Object.keys(map).forEach(function (key) {
+      var entries = map[key];
+      if (entries.length > 1) {
+        dup.push({ key: key, lines: entries.map(function (e) { return e.row.line; }) });
+        return;
+      }
+      var entry = entries[0];
+      if (entry.hasEmpty) {
+        missing.push({ key: key, lines: [entry.row.line] });
+        return;
+      }
+      clean[key] = entry.row;
+    });
+    return { clean: clean, dup: dup, missing: missing };
+  }
+
+  function compare() {
+    var keyCols = getSelectedKeyCols();
+    if (keyCols.length === 0) {
+      showToast("請至少選擇一個 Key 欄位");
+      return;
+    }
+
+    var mapA = buildPeriodMap(tableA, keyCols);
+    var mapB = buildPeriodMap(tableB, keyCols);
+    var classA = classifyMap(mapA);
+    var classB = classifyMap(mapB);
+
+    var setA = {};
+    tableA.headers.forEach(function (h) { setA[h] = true; });
+    var commonHeaders = tableB.headers.filter(function (h) { return setA[h]; });
+
+    var added = [];
+    var removed = [];
+    var modified = [];
+    var unchangedCount = 0;
+
+    var allKeys = {};
+    Object.keys(classA.clean).forEach(function (k) { allKeys[k] = true; });
+    Object.keys(classB.clean).forEach(function (k) { allKeys[k] = true; });
+
+    Object.keys(allKeys).forEach(function (key) {
+      var inA = Object.prototype.hasOwnProperty.call(classA.clean, key);
+      var inB = Object.prototype.hasOwnProperty.call(classB.clean, key);
+      if (inA && !inB) {
+        removed.push({ key: key, row: classA.clean[key] });
+        return;
+      }
+      if (!inA && inB) {
+        added.push({ key: key, row: classB.clean[key] });
+        return;
+      }
+      var rowA = classA.clean[key];
+      var rowB = classB.clean[key];
+      var changes = [];
+      commonHeaders.forEach(function (h) {
+        var ia = tableA.headers.indexOf(h);
+        var ib = tableB.headers.indexOf(h);
+        var va = cellAt(rowA, ia);
+        var vb = cellAt(rowB, ib);
+        if (va !== vb) changes.push({ field: h, oldVal: va, newVal: vb });
+      });
+      if (changes.length > 0) {
+        modified.push({ key: key, rowA: rowA, rowB: rowB, changes: changes });
+      } else {
+        unchangedCount++;
+      }
+    });
+
+    lastResult = {
+      keyCols: keyCols,
+      added: added,
+      removed: removed,
+      modified: modified,
+      unchangedCount: unchangedCount,
+      dupA: classA.dup,
+      dupB: classB.dup,
+      missingA: classA.missing,
+      missingB: classB.missing
+    };
+
+    pageState = { added: 1, removed: 1, modified: 1 };
+    renderResult();
+  }
+
+  document.getElementById("btn-compare").addEventListener("click", compare);
+
+  // ---- T7：渲染 ----
+
+  function renderFieldsBlock(table, row) {
+    return table.headers.map(function (h, i) {
+      return '<div class="field-row"><span class="field-name">' + escapeHtml(h) + '</span><span class="field-value">' + escapeHtml(cellAt(row, i)) + '</span></div>';
+    }).join("");
+  }
+
+  function renderAddedItem(item) {
+    return '<div class="result-item"><div class="result-key">Key: ' + escapeHtml(item.key.split(KEY_SEP).join(" / ")) + '</div>' +
+      renderFieldsBlock(tableB, item.row) + '</div>';
+  }
+
+  function renderRemovedItem(item) {
+    return '<div class="result-item"><div class="result-key">Key: ' + escapeHtml(item.key.split(KEY_SEP).join(" / ")) + '</div>' +
+      renderFieldsBlock(tableA, item.row) + '</div>';
+  }
+
+  function renderModifiedItem(item) {
+    var rows = item.changes.map(function (c) {
+      return '<div class="diff-row"><span class="field-name">' + escapeHtml(c.field) + '</span>' +
+        '<span class="diff-old swatch-modified">' + escapeHtml(c.oldVal) + '</span>' +
+        '<span class="diff-new swatch-modified">' + escapeHtml(c.newVal) + '</span></div>';
+    }).join("");
+    return '<div class="result-item"><div class="result-key">Key: ' + escapeHtml(item.key.split(KEY_SEP).join(" / ")) + '</div>' + rows + '</div>';
+  }
+
+  function renderPaged(listKey, items, renderItemFn, containerEl, pagerEl) {
+    if (items.length === 0) {
+      containerEl.innerHTML = '<div class="empty">無資料</div>';
+      pagerEl.innerHTML = "";
+      return;
+    }
+    var totalPages = Math.ceil(items.length / PAGE_SIZE);
+    if (pageState[listKey] > totalPages) pageState[listKey] = totalPages;
+    if (pageState[listKey] < 1) pageState[listKey] = 1;
+    var page = pageState[listKey];
+    var start = (page - 1) * PAGE_SIZE;
+    var pageItems = items.slice(start, start + PAGE_SIZE);
+    containerEl.innerHTML = pageItems.map(renderItemFn).join("");
+
+    var pagerHtml = "";
+    if (totalPages > 1) {
+      pagerHtml += '<button type="button" class="pager-prev" data-list="' + listKey + '"' + (page <= 1 ? " disabled" : "") + '>上一頁</button>';
+      pagerHtml += '<span>第 ' + page + ' / ' + totalPages + ' 頁</span>';
+      pagerHtml += '<button type="button" class="pager-next" data-list="' + listKey + '"' + (page >= totalPages ? " disabled" : "") + '>下一頁</button>';
+    }
+    pagerEl.innerHTML = pagerHtml;
+  }
+
+  function renderWarnList(container, entries) {
+    if (entries.length === 0) {
+      container.innerHTML = '<div class="empty">無</div>';
+      return;
+    }
+    container.innerHTML = entries.map(function (e) {
+      return '<div class="warn-item">Key: ' + escapeHtml(e.key.split(KEY_SEP).join(" / ")) + '，原始列號：' + e.lines.join(", ") + '</div>';
+    }).join("");
+  }
+
+  function renderResult() {
+    if (!lastResult) return;
+    statAdded.textContent = String(lastResult.added.length);
+    statRemoved.textContent = String(lastResult.removed.length);
+    statModified.textContent = String(lastResult.modified.length);
+    statUnchanged.textContent = String(lastResult.unchangedCount);
+
+    var dupAll = lastResult.dupA.concat(lastResult.dupB);
+    var missingAll = lastResult.missingA.concat(lastResult.missingB);
+    var dupLineCount = dupAll.reduce(function (sum, e) { return sum + e.lines.length; }, 0);
+    var missingLineCount = missingAll.reduce(function (sum, e) { return sum + e.lines.length; }, 0);
+    statDup.textContent = String(dupLineCount);
+    statMissing.textContent = String(missingLineCount);
+
+    renderWarnList(warnDupEl, dupAll);
+    renderWarnList(warnMissingEl, missingAll);
+
+    renderPaged("added", lastResult.added, renderAddedItem, listAdded, pagerAdded);
+    renderPaged("removed", lastResult.removed, renderRemovedItem, listRemoved, pagerRemoved);
+    renderPaged("modified", lastResult.modified, renderModifiedItem, listModified, pagerModified);
+  }
+
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest ? e.target.closest(".pager-prev, .pager-next") : null;
+    if (!btn || !lastResult) return;
+    var listKey = btn.getAttribute("data-list");
+    if (btn.classList.contains("pager-prev")) pageState[listKey] -= 1;
+    else pageState[listKey] += 1;
+    renderResult();
+  });
+
+  // ---- T8：下載 CSV ----
+
+  function buildFullRowTable(headers, items) {
+    return {
+      headers: headers,
+      rows: items.map(function (item) { return item.row; }),
+      meta: { headerCount: headers.length }
+    };
+  }
+
+  document.getElementById("btn-download-added").addEventListener("click", function () {
+    if (!lastResult || !tableB) { showToast("請先完成比對"); return; }
+    var table = buildFullRowTable(tableB.headers, lastResult.added);
+    downloadFile("added.csv", toCsv(table), "text/csv;charset=utf-8");
+  });
+
+  document.getElementById("btn-download-removed").addEventListener("click", function () {
+    if (!lastResult || !tableA) { showToast("請先完成比對"); return; }
+    var table = buildFullRowTable(tableA.headers, lastResult.removed);
+    downloadFile("removed.csv", toCsv(table), "text/csv;charset=utf-8");
+  });
+
+  document.getElementById("btn-download-modified").addEventListener("click", function () {
+    if (!lastResult) { showToast("請先完成比對"); return; }
+    var headers = lastResult.keyCols.concat(["欄位", "舊值", "新值"]);
+    var rows = [];
+    var line = 1;
+    lastResult.modified.forEach(function (item) {
+      var keyValues = item.key.split(KEY_SEP);
+      item.changes.forEach(function (c) {
+        line++;
+        rows.push({ line: line, cells: keyValues.concat([c.field, c.oldVal, c.newVal]) });
+      });
+    });
+    var table = { headers: headers, rows: rows, meta: { headerCount: headers.length } };
+    downloadFile("modified.csv", toCsv(table), "text/csv;charset=utf-8");
+  });
+
+  // ---- T9：HTML 摘要報告（含全部明細，獨立於離線版） ----
+
+  function buildReportHtml() {
+    var r = lastResult;
+    var dupAll = r ? r.dupA.concat(r.dupB) : [];
+    var missingAll = r ? r.missingA.concat(r.missingB) : [];
+
+    function fieldsHtml(table, row) {
+      return table.headers.map(function (h, i) {
+        return '<div class="field-row"><span class="field-name">' + escapeHtml(h) + '</span><span class="field-value">' + escapeHtml(cellAt(row, i)) + '</span></div>';
+      }).join("");
+    }
+
+    function addedHtml() {
+      if (!r || r.added.length === 0) return '<div class="empty">無</div>';
+      return r.added.map(function (item) {
+        return '<div class="result-item"><div class="result-key">Key: ' + escapeHtml(item.key.split(KEY_SEP).join(" / ")) + '</div>' + fieldsHtml(tableB, item.row) + '</div>';
+      }).join("");
+    }
+
+    function removedHtml() {
+      if (!r || r.removed.length === 0) return '<div class="empty">無</div>';
+      return r.removed.map(function (item) {
+        return '<div class="result-item"><div class="result-key">Key: ' + escapeHtml(item.key.split(KEY_SEP).join(" / ")) + '</div>' + fieldsHtml(tableA, item.row) + '</div>';
+      }).join("");
+    }
+
+    function modifiedHtml() {
+      if (!r || r.modified.length === 0) return '<div class="empty">無</div>';
+      return r.modified.map(function (item) {
+        var rows = item.changes.map(function (c) {
+          return '<div class="diff-row"><span class="field-name">' + escapeHtml(c.field) + '</span>' +
+            '<span class="diff-old swatch-modified">' + escapeHtml(c.oldVal) + '</span>' +
+            '<span class="diff-new swatch-modified">' + escapeHtml(c.newVal) + '</span></div>';
+        }).join("");
+        return '<div class="result-item"><div class="result-key">Key: ' + escapeHtml(item.key.split(KEY_SEP).join(" / ")) + '</div>' + rows + '</div>';
+      }).join("");
+    }
+
+    function warnHtml(entries) {
+      if (entries.length === 0) return '<div class="empty">無</div>';
+      return entries.map(function (e) {
+        return '<div class="warn-item">Key: ' + escapeHtml(e.key.split(KEY_SEP).join(" / ")) + '，原始列號：' + e.lines.join(", ") + '</div>';
+      }).join("");
+    }
+
+    var style = "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',sans-serif;margin:24px;color:#1f2328;}" +
+      ".card{border:1px solid #d9d9de;border-radius:8px;padding:16px;margin-top:16px;}" +
+      ".stat-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #d9d9de;}" +
+      ".result-item{border:1px solid #d9d9de;border-radius:8px;padding:8px 10px;margin-top:8px;}" +
+      ".result-key{font-weight:600;margin-bottom:4px;}" +
+      ".field-row{display:grid;grid-template-columns:140px 1fr;gap:8px;font-size:0.88rem;padding:2px 0;}" +
+      ".diff-row{display:grid;grid-template-columns:140px 1fr 1fr;gap:8px;font-size:0.88rem;padding:2px 0;}" +
+      ".swatch-modified{background:#fef3c7;border-radius:3px;padding:2px 4px;}" +
+      ".warn-item{padding:2px 0;border-bottom:1px dashed #d9d9de;}" +
+      ".empty{color:#6b7280;}";
+
+    var html = "<!DOCTYPE html>\n<html lang=\"zh-Hant\"><head><meta charset=\"UTF-8\">" +
+      "<title>兩期清冊異動報告</title><style>" + style + "</style></head><body>" +
+      "<h1>兩期清冊異動報告</h1>" +
+      "<div class=\"card\"><h2>統計摘要</h2>" +
+      "<div class=\"stat-row\"><span>新增</span><span>" + (r ? r.added.length : 0) + "</span></div>" +
+      "<div class=\"stat-row\"><span>移除</span><span>" + (r ? r.removed.length : 0) + "</span></div>" +
+      "<div class=\"stat-row\"><span>異動</span><span>" + (r ? r.modified.length : 0) + "</span></div>" +
+      "<div class=\"stat-row\"><span>無異動</span><span>" + (r ? r.unchangedCount : 0) + "</span></div>" +
+      "<div class=\"stat-row\"><span>略過（Key 重複）</span><span>" + dupAll.reduce(function (s, e) { return s + e.lines.length; }, 0) + "</span></div>" +
+      "<div class=\"stat-row\"><span>略過（Key 缺值）</span><span>" + missingAll.reduce(function (s, e) { return s + e.lines.length; }, 0) + "</span></div>" +
+      "</div>" +
+      "<div class=\"card\"><h2>Key 重複，略過比對</h2>" + warnHtml(dupAll) + "</div>" +
+      "<div class=\"card\"><h2>Key 缺值，略過比對</h2>" + warnHtml(missingAll) + "</div>" +
+      "<div class=\"card\"><h2>新增明細</h2>" + addedHtml() + "</div>" +
+      "<div class=\"card\"><h2>移除明細</h2>" + removedHtml() + "</div>" +
+      "<div class=\"card\"><h2>異動明細</h2>" + modifiedHtml() + "</div>" +
+      "</body></html>";
+    return html;
+  }
+
+  document.getElementById("btn-download-report").addEventListener("click", function () {
+    if (!lastResult) { showToast("請先完成比對"); return; }
+    downloadFile("period-diff-report.html", buildReportHtml(), "text/html;charset=utf-8");
+  });
+
+  // ---- T9：下載本工具離線版（buildCleanHtmlCopy，清空資料） ----
+
+  function buildCleanHtmlCopy() {
+    var clone = document.documentElement.cloneNode(true);
+
+    var sA = clone.querySelector("#status-a");
+    if (sA) sA.textContent = "尚未上傳";
+    var sB = clone.querySelector("#status-b");
+    if (sB) sB.textContent = "尚未上傳";
+
+    var fA = clone.querySelector("#file-a");
+    if (fA) fA.value = "";
+    var fB = clone.querySelector("#file-b");
+    if (fB) fB.value = "";
+
+    var encA = clone.querySelector("#encoding-fallback-a");
+    if (encA) { encA.innerHTML = ""; encA.classList.add("hidden"); }
+    var encB = clone.querySelector("#encoding-fallback-b");
+    if (encB) { encB.innerHTML = ""; encB.classList.add("hidden"); }
+
+    var fieldDiff = clone.querySelector("#field-diff");
+    if (fieldDiff) fieldDiff.innerHTML = '<div class="empty">尚未上傳兩份檔案</div>';
+
+    var keyList = clone.querySelector("#key-checkbox-list");
+    if (keyList) keyList.innerHTML = '<div class="empty">尚未上傳兩份檔案</div>';
+
+    var statIds = ["stat-added", "stat-removed", "stat-modified", "stat-unchanged", "stat-dup", "stat-missing"];
+    statIds.forEach(function (id) {
+      var el = clone.querySelector("#" + id);
+      if (el) el.textContent = "0";
+    });
+
+    var warnDup = clone.querySelector("#warn-dup");
+    if (warnDup) warnDup.innerHTML = '<div class="empty">尚未比對</div>';
+    var warnMissing = clone.querySelector("#warn-missing");
+    if (warnMissing) warnMissing.innerHTML = '<div class="empty">尚未比對</div>';
+
+    var listIds = ["list-added", "list-removed", "list-modified"];
+    listIds.forEach(function (id) {
+      var el = clone.querySelector("#" + id);
+      if (el) el.innerHTML = '<div class="empty">尚未比對</div>';
+    });
+    var pagerIds = ["pager-added", "pager-removed", "pager-modified"];
+    pagerIds.forEach(function (id) {
+      var el = clone.querySelector("#" + id);
+      if (el) el.innerHTML = "";
+    });
+
+    var toastEl = clone.querySelector("#__shared_toast");
+    if (toastEl && toastEl.parentNode) toastEl.parentNode.removeChild(toastEl);
+
+    var navBack = clone.querySelector(".nav-back");
+    if (navBack && navBack.parentNode) navBack.parentNode.removeChild(navBack);
+
+    var htmlStr = "<!DOCTYPE html>\n" + clone.outerHTML;
+    downloadFile("period-diff-offline.html", htmlStr, "text/html;charset=utf-8");
+  }
+
+  document.getElementById("btn-download-offline").addEventListener("click", buildCleanHtmlCopy);
+})();
+</script>
+</body>
+</html>

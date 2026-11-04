@@ -1,0 +1,1415 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2026 iThome 鐵人賽 Vibe Coding：30 個產品 PRD</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #ffffff;
+      --fg: #1f2328;
+      --muted: #59636e;
+      --border: #d0d7de;
+      --soft: #f6f8fa;
+      --link: #0969da;
+      --quote: #656d76;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC",
+        "PingFang TC", "Microsoft JhengHei", sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+      overflow-wrap: break-word;
+    }
+    main { width: min(100% - 40px, 880px); margin: 0 auto; padding: 48px 0 80px; }
+    h1, h2, h3, h4, h5, h6 {
+      margin: 1.5em 0 0.65em;
+      line-height: 1.3;
+      font-weight: 650;
+      text-wrap: balance;
+    }
+    h1 { margin-top: 0; padding-bottom: 0.3em; border-bottom: 1px solid var(--border); font-size: 2em; }
+    h2 { padding-bottom: 0.3em; border-bottom: 1px solid var(--border); font-size: 1.5em; }
+    h3 { font-size: 1.25em; }
+    p, ul, ol, blockquote, pre, table { margin: 0 0 1em; }
+    ul, ol { padding-left: 2em; }
+    li + li { margin-top: 0.25em; }
+    a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
+    a:hover { text-decoration-thickness: 2px; }
+    img { max-width: 100%; height: auto; border-radius: 6px; }
+    code {
+      padding: 0.15em 0.35em;
+      border-radius: 5px;
+      background: var(--soft);
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-size: 0.88em;
+    }
+    pre {
+      max-width: 100%;
+      padding: 16px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--soft);
+      line-height: 1.5;
+    }
+    pre code { padding: 0; border-radius: 0; background: transparent; font-size: 0.875em; }
+    blockquote {
+      margin-left: 0;
+      padding: 0.15em 1em;
+      border-left: 4px solid var(--border);
+      color: var(--quote);
+    }
+    blockquote > :last-child { margin-bottom: 0; }
+    .table-wrap { max-width: 100%; overflow-x: auto; margin-bottom: 1em; }
+    table { width: 100%; border-spacing: 0; border-collapse: collapse; }
+    th, td { padding: 8px 12px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+    th { background: var(--soft); font-weight: 650; }
+    tr:nth-child(even) td { background: color-mix(in srgb, var(--soft) 55%, transparent); }
+    hr { height: 1px; margin: 2em 0; border: 0; background: var(--border); }
+    @media (max-width: 640px) {
+      main { width: min(100% - 28px, 880px); padding: 28px 0 56px; }
+      body { font-size: 15.5px; line-height: 1.68; }
+      h1 { font-size: 1.75em; }
+      h2 { font-size: 1.35em; }
+      ul, ol { padding-left: 1.5em; }
+      pre { padding: 12px; }
+      th, td { min-width: 9rem; padding: 7px 10px; }
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117;
+        --fg: #e6edf3;
+        --muted: #8d96a0;
+        --border: #30363d;
+        --soft: #161b22;
+        --link: #58a6ff;
+        --quote: #8b949e;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+<h1 id="2026-ithome-vibe-coding30-prd">2026 iThome 鐵人賽 Vibe Coding：30 個產品 PRD</h1>
+<blockquote>
+<p>版本：v2.0<br>
+日期：2026-08-23<br>
+狀態：PRD 草案，尚未授權實作<br>
+核心規矩：<strong>動手寫程式之前，先把要做什麼寫清楚。</strong></p>
+</blockquote>
+<h2 id="_1">共通開發規則</h2>
+<ol>
+<li>PRD／提案完成後先由使用者確認；未收到「開始實作」不得寫程式。</li>
+<li>實作時一次只完成一個 task，每完成一小步就回報。</li>
+<li>不自行增加未要求功能，不過度設計。</li>
+<li>規格不明或做到一半發現方向有誤時，停止實作並回報。</li>
+<li>原始檔預設不得覆寫；產生新檔供下載。</li>
+<li>能在瀏覽器本機完成就不把資料上傳。</li>
+<li>涉及 AI 時，介面必須明確告知資料會送往 Cloudflare AI 服務。</li>
+<li>每一題真正進入開發前，再建立 <code>sdd/&lt;短名稱&gt;/proposal.md</code> 與 <code>tasks.md</code>。</li>
+<li><code>tasks.md</code> 每條任務需小到原則上 1 小時內可完成，整份不超過 10 條。</li>
+<li>提案完成後停下來等使用者確認，不要直接進入實作。</li>
+</ol>
+<h3 id="_2">三階段</h3>
+<ul>
+<li><strong>提案</strong>：建立 <code>proposal.md</code>、<code>tasks.md</code>、驗收條件，回報後停止。</li>
+<li><strong>實作</strong>：由上到下，一次完成一條 task；完成後自我檢查再打勾。</li>
+<li><strong>歸檔</strong>：全部完成且驗收通過後，移至 <code>sdd/archive/YYYY-MM-DD-&lt;短名稱&gt;/</code>。</li>
+</ul>
+<hr>
+<h1 id="html-on-github-pages">第一階段：單一 HTML on GitHub Pages，可下載單獨使用</h1>
+<blockquote>
+<p>GitHub Pages 只作為發布通路；完整功能必須可在下載 HTML 後離線使用。若用第三方 JavaScript library，正式版需固定版本並打包／內嵌，避免依賴 CDN。</p>
+</blockquote>
+<h2 id="prd-01-document-tools">PRD 01 — Document Tools 重製版</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>document-tools</code></li>
+<li><strong>類型</strong>：重構</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/document-tools/</code></li>
+</ul>
+<h3 id="_3">為什麼做</h3>
+<p>Office 使用者常在圖片、PDF、Markdown 等不同網站間切換。既有 Document Tools 重新建立，重點是整合常用文件加工，而不是無限制堆功能。</p>
+<h3 id="mvp">MVP</h3>
+<ul>
+<li>首頁分成圖片、PDF、Markdown 三區。</li>
+<li>圖片：JPG/PNG/WebP 互轉、Resize、基本壓縮。</li>
+<li>PDF：合併、拆分、PDF→圖片。</li>
+<li>Markdown：編輯、即時預覽、輸出 HTML。</li>
+<li>每個工具都有清除目前資料。</li>
+<li>檔案以 Browser-side Processing 為原則。</li>
+<li>GitHub Pages 可用；HTML 下載後斷網仍可用核心功能。</li>
+</ul>
+<h3 id="_4">不做</h3>
+<p>AI、登入、雲端儲存、多人協作。</p>
+<h3 id="_5">驗收條件</h3>
+<ul>
+<li>情境：下載 HTML 並斷網後，三大分類核心功能仍可運作。</li>
+<li>情境：每類至少完成一次「輸入→處理→下載」。</li>
+<li>情境：錯誤檔案格式不造成整頁崩潰。</li>
+</ul>
+<hr>
+<h2 id="prd-02-pdf_to_jpg">PRD 02 — PDF_TO_JPG 重製版</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>pdf-to-jpg</code></li>
+<li><strong>類型</strong>：重構</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/pdf-to-jpg/</code></li>
+</ul>
+<h3 id="_6">為什麼做</h3>
+<p>PDF 頁面常需要放進 Word、PowerPoint、Email 或只接受圖片的系統。這題只專心把「PDF 每頁轉 JPG」做到極簡。</p>
+<h3 id="mvp_1">MVP</h3>
+<ul>
+<li>拖曳或選擇 PDF。</li>
+<li>顯示頁數與縮圖。</li>
+<li>每頁轉 JPG。</li>
+<li>可設定基本品質。</li>
+<li>單頁下載。</li>
+<li>全部頁面 ZIP。</li>
+<li>顯示處理進度。</li>
+<li>全程瀏覽器處理。</li>
+</ul>
+<h3 id="_7">不做</h3>
+<p>OCR、PDF 編輯、AI、語意分析。</p>
+<h3 id="_8">驗收條件</h3>
+<ul>
+<li>情境：10 頁 PDF 產生 10 張 JPG。</li>
+<li>情境：可只下載指定頁。</li>
+<li>情境：全部下載時得到含所有頁面的 ZIP。</li>
+<li>情境：離線 HTML 仍可轉換。</li>
+</ul>
+<hr>
+<h2 id="prd-03">PRD 03 — 文字健檢工作台</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>text-health-check</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/text-health-check/</code></li>
+</ul>
+<h3 id="_9">為什麼做</h3>
+<p>公文、投稿、公告、報告有字數與格式要求，人工檢查很容易漏。</p>
+<h3 id="_10">輸入</h3>
+<p>貼上文字、TXT、MD。</p>
+<h3 id="mvp_2">MVP</h3>
+<ul>
+<li>中文字數、英文字數、總字元數。</li>
+<li>行數、段落數、中英文比例。</li>
+<li>標點與空白統計。</li>
+<li>連續空白、重複標點、多餘空白行。</li>
+<li>過長段落提示。</li>
+<li>問題位置標示。</li>
+<li>複製健檢摘要。</li>
+</ul>
+<h3 id="_11">不做</h3>
+<p>AI 改寫、文法重寫、自動修改原文。</p>
+<h3 id="_12">驗收條件</h3>
+<ul>
+<li>情境：文字變更時統計即時更新。</li>
+<li>情境：連續空白或重複標點能指出位置。</li>
+<li>情境：健檢不會偷偷改動原文。</li>
+</ul>
+<hr>
+<h2 id="prd-04">PRD 04 — 繁簡與台灣在地化轉換器</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>zh-tw-localizer</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/zh-tw-localizer/</code></li>
+</ul>
+<h3 id="_13">為什麼做</h3>
+<p>AI 產文與外部資料常混入簡體字或非台灣慣用詞，需要人工逐詞修正。</p>
+<h3 id="mvp_3">MVP</h3>
+<ul>
+<li>簡體→繁體。</li>
+<li>可編輯中國大陸用語→台灣慣用語詞庫。</li>
+<li>轉換前後並排。</li>
+<li>高亮替換位置。</li>
+<li>可逐項接受／取消替換。</li>
+<li>自訂詞庫 JSON 匯入／匯出。</li>
+<li>下載 TXT/MD。</li>
+</ul>
+<h3 id="_14">不做</h3>
+<p>AI 改寫、整句重寫、語氣潤飾。</p>
+<h3 id="_15">驗收條件</h3>
+<ul>
+<li>情境：「視頻」「鼠標」「默認」能依詞庫轉成台灣慣用詞。</li>
+<li>情境：使用者知道哪些詞被改過。</li>
+<li>情境：自訂詞庫可重複載入使用。</li>
+</ul>
+<hr>
+<h2 id="prd-05">PRD 05 — 可逆式文字去識別化</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>reversible-deidentifier</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/reversible-deidentifier/</code></li>
+</ul>
+<h3 id="_16">為什麼做</h3>
+<p>文件交給外部人員或 AI 前，常要移除姓名、電話、Email 等資訊；工作完成後又可能要在本機還原。</p>
+<h3 id="mvp_4">MVP</h3>
+<ul>
+<li>規則辨識 Email、電話。</li>
+<li>使用者手動指定姓名／敏感詞。</li>
+<li>Token 化，如 <code>[PERSON_001]</code>。</li>
+<li>產生 mapping。</li>
+<li>mapping 匯出 JSON/CSV。</li>
+<li>以 mapping 還原。</li>
+<li>原文／結果並排。</li>
+<li>全程 Browser-side。</li>
+</ul>
+<h3 id="_17">不做</h3>
+<p>宣稱 100% 找出所有個資、雲端保存 mapping、自動送 AI。</p>
+<h3 id="_18">驗收條件</h3>
+<ul>
+<li>情境：同一 Email 多次出現時使用同一 Token。</li>
+<li>情境：正確 mapping 可還原。</li>
+<li>情境：mapping 遺失時不得宣稱仍可自動還原。</li>
+</ul>
+<hr>
+<h2 id="prd-06-ai-office">PRD 06 — AI 回答 → Office 文字清理器</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>ai-text-cleaner</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否；只處理 AI 產出的文字</li>
+<li><strong>SDD</strong>：<code>sdd/ai-text-cleaner/</code></li>
+</ul>
+<h3 id="_19">為什麼做</h3>
+<p>AI 回答常含 Markdown、emoji、分隔線與不適合 Word/Email 的格式。</p>
+<h3 id="mvp_5">MVP</h3>
+<ul>
+<li>移除 Markdown heading 符號。</li>
+<li>移除粗體／斜體標記但保留文字。</li>
+<li>清理 code fence。</li>
+<li>統一 bullet 與編號。</li>
+<li>選擇是否移除 emoji。</li>
+<li>整理多餘空白行。</li>
+<li>Word-friendly、Email-friendly、純文字模式。</li>
+<li>即時預覽與一鍵複製。</li>
+</ul>
+<h3 id="_20">不做</h3>
+<p>內容改寫、事實修改、AI 語氣判斷。</p>
+<h3 id="_21">驗收條件</h3>
+<ul>
+<li>情境：含 <code>##</code>、<code>**</code>、emoji 的內容能輸出乾淨文字。</li>
+<li>情境：實質句子內容不應因格式清理而遺失。</li>
+<li>情境：三種輸出模式有明確差異。</li>
+</ul>
+<hr>
+<h2 id="prd-07-office-content-publisher">PRD 07 — Office Content Publisher</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>office-content-publisher</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/office-content-publisher/</code></li>
+</ul>
+<h3 id="_22">為什麼做</h3>
+<p>Markdown、TXT、CSV 要放到 HackMD、GitHub 或正式網頁時，常需要重新轉格式。</p>
+<h3 id="mvp_6">MVP</h3>
+<ul>
+<li>Markdown/TXT 即時預覽。</li>
+<li>Markdown→單一 HTML。</li>
+<li>CSV→Markdown Table。</li>
+<li>CSV→HTML Table。</li>
+<li>CSV 欄位選擇、排序。</li>
+<li>至少一種乾淨列印模板。</li>
+<li>Copy Markdown / Copy HTML。</li>
+<li>下載單一 HTML。</li>
+</ul>
+<h3 id="_23">不做</h3>
+<p>CMS、登入、雲端發布帳號、AI 內容生成。</p>
+<h3 id="_24">驗收條件</h3>
+<ul>
+<li>情境：Markdown 可輸出離線 HTML。</li>
+<li>情境：CSV 可選部分欄位生成 Markdown Table。</li>
+<li>情境：輸出 HTML 不需重新上傳原始檔。</li>
+</ul>
+<hr>
+<h2 id="prd-08-csv-doctor-cleaner">PRD 08 — CSV Doctor &amp; Cleaner</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>csv-doctor</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/csv-doctor/</code></li>
+</ul>
+<h3 id="_25">為什麼做</h3>
+<p>CSV 常見問題不是不能開，而是空值、重複、日期與型別問題藏在資料內。</p>
+<h3 id="doctor">Doctor</h3>
+<ul>
+<li>空值、空白列、空白欄、欄名重複。</li>
+<li>數值欄混入文字、日期格式異常。</li>
+<li>前後空白、全半形差異。</li>
+<li>整列完全重複。</li>
+<li>指定一或多欄 Group By 找重複。</li>
+<li>顯示重複次數與原始列號。</li>
+</ul>
+<h3 id="cleaner">Cleaner</h3>
+<ul>
+<li>Trim、移除空白列。</li>
+<li>日期基本正規化、全半形正規化。</li>
+<li>整列去重。</li>
+<li>依指定 Key 去重。</li>
+<li>保留第一筆／最後一筆／只標記。</li>
+<li>匯出問題資料與清理後 CSV。</li>
+</ul>
+<h3 id="_26">不做</h3>
+<p>模糊比對後自動合併不同人、AI 猜正確值。</p>
+<h3 id="_27">驗收條件</h3>
+<ul>
+<li>情境：指定「姓名+Email」能列出重複群組。</li>
+<li>情境：真正刪除前要先預覽受影響筆數。</li>
+<li>情境：匯出不覆寫原始 CSV。</li>
+</ul>
+<hr>
+<h2 id="prd-09">PRD 09 — 兩期清冊異動報告</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>csv-period-diff</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/csv-period-diff/</code></li>
+</ul>
+<h3 id="_28">為什麼做</h3>
+<p>人員、資產、設備、會員清冊常要比對前期與本期，人工 VLOOKUP 很耗時。</p>
+<h3 id="mvp_7">MVP</h3>
+<ul>
+<li>上傳前期／本期 CSV。</li>
+<li>指定 Primary Key。</li>
+<li>新增、移除、欄位變更。</li>
+<li>Before/After 對照。</li>
+<li>異動欄位 Highlight。</li>
+<li>匯出新增、移除、異動 CSV。</li>
+<li>匯出 HTML 摘要報告。</li>
+</ul>
+<h3 id="_29">不做</h3>
+<p>自動猜沒有 Key 的兩筆資料是否為同一人、AI 語意判定。</p>
+<h3 id="_30">驗收條件</h3>
+<ul>
+<li>情境：前期無、本期有的 Key 列為新增。</li>
+<li>情境：同 Key 但欄位不同列為異動。</li>
+<li>情境：兩份相同 CSV 顯示無異動。</li>
+</ul>
+<hr>
+<h2 id="prd-10-csv-pivot-dashboard">PRD 10 — CSV Pivot Dashboard</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>csv-pivot-dashboard</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/csv-pivot-dashboard/</code></li>
+</ul>
+<h3 id="_31">為什麼做</h3>
+<p>使用者想快速回答每單位幾件、多少錢、趨勢如何，但未必會 Excel 樞紐分析。</p>
+<h3 id="mvp_8">MVP</h3>
+<ul>
+<li>欄位型態基本辨識。</li>
+<li>Dimension / Measure。</li>
+<li>COUNT / SUM / AVG / MIN / MAX。</li>
+<li>單欄、多欄 Group By。</li>
+<li>Filter、Sort。</li>
+<li>Top N / Bottom N。</li>
+<li>日期依年／季／月分組。</li>
+<li>KPI Card、Pivot Table、Bar、Line、Pie。</li>
+<li>匯出分析後 CSV 與單一 Dashboard HTML。</li>
+</ul>
+<h3 id="_32">不做</h3>
+<p>完整複製 Excel Pivot 全部功能、AI 分析。</p>
+<h3 id="_33">驗收條件</h3>
+<ul>
+<li>情境：「單位 + 金額 SUM」能得到每單位總額。</li>
+<li>情境：Group By 或 Aggregate 改變時圖表同步更新。</li>
+<li>情境：匯出的 Dashboard HTML 離線仍能觀看。</li>
+</ul>
+<hr>
+<h2 id="prd-11-csv">PRD 11 — CSV 一頁式管理報告</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>csv-one-page-report</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/csv-one-page-report/</code></li>
+</ul>
+<h3 id="_34">為什麼做</h3>
+<p>資料分析完成後，主管通常不是要操作樞紐表，而是要快速看懂 KPI、排名與趨勢。</p>
+<h3 id="mvp_9">MVP</h3>
+<ul>
+<li>選擇核心數值欄與分類欄。</li>
+<li>KPI Cards。</li>
+<li>Top 5 / Bottom 5。</li>
+<li>分類占比。</li>
+<li>日期資料趨勢。</li>
+<li>自訂報告標題、期間、註記。</li>
+<li>A4 / 列印友善排版。</li>
+<li>匯出單一 HTML。</li>
+<li>Browser Print 產生 PDF。</li>
+</ul>
+<h3 id="_35">不做</h3>
+<p>AI 文字結論、多頁 BI 平台。</p>
+<h3 id="_36">驗收條件</h3>
+<ul>
+<li>情境：一份 CSV 能產生一頁式管理摘要。</li>
+<li>情境：列印時主要區塊保持可讀。</li>
+<li>情境：輸出 HTML 不需重新上傳 CSV。</li>
+</ul>
+<hr>
+<h2 id="prd-12">PRD 12 — 總表 → 分單位批次拆檔</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>csv-batch-splitter</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/csv-batch-splitter/</code></li>
+</ul>
+<h3 id="_37">為什麼做</h3>
+<p>一份總表每月依單位、部門、地區或承辦人拆成多份檔案，是常見又重複的 Office 工作。</p>
+<h3 id="mvp_10">MVP</h3>
+<ul>
+<li>上傳 CSV。</li>
+<li>選拆分欄位。</li>
+<li>列出 Unique Values 與筆數。</li>
+<li>可勾選要輸出的群組。</li>
+<li>自動產生合法檔名。</li>
+<li>保留 Header。</li>
+<li>可排除指定欄位。</li>
+<li>單檔下載。</li>
+<li>全部 ZIP。</li>
+</ul>
+<h3 id="_38">驗收條件</h3>
+<ul>
+<li>情境：四個單位能拆成四份 CSV。</li>
+<li>情境：群組值含非法檔名字元時仍可安全輸出。</li>
+<li>情境：未排除群組時拆分後總筆數等於原表。</li>
+</ul>
+<hr>
+<h2 id="prd-13">PRD 13 — 圖片批次最佳化工作台</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>image-batch-optimizer</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/image-batch-optimizer/</code></li>
+</ul>
+<h3 id="_39">為什麼做</h3>
+<p>Email、LINE、上傳系統常限制圖片容量；使用者真正想要的是「壓到 1MB 以下」，不是研究 quality slider。</p>
+<h3 id="mvp_11">MVP</h3>
+<ul>
+<li>JPG/PNG/WebP 批次匯入。</li>
+<li>格式轉換。</li>
+<li>長邊／寬高限制。</li>
+<li>保持比例。</li>
+<li>目標容量：1MB、2MB、自訂。</li>
+<li>自動逐步調整品質，必要時降低尺寸。</li>
+<li>顯示原始／輸出容量。</li>
+<li>個別下載／ZIP。</li>
+<li>預設不放大小圖。</li>
+</ul>
+<h3 id="_40">驗收條件</h3>
+<ul>
+<li>情境：目標 1MB 時盡力產出 &lt;=1MB；無法達成時明確提示。</li>
+<li>情境：批次輸出保持原檔對應關係。</li>
+<li>情境：預設不拉伸圖片比例。</li>
+</ul>
+<hr>
+<h2 id="prd-14-exif">PRD 14 — EXIF 隱私檢查與清除</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>exif-privacy-cleaner</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/exif-privacy-cleaner/</code></li>
+</ul>
+<h3 id="_41">為什麼做</h3>
+<p>照片可能帶有拍攝時間、裝置型號、GPS 等 Metadata，對外分享前常被忽略。</p>
+<h3 id="mvp_12">MVP</h3>
+<ul>
+<li>讀取可支援的 EXIF/XMP。</li>
+<li>顯示拍攝日期、裝置、GPS 等資訊。</li>
+<li>敏感 Metadata 風險提示。</li>
+<li>使用者勾選清除項目。</li>
+<li>重新輸出圖片。</li>
+<li>批次處理。</li>
+<li>顯示清除前後差異。</li>
+</ul>
+<h3 id="_42">驗收條件</h3>
+<ul>
+<li>情境：含 GPS 的圖片能提示風險。</li>
+<li>情境：清除後重新讀取時已選欄位不再存在。</li>
+<li>情境：沒有 EXIF 的圖片不應報錯。</li>
+</ul>
+<hr>
+<h2 id="prd-15-screenshot-privacy-sanitizer">PRD 15 — Screenshot Privacy Sanitizer</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>screenshot-sanitizer</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/screenshot-sanitizer/</code></li>
+</ul>
+<h3 id="_43">為什麼做</h3>
+<p>截圖寄給外部前，姓名、帳號、Email、IP、QR Code 等敏感資訊容易漏掉。</p>
+<h3 id="mvp_13">MVP</h3>
+<ul>
+<li>JPG/PNG/WebP 上傳。</li>
+<li>剪貼簿貼圖。</li>
+<li>框選多個遮蔽區域。</li>
+<li>黑箱、Pixelate、Blur 至少支援兩種。</li>
+<li>Undo / Redo。</li>
+<li>最終輸出 Rasterized 圖片。</li>
+<li>清除 Metadata。</li>
+<li>Before / After。</li>
+</ul>
+<h3 id="_44">驗收條件</h3>
+<ul>
+<li>情境：遮蔽必須寫入最終像素，不只是 UI Overlay。</li>
+<li>情境：下載後重新開啟仍保持遮蔽。</li>
+<li>情境：Undo 可取消上一個操作。</li>
+</ul>
+<hr>
+<h2 id="prd-16">PRD 16 — 照片 → 工作成果附件</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>photo-evidence-sheet</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/photo-evidence-sheet/</code></li>
+</ul>
+<h3 id="_45">為什麼做</h3>
+<p>活動、施工、教育訓練與設備安裝後，整理大量照片成正式成果附件很耗時。</p>
+<h3 id="mvp_14">MVP</h3>
+<ul>
+<li>多照片匯入。</li>
+<li>拖曳排序。</li>
+<li>圖說。</li>
+<li>每頁 2/4/6 張。</li>
+<li>自動編號。</li>
+<li>標題、日期、地點欄。</li>
+<li>A4 預覽。</li>
+<li>匯出列印版 HTML / PDF。</li>
+<li>不覆寫原始照片。</li>
+</ul>
+<h3 id="_46">驗收條件</h3>
+<ul>
+<li>情境：20 張照片可套固定版型。</li>
+<li>情境：重新排序後圖說仍與照片綁定。</li>
+<li>情境：列印時照片不超出版面。</li>
+</ul>
+<hr>
+<h2 id="prd-17">PRD 17 — 文件照片透視校正器</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>document-perspective-corrector</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/document-perspective-corrector/</code></li>
+</ul>
+<h3 id="_47">為什麼做</h3>
+<p>手機斜拍公文、白板、表格、發票、證書時，透視變形會降低閱讀與後續 OCR 品質。</p>
+<h3 id="mvp_15">MVP</h3>
+<ul>
+<li>JPG/PNG/WebP 上傳。</li>
+<li>四個可拖曳角點。</li>
+<li>Perspective Transform。</li>
+<li>旋轉、裁切。</li>
+<li>基本亮度、對比、灰階文件模式。</li>
+<li>Before / After。</li>
+<li>JPG / PNG 輸出。</li>
+<li>可選單頁 PDF。</li>
+</ul>
+<h3 id="_48">驗收條件</h3>
+<ul>
+<li>情境：四角調整後可把斜拍矩形校正成近似正面。</li>
+<li>情境：原始圖片不被改動。</li>
+<li>情境：校正結果可獨立下載。</li>
+</ul>
+<hr>
+<h2 id="prd-18-pdf">PRD 18 — PDF 拆分 / 合併 / 重排工作台</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>pdf-organizer</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/pdf-organizer/</code></li>
+</ul>
+<h3 id="_49">為什麼做</h3>
+<p>送件與彙整附件時，PDF 順序錯亂、來源不同、要刪頁或旋轉是常見需求。</p>
+<h3 id="mvp_16">MVP</h3>
+<ul>
+<li>多 PDF 匯入。</li>
+<li>每頁 Thumbnail。</li>
+<li>跨文件拖曳重排。</li>
+<li>刪除頁面。</li>
+<li>旋轉頁面。</li>
+<li>指定頁碼範圍拆分。</li>
+<li>合併後下載新 PDF。</li>
+<li>顯示總頁數。</li>
+<li>不覆寫來源。</li>
+</ul>
+<h3 id="_50">驗收條件</h3>
+<ul>
+<li>情境：可將不同 PDF 指定頁重新組成新 PDF。</li>
+<li>情境：刪除與旋轉結果正確反映在輸出。</li>
+<li>情境：來源檔案保持不變。</li>
+</ul>
+<hr>
+<h2 id="prd-19-pdf">PRD 19 — PDF 文字擷取與全文搜尋</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>pdf-text-search</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/pdf-text-search/</code></li>
+</ul>
+<h3 id="_51">為什麼做</h3>
+<p>有文字層 PDF 雖能閱讀，但整理成可搜尋資料或搬到筆記系統仍不方便。</p>
+<h3 id="mvp_17">MVP</h3>
+<ul>
+<li>偵測是否有可擷取文字。</li>
+<li>逐頁顯示文字。</li>
+<li>全文關鍵字搜尋。</li>
+<li>顯示命中頁碼與片段。</li>
+<li>點結果定位頁面。</li>
+<li>TXT 匯出。</li>
+<li>Markdown 匯出。</li>
+<li>Copy All。</li>
+</ul>
+<h3 id="_52">不做</h3>
+<p>掃描 PDF OCR、AI 摘要。</p>
+<h3 id="_53">驗收條件</h3>
+<ul>
+<li>情境：有文字層 PDF 可搜尋並列出頁碼。</li>
+<li>情境：掃描 PDF 無文字層時明確提示限制。</li>
+<li>情境：匯出文字與可擷取內容一致。</li>
+</ul>
+<hr>
+<h2 id="prd-20-pdf">PRD 20 — PDF 頁碼 / 浮水印 / 送審章</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>pdf-review-stamper</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/pdf-review-stamper/</code></li>
+</ul>
+<h3 id="_54">為什麼做</h3>
+<p>草稿、密件、僅供參考、未核定等標記與頁碼，是送審文件高度重複的加工。</p>
+<h3 id="mvp_18">MVP</h3>
+<ul>
+<li>頁碼 X 或 X/Y。</li>
+<li>頁首／頁尾位置。</li>
+<li>自訂文字浮水印。</li>
+<li>透明度、角度、位置。</li>
+<li>常用預設：草稿、密件、僅供參考、未核定。</li>
+<li>全頁或指定頁碼範圍。</li>
+<li>預覽。</li>
+<li>輸出新 PDF。</li>
+</ul>
+<h3 id="_55">驗收條件</h3>
+<ul>
+<li>情境：指定第2–5頁時其他頁不加標記。</li>
+<li>情境：X/Y 的 Y 為輸出總頁數。</li>
+<li>情境：使用者可先預覽再下載。</li>
+</ul>
+<hr>
+<h2 id="prd-21-pdf-flatten">PRD 21 — PDF 安全遮蔽 / Flatten</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>pdf-secure-redactor</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/pdf-secure-redactor/</code></li>
+</ul>
+<h3 id="_56">為什麼做</h3>
+<p>在 PDF 上畫黑框不代表底層文字真的消失。敏感資料對外分享前，需要把遮蔽結果真正寫進輸出。</p>
+<h3 id="mvp_19">MVP</h3>
+<ul>
+<li>PDF 頁面預覽。</li>
+<li>框選多個敏感區域。</li>
+<li>黑色或指定遮蔽色。</li>
+<li>將指定頁 Rasterize / Flatten。</li>
+<li>重新組成 PDF。</li>
+<li>顯示哪些頁被 Rasterize。</li>
+<li>輸出後重新檢查該區域不應仍可直接選取底層文字。</li>
+</ul>
+<h3 id="_57">不做</h3>
+<p>AI 自動找個資、宣稱符合所有法規場景。</p>
+<h3 id="_58">驗收條件</h3>
+<ul>
+<li>情境：遮蔽結果不能藉由移除 Annotation 恢復。</li>
+<li>情境：被 Rasterize 的敏感文字不得仍可直接複製。</li>
+<li>情境：未指定遮蔽的頁面依設定保持原狀。</li>
+</ul>
+<hr>
+<h2 id="prd-22-pdf">PRD 22 — PDF 密碼管理器</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>pdf-password-manager</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/pdf-password-manager/</code></li>
+</ul>
+<h3 id="_59">為什麼做</h3>
+<p>PDF 在合併或整理前可能需要使用已知密碼解鎖；交付前又可能需要重新設定密碼。</p>
+<h3 id="mvp_20">MVP</h3>
+<ul>
+<li>使用已知正確密碼開啟 PDF。</li>
+<li>產生未加密副本。</li>
+<li>設定新開啟密碼。</li>
+<li>更換密碼。</li>
+<li>批次處理。</li>
+<li>顯示成功／失敗檔案。</li>
+<li>單檔與 ZIP。</li>
+<li>永不覆寫原始檔。</li>
+</ul>
+<h3 id="_60">不做</h3>
+<p>猜密碼、暴力破解未知密碼。</p>
+<h3 id="_61">驗收條件</h3>
+<ul>
+<li>情境：正確密碼可解鎖支援格式的 PDF。</li>
+<li>情境：錯誤密碼不能產生假成功結果。</li>
+<li>情境：重新加密後，開啟輸出檔需要新密碼。</li>
+</ul>
+<hr>
+<h2 id="prd-23-pdf">PRD 23 — PDF 送件清理器</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>pdf-delivery-cleaner</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：單一 HTML / GitHub Pages，可離線</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/pdf-delivery-cleaner/</code></li>
+</ul>
+<h3 id="_62">為什麼做</h3>
+<p>PDF 送出前可能還含 Metadata、註解、表單、附件、外部連結與互動 Action，這些不一定能從畫面直接看到。</p>
+<h3 id="mvp_21">MVP</h3>
+<ul>
+<li>先掃描、再清理。</li>
+<li>列出可偵測 Metadata。</li>
+<li>列出 URL / mailto Link Annotation。</li>
+<li>列出 Comment / Annotation。</li>
+<li>列出 Form。</li>
+<li>列出附件。</li>
+<li>Library 支援時列出 Document/JavaScript Actions。</li>
+<li>使用者逐類勾選清除。</li>
+<li>清理前後比較。</li>
+<li>輸出 <code>clean-for-delivery.pdf</code>。</li>
+</ul>
+<h3 id="_63">不做</h3>
+<p>保證清除所有 PDF 物件、任意移除第三方版權保護、未確認就 Flatten 全文件。</p>
+<h3 id="_64">驗收條件</h3>
+<ul>
+<li>情境：沒有可清理項目時顯示明確結果。</li>
+<li>情境：只選 Metadata 時不順便移除其他物件。</li>
+<li>情境：輸出後重新掃描，已選清除項目應消失。</li>
+</ul>
+<hr>
+<h1 id="html-on-github-pages-html">第二階段：HTML on GitHub Pages，不可只下載 HTML 單獨使用</h1>
+<blockquote>
+<p>完整產品依賴 <strong>GitHub Repository + GitHub Actions + GitHub Pages</strong>。HTML 即使可下載，也缺少排程、Workflow、Repo History 等核心能力，因此不能把單一 HTML 視為完整產品。</p>
+</blockquote>
+<h2 id="prd-24-dashboard">PRD 24 — 每日自動更新工作 Dashboard</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>scheduled-work-dashboard</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：GitHub Pages + GitHub Actions</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/scheduled-work-dashboard/</code></li>
+</ul>
+<h3 id="_65">為什麼做</h3>
+<p>固定報表每天／每週由人手動更新，容易耗時、忘記或產生版本不一致。以內政部警政署
+「165打詐儀錶板」的公開每日類別統計（電信網路詐欺／非電信網路詐欺／其他，各含案件
+數與損失金額）為實例資料來源，練習「Repo 即資料庫 + Actions 排程」這套組合。</p>
+<h3 id="_66">資料來源（已實測驗證）</h3>
+<ul>
+<li>端點：<code>GET https://165dashboard.tw/CIB_DWS_API/api/Dashboard/GetDailyCategoryStatistics?date=&lt;ISO8601&gt;&amp;sort=case</code>，公開、免登入、免 API Key。</li>
+<li>日期參數語意：查台北時間 D 日的資料，傳 <code>date=(D減1日)T16:00:00Z</code>（UTC+8 換算）。</li>
+<li>回傳三類別的 <code>Cases</code>（件）與 <code>Losses</code>（<strong>單位：萬元</strong>，非元）。</li>
+<li>已實測 2025-12-31 仍正常回傳，代表 2026-07-01（115/7/1）起的歷史資料可一次性回補，
+  不必乾等 Actions 每天累積才有完整資料。</li>
+<li>非官方公告的開放資料集，沒有正式 ToS；僅供技術練習展示，每日僅排程抓取一次，
+  頁面上需標註資料來源與非官方轉載聲明。</li>
+</ul>
+<h3 id="mvp_22">MVP</h3>
+<ul>
+<li>一次性回補腳本：抓 2026-07-01 起至今的每日類別統計，寫入 <code>data/daily-stats.csv</code>
+  （欄位：<code>date,category,cases,losses</code>）。</li>
+<li>GitHub Actions 排程（每日一次）呼叫同一支腳本，抓「前一天」資料 append 進 CSV。</li>
+<li>Workflow 讀取 CSV，以<strong>月為單位</strong>彙總三類別的案件數與損失金額。</li>
+<li>Pages 顯示：月度 KPI 卡片、月度趨勢圖、月度明細表（月份 × 類別 × 案件數/損失金額）。</li>
+<li>顯示 Last Updated。</li>
+<li>Workflow 失敗可從 Actions log 查原因。</li>
+<li>支援手動 <code>workflow_dispatch</code>。</li>
+<li>自動部署 Pages。</li>
+</ul>
+<h3 id="_67">不做</h3>
+<p>即時秒級資料流、私密資料直接放 public repo、AI 分析、逐日明細呈現（只做月彙總）、
+除三大類別外的其他維度（如各縣市／各詐騙手法排行，那是原站其他分頁的範圍）。</p>
+<h3 id="_68">驗收條件</h3>
+<ul>
+<li>情境：排程執行後 Pages 顯示更新資料，且該月的月度彙總數字隨新一天資料入帳而更新。</li>
+<li>情境：手動觸發 Workflow 可完成相同流程。</li>
+<li>情境：只下載 HTML 不應被描述成完整產品，因自動更新能力依賴 Actions。</li>
+<li>情境：<code>data/daily-stats.csv</code> 中 2026-07-01 起每一天都有三類別各一筆紀錄，無缺漏。</li>
+</ul>
+<hr>
+<h2 id="prd-25">PRD 25 — 公開資料定期快照站</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>public-data-snapshot</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：GitHub Pages + GitHub Actions + Git History</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/public-data-snapshot/</code></li>
+</ul>
+<h3 id="_69">為什麼做</h3>
+<p>公開 CSV/JSON 會更新，但來源網站未必提供方便的歷史版本；Git Repository 天然適合保留每次 Snapshot。</p>
+<h3 id="mvp_23">MVP</h3>
+<ul>
+<li>設定一個公開 CSV/JSON URL。</li>
+<li>Actions 定期下載。</li>
+<li>依日期／時間保存 Snapshot。</li>
+<li>與上一版做基本差異比較。</li>
+<li>內容相同時避免產生無意義重複版本，或明確標示無異動。</li>
+<li>Pages 顯示 Snapshot 時間軸。</li>
+<li>可下載歷史版本。</li>
+<li>顯示最後一次抓取狀態。</li>
+</ul>
+<h3 id="_70">不做</h3>
+<p>繞過登入、付費牆或存取控制；大規模爬蟲；AI 解讀。</p>
+<h3 id="_71">驗收條件</h3>
+<ul>
+<li>情境：來源更新時 Repository 留下可追溯 Snapshot。</li>
+<li>情境：Pages 至少能查看最新與上一版。</li>
+<li>情境：抓取失敗時不得覆蓋最後一份正常 Snapshot。</li>
+</ul>
+<hr>
+<h1 id="html-on-cloudflare-ai">第三階段：HTML on Cloudflare，不使用 AI</h1>
+<blockquote>
+<p>前端仍以 HTML 為主要介面，但完整產品需要 Cloudflare Workers / Browser Rendering 等 Serverless 能力，不能只靠下載 HTML 離線執行。</p>
+</blockquote>
+<h2 id="prd-26">PRD 26 — 網址 → 網頁存證包</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>web-evidence-packager</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：Cloudflare Workers + Browser Rendering + HTML</li>
+<li><strong>AI</strong>：否</li>
+<li><strong>SDD</strong>：<code>sdd/web-evidence-packager/</code></li>
+</ul>
+<h3 id="_72">為什麼做</h3>
+<p>公告、法規、價格、廠商頁面與新聞內容可能日後修改，Office 工作常需要保留「當時看到什麼」。</p>
+<h3 id="_73">輸入</h3>
+<p>公開 HTTP/HTTPS URL。</p>
+<h3 id="mvp_24">MVP</h3>
+<ul>
+<li>驗證 URL。</li>
+<li>透過 Browser Rendering 開啟目標頁。</li>
+<li>擷取 Screenshot。</li>
+<li>取得支援的 PDF / HTML / Markdown 中至少兩種留存格式；實作前依 Cloudflare 當期 API 確認。</li>
+<li>記錄原始 URL。</li>
+<li>記錄擷取時間與 Page Title。</li>
+<li>建立 manifest。</li>
+<li>打包成可下載存證包。</li>
+<li>顯示抓取失敗原因。</li>
+</ul>
+<h3 id="_74">安全</h3>
+<ul>
+<li>防 SSRF：拒絕 localhost、Private IP、Metadata endpoint。</li>
+<li>限制 URL scheme。</li>
+<li>Timeout。</li>
+<li>單次資源量限制。</li>
+<li>不宣稱產物具法律公證效力。</li>
+</ul>
+<h3 id="_75">驗收條件</h3>
+<ul>
+<li>情境：公開網頁可下載含 URL、時間、頁面留存內容的包。</li>
+<li>情境：localhost / 私有網段 URL 被拒絕。</li>
+<li>情境：目標頁無法開啟時不可產生看似成功的空包。</li>
+</ul>
+<hr>
+<h1 id="html-on-cloudflare-ai_1">第四階段：HTML on Cloudflare，使用 AI</h1>
+<blockquote>
+<p>AI 輸出一律視為候選結果。涉及數字、日期、責任、檔名與表格內容時，必須保留人工確認。</p>
+</blockquote>
+<h2 id="prd-27-ai">PRD 27 — AI 會議紀錄整理器</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>ai-meeting-minutes</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：Cloudflare Workers + Workers AI + HTML</li>
+<li><strong>AI</strong>：是</li>
+<li><strong>SDD</strong>：<code>sdd/ai-meeting-minutes/</code></li>
+</ul>
+<h3 id="_76">為什麼做</h3>
+<p>真正耗時的常不是開會，而是把逐字稿整理成可執行的會議紀錄。</p>
+<h3 id="_77">輸入</h3>
+<p>貼上逐字稿、TXT、MD。</p>
+<h3 id="mvp_25">MVP</h3>
+<ul>
+<li>將文字送到 Workers AI。</li>
+<li>固定輸出：摘要、關鍵討論、決議、待辦、負責角色、期限、待確認事項。</li>
+<li>原文沒有期限時不得捏造日期。</li>
+<li>各欄位可人工修改。</li>
+<li>複製 Markdown。</li>
+<li>下載 Markdown。</li>
+<li>顯示 AI 結果需人工確認。</li>
+</ul>
+<h3 id="_78">不做</h3>
+<p>語音轉文字作為 MVP、自動寄信、自動創造不存在的責任人。</p>
+<h3 id="_79">驗收條件</h3>
+<ul>
+<li>情境：逐字稿明確有 Action Item 時能整理出來。</li>
+<li>情境：原文沒有期限時標示未指定／待確認。</li>
+<li>情境：使用者修改 AI 結果後再匯出。</li>
+</ul>
+<hr>
+<h2 id="prd-28-office-sop-rag">PRD 28 — Office SOP 語意搜尋 / RAG 問答</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>office-sop-rag</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：Cloudflare AI Search / Vectorize + Workers AI + Workers + HTML</li>
+<li><strong>AI</strong>：是</li>
+<li><strong>SDD</strong>：<code>sdd/office-sop-rag/</code></li>
+</ul>
+<h3 id="_80">為什麼做</h3>
+<p>同仁常知道規定存在，但不知道是哪份 SOP、哪一段；傳統關鍵字搜尋難以處理自然語言問題。</p>
+<h3 id="mvp_26">MVP</h3>
+<ul>
+<li>匯入一小組 SOP / FAQ。</li>
+<li>文件 Chunking。</li>
+<li>建立索引。</li>
+<li>自然語言提問。</li>
+<li>Retrieval 找相關片段。</li>
+<li>LLM 只依 Retrieved Context 回答。</li>
+<li>顯示來源文件名稱。</li>
+<li>顯示引用片段與可用頁碼／章節。</li>
+<li>找不到足夠證據時回答資料不足。</li>
+<li>支援重新索引。</li>
+</ul>
+<h3 id="_81">安全／品質</h3>
+<ul>
+<li>不把模型內建知識當 SOP 依據。</li>
+<li>做基本 Prompt Injection 防護。</li>
+<li>正式版的文件權限範圍需另立規格。</li>
+</ul>
+<h3 id="_82">驗收條件</h3>
+<ul>
+<li>情境：答案可以追溯到來源文件。</li>
+<li>情境：超出文件範圍的問題不產生假權威答案。</li>
+<li>情境：文件更新後可重新建立索引。</li>
+</ul>
+<hr>
+<h2 id="prd-29-pdf">PRD 29 — PDF / 圖片表格救援器</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>ai-table-rescue</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：Cloudflare Workers + Vision-capable AI + HTML</li>
+<li><strong>AI</strong>：是</li>
+<li><strong>SDD</strong>：<code>sdd/ai-table-rescue/</code></li>
+</ul>
+<h3 id="_83">為什麼做</h3>
+<p>表格可能只存在 PDF、掃描件、JPG、PNG、WebP 或截圖裡，使用者看得到卻不能排序、計算或分析。</p>
+<h3 id="_84">輸入</h3>
+<p>PDF、JPG、PNG、WebP、剪貼簿 Screenshot。</p>
+<h3 id="mvp_27">MVP</h3>
+<ul>
+<li>PDF 選頁並前端轉圖片。</li>
+<li>圖片 Crop，只保留表格範圍。</li>
+<li>送到支援 Vision 的模型。</li>
+<li>模型輸出結構化 Row/Column。</li>
+<li>原圖與候選表格並排。</li>
+<li>Cell 可人工編輯。</li>
+<li>可新增／刪除列欄。</li>
+<li>CSV 匯出。</li>
+<li>Markdown Table 匯出。</li>
+<li>HTML Table / TSV 作為後續延伸，不列入首版必做。</li>
+</ul>
+<h3 id="_85">品質原則</h3>
+<ul>
+<li>不宣稱 OCR 100% 正確。</li>
+<li>金額、日期、編號等高風險欄位需人工確認。</li>
+<li>模型格式錯誤時不得直接產生假 CSV。</li>
+</ul>
+<h3 id="_86">驗收條件</h3>
+<ul>
+<li>情境：清晰簡單表格能產生可編輯列欄。</li>
+<li>情境：AI 失敗時保留原圖並提示人工處理。</li>
+<li>情境：使用者修改 Cell 後，CSV 使用修改後的值。</li>
+</ul>
+<hr>
+<h2 id="prd-30-ai">PRD 30 — AI 智慧檔名整理器</h2>
+<ul>
+<li><strong>英文短名稱</strong>：<code>ai-file-renamer</code></li>
+<li><strong>類型</strong>：新功能</li>
+<li><strong>部署型態</strong>：Cloudflare Workers + Workers AI / Vision-capable AI + HTML</li>
+<li><strong>AI</strong>：是</li>
+<li><strong>SDD</strong>：<code>sdd/ai-file-renamer/</code></li>
+</ul>
+<h3 id="_87">為什麼做</h3>
+<p>掃描器、手機與下載系統常產生 <code>scan001.pdf</code>、<code>IMG_8823.jpg</code>、<code>document-final-v2.pdf</code> 等無意義檔名。當這些檔案後續還要合併、歸檔或搜尋時，管理成本更高。</p>
+<h3 id="_88">輸入</h3>
+<p>TXT、MD、JPG、PNG、WebP、PDF；支援單檔與批次。</p>
+<h3 id="mvp_28">MVP</h3>
+<ul>
+<li>TXT/MD 擷取前段文字。</li>
+<li>PDF 擷取第一頁；掃描 PDF 第一頁轉圖片。</li>
+<li>JPG/PNG/WebP 送 Vision。</li>
+<li>AI 判斷日期、文件類型、標題、主題。</li>
+<li>命名模板：<code>{title}</code>、<code>{date}_{title}</code>、<code>{type}_{title}</code>、<code>{date}_{type}_{title}</code>。</li>
+<li>顯示「原檔名 → 建議檔名」。</li>
+<li>使用者逐檔修改／確認。</li>
+<li>清理非法檔名字元。</li>
+<li>處理重複檔名。</li>
+<li>保留原副檔名。</li>
+<li>單檔下載。</li>
+<li>批次 ZIP。</li>
+</ul>
+<h3 id="_89">品質／安全</h3>
+<ul>
+<li>AI 只建議，不直接覆寫原始檔。</li>
+<li>日期無法判斷時不得編造。</li>
+<li>低信心結果標示待確認。</li>
+<li>處理前明確告知內容會送往 AI。</li>
+</ul>
+<h3 id="_90">驗收條件</h3>
+<ul>
+<li>情境：第一頁明確寫「資訊安全工作會議紀錄」時，能提出相關候選檔名。</li>
+<li>情境：沒有日期時不得因模板需要日期就自行生成日期。</li>
+<li>情境：兩份檔案產生相同候選名時，自動避免檔名衝突。</li>
+<li>情境：批次下載只改檔名，不改檔案內容。</li>
+</ul>
+<hr>
+<h1 id="30">30 題最終開發順序總覽</h1>
+<blockquote>
+<p>⚠️ <strong>下表是「PRD 編號」，不是實際開發順序。</strong>
+實際開發順序依技術棧分群重排，並補回 v1 的兩題，見 <a href="README.md#-開發順序與進度"><code>README.md</code></a>。
+主要調整：PRD 01 <code>document-tools</code> 是 PRD 02/07/13/18 的聯集，移到 Level 1 壓軸（Day25）。</p>
+<p><!-- MODIFIED: 首欄原標題為「順序」，已於 2026-08-23 改為「PRD 編號」。原因：實測有 subagent 把此欄當成開發日次，導致 Day10/11/12 的產品對應弄反。開發日次一律以 README.md 為準。BY Claude Opus 5 AT 2026-08-23 -->
+⚠️ <strong>首欄是 PRD 編號，不是開發日次。</strong> 例如 PRD 10 <code>csv-pivot-dashboard</code> 的開發日是 <strong>Day11</strong>，PRD 12 <code>csv-batch-splitter</code> 的開發日是 <strong>Day10</strong>。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">PRD 編號</th>
+<th>短名稱</th>
+<th>產品</th>
+<th>執行環境</th>
+<th style="text-align: center;">AI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">01</td>
+<td><code>document-tools</code></td>
+<td>Document Tools 重製版</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">02</td>
+<td><code>pdf-to-jpg</code></td>
+<td>PDF_TO_JPG 重製版</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">03</td>
+<td><code>text-health-check</code></td>
+<td>文字健檢工作台</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">04</td>
+<td><code>zh-tw-localizer</code></td>
+<td>繁簡與台灣在地化轉換器</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">05</td>
+<td><code>reversible-deidentifier</code></td>
+<td>可逆式文字去識別化</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">06</td>
+<td><code>ai-text-cleaner</code></td>
+<td>AI 回答 → Office 文字清理器</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">07</td>
+<td><code>office-content-publisher</code></td>
+<td>Office Content Publisher</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">08</td>
+<td><code>csv-doctor</code></td>
+<td>CSV Doctor &amp; Cleaner</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">09</td>
+<td><code>csv-period-diff</code></td>
+<td>兩期清冊異動報告</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td><code>csv-pivot-dashboard</code></td>
+<td>CSV Pivot Dashboard</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td><code>csv-one-page-report</code></td>
+<td>CSV 一頁式管理報告</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">12</td>
+<td><code>csv-batch-splitter</code></td>
+<td>總表 → 分單位批次拆檔</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">13</td>
+<td><code>image-batch-optimizer</code></td>
+<td>圖片批次最佳化工作台</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">14</td>
+<td><code>exif-privacy-cleaner</code></td>
+<td>EXIF 隱私檢查與清除</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">15</td>
+<td><code>screenshot-sanitizer</code></td>
+<td>Screenshot Privacy Sanitizer</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">16</td>
+<td><code>photo-evidence-sheet</code></td>
+<td>照片 → 工作成果附件</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">17</td>
+<td><code>document-perspective-corrector</code></td>
+<td>文件照片透視校正器</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">18</td>
+<td><code>pdf-organizer</code></td>
+<td>PDF 拆分 / 合併 / 重排工作台</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">19</td>
+<td><code>pdf-text-search</code></td>
+<td>PDF 文字擷取與全文搜尋</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">20</td>
+<td><code>pdf-review-stamper</code></td>
+<td>PDF 頁碼 / 浮水印 / 送審章</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">21</td>
+<td><code>pdf-secure-redactor</code></td>
+<td>PDF 安全遮蔽 / Flatten</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">22</td>
+<td><code>pdf-password-manager</code></td>
+<td>PDF 密碼管理器</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">23</td>
+<td><code>pdf-delivery-cleaner</code></td>
+<td>PDF 送件清理器</td>
+<td>單一 HTML / GitHub Pages，可下載</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">24</td>
+<td><code>scheduled-work-dashboard</code></td>
+<td>每日自動更新工作 Dashboard</td>
+<td>GitHub Pages + Actions，不可單 HTML</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">25</td>
+<td><code>public-data-snapshot</code></td>
+<td>公開資料定期快照站</td>
+<td>GitHub Pages + Actions，不可單 HTML</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">26</td>
+<td><code>web-evidence-packager</code></td>
+<td>網址 → 網頁存證包</td>
+<td>Cloudflare</td>
+<td style="text-align: center;">否</td>
+</tr>
+<tr>
+<td style="text-align: right;">27</td>
+<td><code>ai-meeting-minutes</code></td>
+<td>AI 會議紀錄整理器</td>
+<td>Cloudflare</td>
+<td style="text-align: center;">是</td>
+</tr>
+<tr>
+<td style="text-align: right;">28</td>
+<td><code>office-sop-rag</code></td>
+<td>Office SOP 語意搜尋 / RAG</td>
+<td>Cloudflare</td>
+<td style="text-align: center;">是</td>
+</tr>
+<tr>
+<td style="text-align: right;">29</td>
+<td><code>ai-table-rescue</code></td>
+<td>PDF / 圖片表格救援器</td>
+<td>Cloudflare</td>
+<td style="text-align: center;">是</td>
+</tr>
+<tr>
+<td style="text-align: right;">30</td>
+<td><code>ai-file-renamer</code></td>
+<td>AI 智慧檔名整理器</td>
+<td>Cloudflare</td>
+<td style="text-align: center;">是</td>
+</tr>
+</tbody>
+</table>
+<h1 id="_91">技術學習曲線</h1>
+<pre><code class="language-text">Level 1：單一 HTML，可離線
+PRD 01–23
+        ↓
+Level 2：GitHub Repo + Actions + Pages
+PRD 24–25
+        ↓
+Level 3：Cloudflare Workers / Browser Rendering
+PRD 26
+        ↓
+Level 4：Cloudflare Workers AI / Vision / RAG
+PRD 27–30
+</code></pre>
+<p>核心原則：</p>
+<ol>
+<li><strong>Browser 能解決 → Browser 解決。</strong></li>
+<li><strong>需要排程／Git History → GitHub Actions。</strong></li>
+<li><strong>需要 Server-side → Cloudflare Workers。</strong></li>
+<li><strong>沒有模型就很難完成內容理解 → Cloudflare AI。</strong></li>
+</ol>
+<h1 id="_92">每一題進入實作前的固定提案模板</h1>
+<p>當使用者說「提案 PRD XX」時，才建立：</p>
+<pre><code class="language-text">sdd/&lt;short-name&gt;/
+├── proposal.md
+└── tasks.md
+</code></pre>
+<p><code>proposal.md</code> 至少包含：</p>
+<pre><code class="language-markdown"># &lt;產品名稱&gt;
+
+## 為什麼做
+這個需求想解決什麼問題。
+
+## 要改什麼
+- 行為 1
+- 行為 2
+- 行為 3
+
+## 影響範圍
+- 新增檔案
+- 修改檔案
+- Library / API
+</code></pre>
+<p><code>tasks.md</code> 至少包含：</p>
+<pre><code class="language-markdown"># Tasks
+
+- [ ] 任務 1
+- [ ] 任務 2
+- [ ] 任務 3
+
+## 驗收條件
+- 情境：……
+- 情境：……
+</code></pre>
+<p>規則：
+- 每個 task 原則上 1 小時內完成。
+- 全份不超過 10 條。
+- 超過 10 條先拆需求。
+- 提案完成後停止，直到使用者說「開始實作」。</p>
+<h1 id="2026-08-23">官方技術依據（2026-08-23 核對）</h1>
+<ul>
+<li>GitHub Pages — Using custom workflows with GitHub Pages<br>
+  https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages</li>
+<li>GitHub Pages — Configuring a publishing source<br>
+  https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site</li>
+<li>Cloudflare Workers<br>
+  https://developers.cloudflare.com/workers/</li>
+<li>Cloudflare Workers AI<br>
+  https://developers.cloudflare.com/workers-ai/</li>
+<li>Cloudflare AI<br>
+  https://developers.cloudflare.com/ai/</li>
+</ul>
+<h1 id="_93">文件使用方式</h1>
+<p>這份檔案是 <strong>30 個產品的需求基線，不是實作授權</strong>。</p>
+<p>建議每次只做：</p>
+<pre><code class="language-text">提案 PRD 01
+→ proposal.md / tasks.md
+→ 使用者確認
+→ 開始實作
+→ 一次完成一條 task
+→ 驗收
+→ 歸檔
+→ 下一個 PRD
+</code></pre>
+<p>避免把 30 個產品塞進同一個 Coding Session。</p>
+  </main>
+  <script>
+    document.querySelectorAll("table").forEach(function (table) {
+      var wrapper = document.createElement("div");
+      wrapper.className = "table-wrap";
+      table.parentNode.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+    });
+  </script>
+</body>
+</html>

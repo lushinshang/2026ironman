@@ -1,0 +1,28 @@
+{
+  "assets": {
+    "fflate": {
+      "path": "../../shared/vendor/fflate.umd.js",
+      "version": "0.8.3",
+      "license": "MIT",
+      "escape_mode": "raw_js"
+    },
+    "docx-meta": {
+      "path": "docx-meta.js",
+      "version": "internal",
+      "license": "project-internal",
+      "escape_mode": "raw_js"
+    },
+    "xlsx-meta": {
+      "path": "xlsx-meta.js",
+      "version": "internal",
+      "license": "project-internal",
+      "escape_mode": "raw_js"
+    },
+    "pptx-meta": {
+      "path": "pptx-meta.js",
+      "version": "internal",
+      "license": "project-internal",
+      "escape_mode": "raw_js"
+    }
+  }
+}

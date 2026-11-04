@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Document Tools 重製版 — Day27</title>
+<style>
+/* shared/base.css — 共用樣式基底（手動複製，勿手動修改，來源見 shared/base.css） */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font-sans); color: var(--color-text); background: var(--color-bg); line-height: 1.6; }
+.container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+h1, h2, h3 { line-height: 1.3; }
+.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 16px; }
+textarea, input[type="text"] { width: 100%; font-family: inherit; font-size: 1rem; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: var(--color-text); }
+textarea { resize: vertical; min-height: 160px; }
+button { font-family: inherit; font-size: 0.95rem; padding: 8px 16px; border-radius: var(--radius); border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); cursor: pointer; }
+button:hover { background: var(--color-bg); }
+button.primary { background: var(--color-primary); border-color: var(--color-primary); color: #ffffff; }
+button.primary:hover { background: var(--color-primary-hover); }
+button:disabled { cursor: not-allowed; opacity: 0.5; }
+.dropzone { border: 2px dashed var(--color-border); border-radius: var(--radius); padding: 24px; text-align: center; color: var(--color-text-muted); }
+.dropzone.dragover { border-color: var(--color-primary); color: var(--color-primary); }
+.nav-back { display: inline-block; margin-bottom: 16px; color: var(--color-text-muted); text-decoration: none; }
+.nav-back:hover { text-decoration: underline; }
+.toast { position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%); background: var(--color-toast-bg); color: var(--color-toast-text); padding: 10px 18px; border-radius: var(--radius); font-size: 0.9rem; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 1000; }
+.toast.show { opacity: 1; }
+
+/* Day27 專屬樣式 */
+.tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 2px solid var(--color-border); }
+.tab-btn { border: none; background: transparent; border-radius: var(--radius) var(--radius) 0 0; padding: 10px 18px; font-weight: 600; color: var(--color-text-muted); }
+.tab-btn.active { color: var(--color-primary); background: var(--color-surface); border: 1px solid var(--color-border); border-bottom: 2px solid var(--color-surface); margin-bottom: -2px; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.section { margin-bottom: 1.5rem; }
+.section h3 { margin: 0 0 8px 0; font-size: 1.05rem; }
+.file-list { margin-top: 12px; }
+.file-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: var(--radius); margin-bottom: 6px; background: #fff; font-size: 0.9rem; }
+.file-row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-row .ops { display: flex; gap: 4px; }
+.file-row .ops button { padding: 4px 8px; font-size: 0.8rem; }
+.field-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+.field-row label { font-size: 0.85rem; color: var(--color-text-muted); display: flex; align-items: center; gap: 6px; }
+.btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.hint { font-size: 0.8rem; color: var(--color-text-muted); }
+#markdown-preview { border: 1px solid var(--color-border); border-radius: var(--radius); padding: 16px; background: #fff; min-height: 200px; overflow: auto; }
+#markdown-preview pre { background: #f3f4f6; padding: 10px; border-radius: 6px; overflow-x: auto; }
+#markdown-preview code { font-family: var(--font-mono); }
+.md-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 720px) { .md-grid { grid-template-columns: 1fr; } }
+.footer-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2rem; border-top: 1px solid var(--color-border); padding-top: 1.5rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Document Tools 重製版</h1>
+  <p class="hint">圖片互轉/Resize/壓縮、PDF 合併/拆分/轉圖、Markdown 編輯預覽輸出 — 全部瀏覽器端處理，可下載離線使用。</p>
+
+  <div class="tabs">
+    <button type="button" class="tab-btn active" data-tab="tab-image">圖片</button>
+    <button type="button" class="tab-btn" data-tab="tab-pdf">PDF</button>
+    <button type="button" class="tab-btn" data-tab="tab-markdown">Markdown</button>
+  </div>
+
+  <!-- ============ 圖片區 ============ -->
+  <div class="tab-panel active" id="tab-image">
+    <div class="card">
+      <div id="img-dropzone" class="dropzone">拖放圖片到這裡，或
+        <button type="button" id="img-btn-select">選擇檔案</button>
+        <input type="file" id="img-file-input" accept=".jpg,.jpeg,.png,.webp" multiple style="display:none;">
+        <div class="hint">支援 JPG/PNG/WebP，可一次多選</div>
+      </div>
+
+      <div class="field-row">
+        <label>輸出格式
+          <select id="img-format">
+            <option value="original">維持原格式</option>
+            <option value="image/jpeg">JPG</option>
+            <option value="image/png">PNG</option>
+            <option value="image/webp">WebP</option>
+          </select>
+        </label>
+        <label>長邊上限(px，留空不縮放)
+          <input type="text" id="img-max-edge" style="width:90px" placeholder="例如 1600">
+        </label>
+        <label id="img-quality-row">品質
+          <input type="range" id="img-quality" min="0.1" max="0.95" step="0.05" value="0.85">
+          <span id="img-quality-val">0.85</span>
+        </label>
+      </div>
+
+      <div class="file-list" id="img-file-list"></div>
+
+      <div class="btn-group">
+        <button type="button" class="primary" id="img-btn-convert" disabled>開始轉換</button>
+        <button type="button" id="img-btn-download-zip" disabled>打包下載 ZIP</button>
+        <button type="button" id="img-btn-clear">清除目前資料</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PDF 區 ============ -->
+  <div class="tab-panel" id="tab-pdf">
+
+    <div class="card section">
+      <h3>合併</h3>
+      <div id="pdf-merge-dropzone" class="dropzone">拖放多份 PDF 到這裡，或
+        <button type="button" id="pdf-merge-btn-select">選擇檔案</button>
+        <input type="file" id="pdf-merge-file-input" accept=".pdf" multiple style="display:none;">
+      </div>
+      <div class="file-list" id="pdf-merge-file-list"></div>
+      <div class="btn-group">
+        <button type="button" class="primary" id="pdf-merge-btn-run" disabled>合併並下載</button>
+        <button type="button" id="pdf-merge-btn-clear">清除</button>
+      </div>
+    </div>
+
+    <div class="card section">
+      <h3>拆分</h3>
+      <div id="pdf-split-dropzone" class="dropzone">拖放單一 PDF 到這裡，或
+        <button type="button" id="pdf-split-btn-select">選擇檔案</button>
+        <input type="file" id="pdf-split-file-input" accept=".pdf" style="display:none;">
+      </div>
+      <div id="pdf-split-info" class="hint"></div>
+      <div class="field-row">
+        <label>頁碼範圍
+          <input type="text" id="pdf-split-range" placeholder="例如 1-3,5" style="width:160px">
+        </label>
+      </div>
+      <div class="btn-group">
+        <button type="button" class="primary" id="pdf-split-btn-run" disabled>拆分並下載</button>
+        <button type="button" id="pdf-split-btn-clear">清除</button>
+      </div>
+    </div>
+
+    <div class="card section">
+      <h3>PDF → 圖片</h3>
+      <div id="pdf-tojpg-dropzone" class="dropzone">拖放單一 PDF 到這裡，或
+        <button type="button" id="pdf-tojpg-btn-select">選擇檔案</button>
+        <input type="file" id="pdf-tojpg-file-input" accept=".pdf" style="display:none;">
+      </div>
+      <div id="pdf-tojpg-info" class="hint"></div>
+      <div class="btn-group">
+        <button type="button" class="primary" id="pdf-tojpg-btn-run" disabled>開始轉換</button>
+        <button type="button" id="pdf-tojpg-btn-download-zip" disabled>打包下載 ZIP</button>
+        <button type="button" id="pdf-tojpg-btn-clear">清除</button>
+      </div>
+      <div class="file-list" id="pdf-tojpg-page-list"></div>
+    </div>
+
+  </div>
+
+  <!-- ============ Markdown 區 ============ -->
+  <div class="tab-panel" id="tab-markdown">
+    <div class="card">
+      <div class="md-grid">
+        <div>
+          <h3>編輯</h3>
+          <textarea id="md-input" placeholder="# 標題&#10;&#10;- 清單&#10;- **粗體** *斜體*&#10;&#10;[連結](https://example.com)"></textarea>
+        </div>
+        <div>
+          <h3>即時預覽</h3>
+          <div id="markdown-preview"></div>
+        </div>
+      </div>
+      <div class="hint">簡化版 Markdown 語法子集：標題／粗體／斜體／清單／連結／code fence／行內 code，不是完整 CommonMark 實作。</div>
+      <div class="btn-group">
+        <button type="button" class="primary" id="md-btn-download">輸出 HTML</button>
+        <button type="button" id="md-btn-clear">清除目前資料</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-actions">
+    <button type="button" id="btn-copy-summary">複製結果摘要</button>
+    <button type="button" id="btn-download-offline">下載本工具離線版</button>
+  </div>
+
+  <!--{{LICENSES}}-->
+</div>
+
+<!--{{ASSET:pdfjs}}-->
+<!--{{ASSET:pdfjs_worker}}-->
+<!--{{ASSET:cantoo_pdf_lib}}-->
+<!--{{ASSET:fflate}}-->
+<!--{{SHARED:util-escape}}-->
+<!--{{SHARED:ui-toast}}-->
+<!--{{SHARED:ui-debounce}}-->
+<!--{{SHARED:io-download}}-->
+<!--{{SHARED:io-clipboard}}-->
+<!--{{SHARED:io-dropzone}}-->
+<!--{{SHARED:io-zip}}-->
+<!--{{SHARED:img-decode}}-->
+<!--{{SHARED:img-canvas}}-->
+<!--{{SHARED:img-file-size}}-->
+<!--{{SHARED:pdf-file-size}}-->
+<!--{{SHARED:pdf-decode}}-->
+<!--{{SHARED:pdf-build}}-->
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- Tabs ----------
+  var tabBtns = document.querySelectorAll('.tab-btn');
+  var tabPanels = document.querySelectorAll('.tab-panel');
+  tabBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      tabBtns.forEach(function (b) { b.classList.remove('active'); });
+      tabPanels.forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById(btn.getAttribute('data-tab')).classList.add('active');
+    });
+  });
+
+  var summaryParts = { image: '尚未處理', pdfMerge: '尚未合併', pdfSplit: '尚未拆分', pdfToJpg: '尚未轉換', markdown: '尚未輸出' };
+
+  // ======================================================================
+  // 圖片區
+  // ======================================================================
+  var imgState = { items: [] }; // { file, status, outputBlob, outputName }
+
+  var imgDropzone = document.getElementById('img-dropzone');
+  var imgFileInput = document.getElementById('img-file-input');
+  var imgBtnSelect = document.getElementById('img-btn-select');
+  var imgFileList = document.getElementById('img-file-list');
+  var imgFormatSel = document.getElementById('img-format');
+  var imgMaxEdge = document.getElementById('img-max-edge');
+  var imgQuality = document.getElementById('img-quality');
+  var imgQualityVal = document.getElementById('img-quality-val');
+  var imgQualityRow = document.getElementById('img-quality-row');
+  var imgBtnConvert = document.getElementById('img-btn-convert');
+  var imgBtnDownloadZip = document.getElementById('img-btn-download-zip');
+  var imgBtnClear = document.getElementById('img-btn-clear');
+
+  imgQuality.addEventListener('input', function () { imgQualityVal.textContent = imgQuality.value; });
+  function updateImgQualityVisibility() {
+    var fmt = imgFormatSel.value;
+    imgQualityRow.style.display = (fmt === 'image/png') ? 'none' : 'flex';
+  }
+  imgFormatSel.addEventListener('change', updateImgQualityVisibility);
+  updateImgQualityVisibility();
+
+  if (imgBtnSelect) imgBtnSelect.addEventListener('click', function () { imgFileInput.click(); });
+
+  function renderImgFileList() {
+    imgFileList.innerHTML = '';
+    imgState.items.forEach(function (item, idx) {
+      var row = document.createElement('div');
+      row.className = 'file-row';
+      var statusLabel = item.status === 'done' ? '✅ 已完成'
+        : item.status === 'error' ? '❌ ' + (item.message || '失敗')
+        : '待處理';
+      row.innerHTML = '<span class="name">' + escapeHtml(item.file.name) + '（' + (item.file.size / 1024).toFixed(1) + 'KB）— ' + statusLabel + '</span>';
+      var ops = document.createElement('div');
+      ops.className = 'ops';
+      if (item.status === 'done') {
+        var dlBtn = document.createElement('button');
+        dlBtn.type = 'button';
+        dlBtn.textContent = '下載';
+        dlBtn.addEventListener('click', function () {
+          downloadFile(item.outputName, item.outputBlob, item.outputBlob.type);
+        });
+        ops.appendChild(dlBtn);
+      }
+      var rmBtn = document.createElement('button');
+      rmBtn.type = 'button';
+      rmBtn.textContent = '移除';
+      rmBtn.addEventListener('click', function () {
+        imgState.items.splice(idx, 1);
+        renderImgFileList();
+        updateImgButtons();
+      });
+      ops.appendChild(rmBtn);
+      row.appendChild(ops);
+      imgFileList.appendChild(row);
+    });
+  }
+
+  function updateImgButtons() {
+    imgBtnConvert.disabled = imgState.items.length === 0;
+    imgBtnDownloadZip.disabled = imgState.items.filter(function (i) { return i.status === 'done'; }).length === 0;
+  }
+
+  function imgGateBatch(files) {
+    var totalBytes = 0;
+    for (var i = 0; i < files.length; i++) totalBytes += files[i].size;
+    return checkBatchSize(totalBytes, files.length);
+  }
+  function imgGate(file) {
+    return checkImageFileSize(file.size);
+  }
+  function onImgFileData(result, fileName, meta) {
+    var file = imgCurrentFileList ? imgCurrentFileList[meta.index] : null;
+    if (file) {
+      imgState.items.push({ file: file, status: 'pending', outputBlob: null, outputName: file.name });
+    }
+    renderImgFileList();
+    updateImgButtons();
+  }
+  function onImgFileError(msg) {
+    showToast(msg, 3000);
+  }
+  var imgCurrentFileList = null;
+  var imgImportOpts = {
+    multiple: true,
+    mode: 'bytes',
+    accept: ['.jpg', '.jpeg', '.png', '.webp'],
+    gate: imgGate,
+    gateBatch: function (files) { imgCurrentFileList = files; return imgGateBatch(files); },
+    onError: onImgFileError
+  };
+  setupFilePicker(imgFileInput, onImgFileData, imgImportOpts);
+  setupDropZone(imgDropzone, onImgFileData, imgImportOpts);
+
+  imgBtnConvert.addEventListener('click', function () {
+    var fmt = imgFormatSel.value;
+    var maxEdge = parseInt(imgMaxEdge.value, 10);
+    var quality = parseFloat(imgQuality.value);
+    var seq = Promise.resolve();
+    imgState.items.forEach(function (item) {
+      seq = seq.then(function () {
+        return loadImageFile(item.file).then(function (decodeRes) {
+          var canvas = decodeRes.canvas;
+          if (maxEdge > 0) {
+            canvas = resizeCanvas(canvas, { maxLongEdge: maxEdge, allowUpscale: false });
+          }
+          var effectiveMime = (fmt === 'original') ? (decodeRes.mimeType || 'image/jpeg') : fmt;
+          var ext = effectiveMime === 'image/png' ? '.png' : (effectiveMime === 'image/webp' ? '.webp' : '.jpg');
+          var baseName = item.file.name.replace(/\.[^/.]+$/, '');
+          return canvasToBlob(canvas, effectiveMime, quality).then(function (blob) {
+            item.outputBlob = blob;
+            item.outputName = baseName + '_out' + ext;
+            item.status = 'done';
+          });
+        }).catch(function (err) {
+          item.status = 'error';
+          item.message = err && err.message ? err.message : String(err);
+        });
+      });
+    });
+    seq.then(function () {
+      renderImgFileList();
+      updateImgButtons();
+      var doneCount = imgState.items.filter(function (i) { return i.status === 'done'; }).length;
+      summaryParts.image = doneCount + '/' + imgState.items.length + ' 張圖片轉換完成';
+      showToast('圖片轉換完成：' + doneCount + '/' + imgState.items.length);
+    });
+  });
+
+  imgBtnDownloadZip.addEventListener('click', function () {
+    var files = imgState.items.filter(function (i) { return i.status === 'done'; }).map(function (i) {
+      return { name: i.outputName, bytes: null, blob: i.outputBlob };
+    });
+    if (files.length === 0) return;
+    var readPromises = files.map(function (f) {
+      return f.blob.arrayBuffer().then(function (ab) { return { name: f.name, bytes: new Uint8Array(ab) }; });
+    });
+    Promise.all(readPromises).then(function (entries) {
+      var zipBlob = createZipBlob(entries);
+      downloadFile('document-tools-images.zip', zipBlob, 'application/zip');
+    });
+  });
+
+  imgBtnClear.addEventListener('click', function () {
+    imgState.items = [];
+    imgCurrentFileList = null;
+    if (imgFileInput) imgFileInput.value = '';
+    renderImgFileList();
+    updateImgButtons();
+    summaryParts.image = '尚未處理';
+    showToast('已清除圖片區資料');
+  });
+
+  // ======================================================================
+  // PDF 區 — 共用小工具
+  // ======================================================================
+  function parsePageRangeString(rangeStr, totalPages) {
+    var result = [];
+    var seen = {};
+    var parts = String(rangeStr || '').split(',');
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i].trim();
+      if (!p) continue;
+      var m = p.match(/^(\d+)-(\d+)$/);
+      if (m) {
+        var start = parseInt(m[1], 10);
+        var end = parseInt(m[2], 10);
+        if (isNaN(start) || isNaN(end) || start < 1 || end < start) {
+          throw new Error('範圍格式錯誤：' + p);
+        }
+        for (var n = start; n <= end; n++) {
+          if (totalPages && n > totalPages) throw new Error('頁碼超出範圍：' + n + '（總頁數 ' + totalPages + '）');
+          if (!seen[n]) { seen[n] = true; result.push(n); }
+        }
+      } else if (/^\d+$/.test(p)) {
+        var num = parseInt(p, 10);
+        if (num < 1) throw new Error('頁碼格式錯誤：' + p);
+        if (totalPages && num > totalPages) throw new Error('頁碼超出範圍：' + num + '（總頁數 ' + totalPages + '）');
+        if (!seen[num]) { seen[num] = true; result.push(num); }
+      } else {
+        throw new Error('無法解析的頁碼範圍：' + p);
+      }
+    }
+    if (result.length === 0) throw new Error('未指定任何頁碼');
+    return result;
+  }
+  window.parsePageRangeString = parsePageRangeString; // 供獨立測試呼叫
+
+  // ======================================================================
+  // PDF 區 — 合併
+  // ======================================================================
+  var mergeState = { docs: [] }; // { name, bytes, pageCount }
+  var mergeDropzone = document.getElementById('pdf-merge-dropzone');
+  var mergeFileInput = document.getElementById('pdf-merge-file-input');
+  var mergeBtnSelect = document.getElementById('pdf-merge-btn-select');
+  var mergeFileList = document.getElementById('pdf-merge-file-list');
+  var mergeBtnRun = document.getElementById('pdf-merge-btn-run');
+  var mergeBtnClear = document.getElementById('pdf-merge-btn-clear');
+
+  mergeBtnSelect.addEventListener('click', function () { mergeFileInput.click(); });
+
+  function renderMergeFileList() {
+    mergeFileList.innerHTML = '';
+    mergeState.docs.forEach(function (doc, idx) {
+      var row = document.createElement('div');
+      row.className = 'file-row';
+      row.innerHTML = '<span class="name">' + escapeHtml(doc.name) + '（' + doc.pageCount + ' 頁）</span>';
+      var ops = document.createElement('div');
+      ops.className = 'ops';
+      var upBtn = document.createElement('button');
+      upBtn.type = 'button'; upBtn.textContent = '↑';
+      upBtn.disabled = idx === 0;
+      upBtn.addEventListener('click', function () {
+        var tmp = mergeState.docs[idx - 1];
+        mergeState.docs[idx - 1] = mergeState.docs[idx];
+        mergeState.docs[idx] = tmp;
+        renderMergeFileList();
+      });
+      var downBtn = document.createElement('button');
+      downBtn.type = 'button'; downBtn.textContent = '↓';
+      downBtn.disabled = idx === mergeState.docs.length - 1;
+      downBtn.addEventListener('click', function () {
+        var tmp = mergeState.docs[idx + 1];
+        mergeState.docs[idx + 1] = mergeState.docs[idx];
+        mergeState.docs[idx] = tmp;
+        renderMergeFileList();
+      });
+      var rmBtn = document.createElement('button');
+      rmBtn.type = 'button'; rmBtn.textContent = '移除';
+      rmBtn.addEventListener('click', function () {
+        mergeState.docs.splice(idx, 1);
+        renderMergeFileList();
+        mergeBtnRun.disabled = mergeState.docs.length < 2;
+      });
+      ops.appendChild(upBtn); ops.appendChild(downBtn); ops.appendChild(rmBtn);
+      row.appendChild(ops);
+      mergeFileList.appendChild(row);
+    });
+  }
+
+  function loadPdfFilesInto(fileList, targetArrayPush) {
+    var files = Array.prototype.slice.call(fileList);
+    if (files.length === 0) return Promise.resolve();
+    var totalBytes = files.reduce(function (s, f) { return s + f.size; }, 0);
+    var batchGate = checkPdfBatchSize(totalBytes, files.length);
+    if (!batchGate.ok) {
+      showToast(batchGate.message, 3500);
+      return Promise.resolve();
+    }
+    var seq = Promise.resolve();
+    files.forEach(function (file) {
+      seq = seq.then(function () {
+        var singleGate = checkPdfFileSize(file.size);
+        if (!singleGate.ok) {
+          showToast('檔案「' + file.name + '」' + singleGate.message);
+          return;
+        }
+        return file.arrayBuffer().then(function (ab) {
+          var bytes = new Uint8Array(ab);
+          return loadPdfFile(bytes).then(function (pdfDoc) {
+            var count = getPageCount(pdfDoc);
+            targetArrayPush({ name: file.name, bytes: bytes, pageCount: count });
+          });
+        }).catch(function (err) {
+          showToast('檔案「' + file.name + '」載入失敗：' + (err && err.message ? err.message : err), 3500);
+        });
+      });
+    });
+    return seq;
+  }
+
+  mergeFileInput.addEventListener('change', function () {
+    loadPdfFilesInto(mergeFileInput.files, function (doc) { mergeState.docs.push(doc); }).then(function () {
+      mergeFileInput.value = '';
+      renderMergeFileList();
+      mergeBtnRun.disabled = mergeState.docs.length < 2;
+    });
+  });
+  mergeDropzone.addEventListener('dragover', function (e) { e.preventDefault(); mergeDropzone.classList.add('dragover'); });
+  mergeDropzone.addEventListener('dragleave', function () { mergeDropzone.classList.remove('dragover'); });
+  mergeDropzone.addEventListener('drop', function (e) {
+    e.preventDefault();
+    mergeDropzone.classList.remove('dragover');
+    loadPdfFilesInto(e.dataTransfer.files, function (doc) { mergeState.docs.push(doc); }).then(function () {
+      renderMergeFileList();
+      mergeBtnRun.disabled = mergeState.docs.length < 2;
+    });
+  });
+
+  mergeBtnRun.addEventListener('click', function () {
+    var sourceBytes = mergeState.docs.map(function (d) { return d.bytes; });
+    var pageSelections = [];
+    mergeState.docs.forEach(function (doc, docIndex) {
+      for (var p = 0; p < doc.pageCount; p++) {
+        pageSelections.push({ docIndex: docIndex, pageIndex: p });
+      }
+    });
+    mergePdfDocs(sourceBytes, pageSelections).then(function (outBytes) {
+      var blob = new Blob([outBytes], { type: 'application/pdf' });
+      downloadFile('merged.pdf', blob, 'application/pdf');
+      summaryParts.pdfMerge = mergeState.docs.length + ' 份 PDF 已合併（共 ' + pageSelections.length + ' 頁）';
+      showToast('合併完成，共 ' + pageSelections.length + ' 頁');
+    }).catch(function (err) {
+      showToast('合併失敗：' + (err && err.message ? err.message : err), 3500);
+    });
+  });
+
+  mergeBtnClear.addEventListener('click', function () {
+    mergeState.docs = [];
+    renderMergeFileList();
+    mergeBtnRun.disabled = true;
+    summaryParts.pdfMerge = '尚未合併';
+    showToast('已清除合併區資料');
+  });
+
+  // ======================================================================
+  // PDF 區 — 拆分
+  // ======================================================================
+  var splitState = { doc: null };
+  var splitDropzone = document.getElementById('pdf-split-dropzone');
+  var splitFileInput = document.getElementById('pdf-split-file-input');
+  var splitBtnSelect = document.getElementById('pdf-split-btn-select');
+  var splitInfo = document.getElementById('pdf-split-info');
+  var splitRangeInput = document.getElementById('pdf-split-range');
+  var splitBtnRun = document.getElementById('pdf-split-btn-run');
+  var splitBtnClear = document.getElementById('pdf-split-btn-clear');
+
+  splitBtnSelect.addEventListener('click', function () { splitFileInput.click(); });
+
+  function loadSingleSplitFile(file) {
+    if (!file) return;
+    var singleGate = checkPdfFileSize(file.size);
+    if (!singleGate.ok) { showToast(singleGate.message, 3500); return; }
+    file.arrayBuffer().then(function (ab) {
+      var bytes = new Uint8Array(ab);
+      return loadPdfFile(bytes).then(function (pdfDoc) {
+        var count = getPageCount(pdfDoc);
+        splitState.doc = { name: file.name, bytes: bytes, pageCount: count };
+        splitInfo.textContent = file.name + '（共 ' + count + ' 頁）';
+        splitBtnRun.disabled = false;
+      });
+    }).catch(function (err) {
+      showToast('載入失敗：' + (err && err.message ? err.message : err), 3500);
+    });
+  }
+  splitFileInput.addEventListener('change', function () {
+    loadSingleSplitFile(splitFileInput.files[0]);
+    splitFileInput.value = '';
+  });
+  splitDropzone.addEventListener('dragover', function (e) { e.preventDefault(); splitDropzone.classList.add('dragover'); });
+  splitDropzone.addEventListener('dragleave', function () { splitDropzone.classList.remove('dragover'); });
+  splitDropzone.addEventListener('drop', function (e) {
+    e.preventDefault();
+    splitDropzone.classList.remove('dragover');
+    loadSingleSplitFile(e.dataTransfer.files[0]);
+  });
+
+  splitBtnRun.addEventListener('click', function () {
+    if (!splitState.doc) return;
+    var pageNums;
+    try {
+      pageNums = parsePageRangeString(splitRangeInput.value, splitState.doc.pageCount);
+    } catch (err) {
+      showToast(err.message, 3500);
+      return;
+    }
+    var pageSelections = pageNums.map(function (n) { return { docIndex: 0, pageIndex: n - 1 }; });
+    mergePdfDocs([splitState.doc.bytes], pageSelections).then(function (outBytes) {
+      var blob = new Blob([outBytes], { type: 'application/pdf' });
+      var baseName = splitState.doc.name.replace(/\.[^/.]+$/, '');
+      downloadFile(baseName + '_split.pdf', blob, 'application/pdf');
+      summaryParts.pdfSplit = pageNums.length + ' 頁已拆分輸出';
+      showToast('拆分完成，共 ' + pageNums.length + ' 頁');
+    }).catch(function (err) {
+      showToast('拆分失敗：' + (err && err.message ? err.message : err), 3500);
+    });
+  });
+
+  splitBtnClear.addEventListener('click', function () {
+    splitState.doc = null;
+    splitInfo.textContent = '';
+    splitRangeInput.value = '';
+    splitBtnRun.disabled = true;
+    summaryParts.pdfSplit = '尚未拆分';
+    showToast('已清除拆分區資料');
+  });
+
+  // ======================================================================
+  // PDF 區 — PDF → 圖片
+  // ======================================================================
+  var toJpgState = { pdfDoc: null, name: '', pageCount: 0, pages: [] }; // pages: {pageNum, blob}
+  var toJpgDropzone = document.getElementById('pdf-tojpg-dropzone');
+  var toJpgFileInput = document.getElementById('pdf-tojpg-file-input');
+  var toJpgBtnSelect = document.getElementById('pdf-tojpg-btn-select');
+  var toJpgInfo = document.getElementById('pdf-tojpg-info');
+  var toJpgBtnRun = document.getElementById('pdf-tojpg-btn-run');
+  var toJpgBtnDownloadZip = document.getElementById('pdf-tojpg-btn-download-zip');
+  var toJpgBtnClear = document.getElementById('pdf-tojpg-btn-clear');
+  var toJpgPageList = document.getElementById('pdf-tojpg-page-list');
+
+  toJpgBtnSelect.addEventListener('click', function () { toJpgFileInput.click(); });
+
+  function loadSingleToJpgFile(file) {
+    if (!file) return;
+    var singleGate = checkPdfFileSize(file.size);
+    if (!singleGate.ok) { showToast(singleGate.message, 3500); return; }
+    file.arrayBuffer().then(function (ab) {
+      var bytes = new Uint8Array(ab);
+      return loadPdfFile(bytes).then(function (pdfDoc) {
+        toJpgState.pdfDoc = pdfDoc;
+        toJpgState.name = file.name;
+        toJpgState.pageCount = getPageCount(pdfDoc);
+        toJpgState.pages = [];
+        toJpgInfo.textContent = file.name + '（共 ' + toJpgState.pageCount + ' 頁）';
+        toJpgBtnRun.disabled = false;
+        toJpgPageList.innerHTML = '';
+      });
+    }).catch(function (err) {
+      showToast('載入失敗：' + (err && err.message ? err.message : err), 3500);
+    });
+  }
+  toJpgFileInput.addEventListener('change', function () {
+    loadSingleToJpgFile(toJpgFileInput.files[0]);
+    toJpgFileInput.value = '';
+  });
+  toJpgDropzone.addEventListener('dragover', function (e) { e.preventDefault(); toJpgDropzone.classList.add('dragover'); });
+  toJpgDropzone.addEventListener('dragleave', function () { toJpgDropzone.classList.remove('dragover'); });
+  toJpgDropzone.addEventListener('drop', function (e) {
+    e.preventDefault();
+    toJpgDropzone.classList.remove('dragover');
+    loadSingleToJpgFile(e.dataTransfer.files[0]);
+  });
+
+  function renderToJpgPageList() {
+    toJpgPageList.innerHTML = '';
+    toJpgState.pages.forEach(function (p) {
+      var row = document.createElement('div');
+      row.className = 'file-row';
+      var baseName = toJpgState.name.replace(/\.[^/.]+$/, '');
+      var fname = baseName + '_p' + String(p.pageNum).padStart(String(toJpgState.pageCount).length, '0') + '.jpg';
+      row.innerHTML = '<span class="name">第 ' + p.pageNum + ' 頁</span>';
+      var dlBtn = document.createElement('button');
+      dlBtn.type = 'button'; dlBtn.textContent = '下載';
+      dlBtn.addEventListener('click', function () { downloadFile(fname, p.blob, 'image/jpeg'); });
+      row.appendChild(dlBtn);
+      toJpgPageList.appendChild(row);
+    });
+  }
+
+  toJpgBtnRun.addEventListener('click', function () {
+    if (!toJpgState.pdfDoc) return;
+    toJpgState.pages = [];
+    var seq = Promise.resolve();
+    for (var n = 1; n <= toJpgState.pageCount; n++) {
+      (function (pageNum) {
+        seq = seq.then(function () {
+          return renderPageToCanvas(toJpgState.pdfDoc, pageNum, { scale: 2 }).then(function (res) {
+            return canvasToBlob(res.canvas, 'image/jpeg', 0.85).then(function (blob) {
+              toJpgState.pages.push({ pageNum: pageNum, blob: blob });
+            });
+          });
+        });
+      })(n);
+    }
+    seq.then(function () {
+      renderToJpgPageList();
+      toJpgBtnDownloadZip.disabled = toJpgState.pages.length === 0;
+      summaryParts.pdfToJpg = toJpgState.pages.length + ' 頁已轉為 JPG';
+      showToast('轉換完成，共 ' + toJpgState.pages.length + ' 頁');
+    }).catch(function (err) {
+      showToast('轉換失敗：' + (err && err.message ? err.message : err), 3500);
+    });
+  });
+
+  toJpgBtnDownloadZip.addEventListener('click', function () {
+    if (toJpgState.pages.length === 0) return;
+    var baseName = toJpgState.name.replace(/\.[^/.]+$/, '');
+    var padLen = String(toJpgState.pageCount).length;
+    var readPromises = toJpgState.pages.map(function (p) {
+      return p.blob.arrayBuffer().then(function (ab) {
+        return { name: baseName + '_p' + String(p.pageNum).padStart(padLen, '0') + '.jpg', bytes: new Uint8Array(ab) };
+      });
+    });
+    Promise.all(readPromises).then(function (entries) {
+      var zipBlob = createZipBlob(entries);
+      downloadFile(baseName + '_pages.zip', zipBlob, 'application/zip');
+    });
+  });
+
+  toJpgBtnClear.addEventListener('click', function () {
+    toJpgState.pdfDoc = null;
+    toJpgState.name = '';
+    toJpgState.pageCount = 0;
+    toJpgState.pages = [];
+    toJpgInfo.textContent = '';
+    toJpgPageList.innerHTML = '';
+    toJpgBtnRun.disabled = true;
+    toJpgBtnDownloadZip.disabled = true;
+    summaryParts.pdfToJpg = '尚未轉換';
+    showToast('已清除 PDF→圖片區資料');
+  });
+
+  // ======================================================================
+  // Markdown 區
+  // 複製自 Day26_office-content-publisher/src/index.html 的 parseMarkdownToHtml()，
+  // 複製日：2026-08-24（未達 IMG_CONTRACT.md／CSV_CONTRACT.md「第三次使用才升級共用」
+  // 門檻，比照 shared/base.css 的手動複製慣例，不建立新的 shared 模組）。
+  // ======================================================================
+  function parseMarkdownToHtml(md) {
+    if (!md) return '';
+    var lines = md.split(/\r?\n/);
+    var outHtml = [];
+    var inCodeFence = false;
+    var codeBuffer = [];
+    var inUl = false;
+    var inOl = false;
+
+    function closeLists() {
+      if (inUl) { outHtml.push('</ul>'); inUl = false; }
+      if (inOl) { outHtml.push('</ol>'); inOl = false; }
+    }
+
+    function safeHttpUrl(u) {
+      try {
+        var parsed = new URL(u, location.href);
+        return (parsed.protocol === 'https:' || parsed.protocol === 'http:') ? parsed.href : '#';
+      } catch (e) {
+        return '#';
+      }
+    }
+
+    function inlineFormat(text) {
+      var res = escapeHtml(text);
+      res = res.replace(/`([^`]+)`/g, '<code>$1</code>');
+      res = res.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      res = res.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      // Links [text](url)——只允許 http/https，防止夾帶 javascript: 等危險 scheme
+      res = res.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (m, label, url) {
+        return '<a href="' + safeHttpUrl(url) + '" target="_blank" rel="noopener">' + label + '</a>';
+      });
+      return res;
+    }
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+
+      if (/^```/.test(line)) {
+        if (inCodeFence) {
+          closeLists();
+          outHtml.push('<pre><code>' + escapeHtml(codeBuffer.join('\n')) + '</code></pre>');
+          codeBuffer = [];
+          inCodeFence = false;
+        } else {
+          closeLists();
+          inCodeFence = true;
+          codeBuffer = [];
+        }
+        continue;
+      }
+
+      if (inCodeFence) {
+        codeBuffer.push(line);
+        continue;
+      }
+
+      if (!line.trim()) {
+        closeLists();
+        continue;
+      }
+
+      var hMatch = line.match(/^(#{1,6})\s+(.+)$/);
+      if (hMatch) {
+        closeLists();
+        var lvl = hMatch[1].length;
+        outHtml.push('<h' + lvl + '>' + inlineFormat(hMatch[2]) + '</h' + lvl + '>');
+        continue;
+      }
+
+      var ulMatch = line.match(/^[\*\-]\s+(.+)$/);
+      if (ulMatch) {
+        if (inOl) { outHtml.push('</ol>'); inOl = false; }
+        if (!inUl) { outHtml.push('<ul>'); inUl = true; }
+        outHtml.push('<li>' + inlineFormat(ulMatch[1]) + '</li>');
+        continue;
+      }
+
+      var olMatch = line.match(/^\d+\.\s+(.+)$/);
+      if (olMatch) {
+        if (inUl) { outHtml.push('</ul>'); inUl = false; }
+        if (!inOl) { outHtml.push('<ol>'); inOl = true; }
+        outHtml.push('<li>' + inlineFormat(olMatch[1]) + '</li>');
+        continue;
+      }
+
+      closeLists();
+      outHtml.push('<p>' + inlineFormat(line) + '</p>');
+    }
+
+    if (inCodeFence) {
+      outHtml.push('<pre><code>' + escapeHtml(codeBuffer.join('\n')) + '</code></pre>');
+    }
+    closeLists();
+
+    return outHtml.join('\n');
+  }
+  window.parseMarkdownToHtml = parseMarkdownToHtml; // 供獨立測試呼叫
+
+  var mdInput = document.getElementById('md-input');
+  var mdPreview = document.getElementById('markdown-preview');
+  var mdBtnDownload = document.getElementById('md-btn-download');
+  var mdBtnClear = document.getElementById('md-btn-clear');
+
+  var updateMdPreview = debounce(function () {
+    mdPreview.innerHTML = parseMarkdownToHtml(mdInput.value || '');
+  }, 150);
+  mdInput.addEventListener('input', updateMdPreview);
+  updateMdPreview();
+
+  mdBtnDownload.addEventListener('click', function () {
+    var html = parseMarkdownToHtml(mdInput.value || '');
+    var fullHtml = '<!DOCTYPE html>\n<html lang="zh-TW"><head><meta charset="UTF-8"><title>Markdown 輸出</title></head><body>\n' + html + '\n</body></html>';
+    downloadFile('markdown-output.html', fullHtml, 'text/html;charset=utf-8');
+    summaryParts.markdown = 'Markdown 已輸出 HTML';
+    showToast('已輸出 HTML');
+  });
+
+  mdBtnClear.addEventListener('click', function () {
+    mdInput.value = '';
+    mdPreview.innerHTML = '';
+    summaryParts.markdown = '尚未輸出';
+    showToast('已清除 Markdown 區資料');
+  });
+
+  // ======================================================================
+  // 共通：複製摘要／下載離線版
+  // ======================================================================
+  var btnCopySummary = document.getElementById('btn-copy-summary');
+  var btnDownloadOffline = document.getElementById('btn-download-offline');
+
+  btnCopySummary.addEventListener('click', function () {
+    var text = '【Document Tools】圖片：' + summaryParts.image
+      + '｜PDF 合併：' + summaryParts.pdfMerge
+      + '｜PDF 拆分：' + summaryParts.pdfSplit
+      + '｜PDF→圖片：' + summaryParts.pdfToJpg
+      + '｜Markdown：' + summaryParts.markdown;
+    copyToClipboard(text);
+    showToast('已複製結果摘要');
+  });
+
+  function buildCleanHtmlCopy() {
+    var doc = document.documentElement.cloneNode(true);
+
+    var toast = doc.querySelector('#__shared_toast');
+    if (toast) toast.remove();
+
+    var navBack = doc.querySelector('.nav-back');
+    if (navBack) navBack.remove();
+
+    var offlineBtn = doc.querySelector('#btn-download-offline');
+    if (offlineBtn) offlineBtn.remove();
+
+    doc.querySelectorAll('.tab-btn').forEach(function (b) {
+      if (b.getAttribute('data-tab') === 'tab-image') {
+        b.classList.add('active');
+      } else {
+        b.classList.remove('active');
+      }
+    });
+    doc.querySelectorAll('.tab-panel').forEach(function (p) {
+      if (p.id === 'tab-image') {
+        p.classList.add('active');
+      } else {
+        p.classList.remove('active');
+      }
+    });
+
+    var imgList = doc.querySelector('#img-file-list');
+    if (imgList) imgList.innerHTML = '';
+    var mergeList = doc.querySelector('#pdf-merge-file-list');
+    if (mergeList) mergeList.innerHTML = '';
+    var splitInfoEl = doc.querySelector('#pdf-split-info');
+    if (splitInfoEl) splitInfoEl.textContent = '';
+    var toJpgInfoEl = doc.querySelector('#pdf-tojpg-info');
+    if (toJpgInfoEl) toJpgInfoEl.textContent = '';
+    var toJpgList = doc.querySelector('#pdf-tojpg-page-list');
+    if (toJpgList) toJpgList.innerHTML = '';
+    var mdInputEl = doc.querySelector('#md-input');
+    if (mdInputEl) mdInputEl.value = '';
+    var mdPreviewEl = doc.querySelector('#markdown-preview');
+    if (mdPreviewEl) mdPreviewEl.innerHTML = '';
+
+    return '<!DOCTYPE html>\n' + doc.outerHTML;
+  }
+  window.buildCleanHtmlCopy = buildCleanHtmlCopy;
+
+  if (btnDownloadOffline) {
+    btnDownloadOffline.addEventListener('click', function () {
+      var cleanHtml = buildCleanHtmlCopy();
+      downloadFile('document-tools-offline.html', cleanHtml, 'text/html;charset=utf-8');
+      showToast('已下載離線版工具');
+    });
+  }
+
+})();
+</script>
+</body>
+</html>

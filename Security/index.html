@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 iThome 鐵人賽 - Security / AI Security 主題參賽藍圖 - 2026 iThome 鐵人賽</title>
+    <style>
+        /* CSS Reset & Variables */
+        :root {
+            --bg-color: #f9f7f4;
+            --text-color: #1a1a1a;
+            --primary-color: #0f56d9;
+            --border-color: #e3e1de;
+            --code-bg: #f1efec;
+            --quote-bg: #f4f1ec;
+            
+            /* Alert Colors */
+            --alert-note-bg: #ebf5ff;
+            --alert-note-border: #1e70e3;
+            --alert-important-bg: #fdf2f2;
+            --alert-important-border: #e02424;
+            --alert-tip-bg: #f0fdf4;
+            --alert-tip-border: #16a34a;
+            --alert-warning-bg: #fffbeb;
+            --alert-warning-border: #d97706;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+            line-height: 1.68;
+            font-size: 16px;
+            padding: 40px 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* Notion-like Layout */
+        .container {
+            max-width: 1120px;
+            margin: 0 auto;
+        }
+        
+        article {
+            max-width: 760px;
+            margin: 0 auto;
+        }
+        
+        /* Typography */
+        h1, h2, h3, h4, h5, h6 {
+            color: #111111;
+            font-weight: 700;
+            line-height: 1.25;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            text-wrap: balance;
+        }
+        
+        h1 { font-size: 2.2rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 1rem; }
+        h2 { font-size: 1.6rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3rem; }
+        h3 { font-size: 1.25rem; }
+        
+        p {
+            margin-bottom: 1.2rem;
+        }
+        
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(15, 86, 217, 0.2);
+            transition: all 0.2s ease;
+        }
+        
+        a:hover {
+            border-bottom-color: var(--primary-color);
+            background: rgba(15, 86, 217, 0.05);
+        }
+        
+        /* Lists */
+        ul, ol {
+            margin-bottom: 1.2rem;
+            padding-left: 24px;
+        }
+        
+        li {
+            margin-bottom: 0.4rem;
+        }
+        
+        /* Table Styling (Notion Round Corner Table) */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            font-size: 0.95rem;
+            display: block;
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        th, td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background-color: var(--code-bg);
+            font-weight: bold;
+            color: #222222;
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        /* Blockquotes & GitHub Style Alerts */
+        blockquote {
+            background: var(--quote-bg);
+            border-left: 4px solid #c2beb9;
+            padding: 12px 18px;
+            margin: 1.5rem 0;
+            border-radius: 0 6px 6px 0;
+        }
+        
+        blockquote p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .alert {
+            padding: 16px;
+            margin: 1.5rem 0;
+            border-left: 4px solid transparent;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .alert-title {
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .alert-note { background-color: var(--alert-note-bg); border-left-color: var(--alert-note-border); }
+        .alert-note .alert-title { color: var(--alert-note-border); }
+        
+        .alert-important { background-color: var(--alert-important-bg); border-left-color: var(--alert-important-border); }
+        .alert-important .alert-title { color: var(--alert-important-border); }
+        
+        .alert-tip { background-color: var(--alert-tip-bg); border-left-color: var(--alert-tip-border); }
+        .alert-tip .alert-title { color: var(--alert-tip-border); }
+        
+        .alert-warning { background-color: var(--alert-warning-bg); border-left-color: var(--alert-warning-border); }
+        .alert-warning .alert-title { color: var(--alert-warning-border); }
+
+        /* Code & Pre */
+        code {
+            background: var(--code-bg);
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-family: Consolas, Monaco, "Andale Mono", monospace;
+            font-size: 0.9em;
+        }
+        
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+            font-size: 0.95em;
+        }
+        
+        /* Utilities */
+        hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        
+        .nav-back {
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 12px;
+            }
+            h1 { font-size: 1.8rem; }
+            h2 { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-back"><a href="../index.html">🏠 返回首頁</a></div>
+        <article>
+            <div class="alert alert-important">
+    <div class="alert-title">⚠️ IMPORTANT</div>
+    <p>🤖 <strong>給協作 AI 的寫作與開發規範：</strong>
+本檔案及本專案之寫作與 Debug 歷程，皆受根目錄 <a
+href="../../index.html">README</a> 之 AI
+協作規範與「隱私安全防護（嚴禁留下真實姓名、Email、IP
+與真實使用者路徑）」約束。請勿刪除已有的開發日誌，並請在使用者提及
+<code>log</code> 時主動執行 <code>generate_log.py</code>。</p>
+</div>
+<h1 id="ithome-鐵人賽---security-ai-security-主題參賽藍圖">2026 iThome
+鐵人賽 - Security / AI Security 主題參賽藍圖</h1>
+<h2 id="系列名稱從-atlas-到-aisvsai-系統攻防對照的-30-天">系列名稱：《從
+ATLAS 到 AISVS：AI 系統攻防對照的 30 天》</h2>
+<p>本文件為 2026 iThome 鐵人賽「AI
+Security」組別的參賽規劃。本系列文章旨在研析 OWASP AISVS 1.0 (最新 AI
+安全驗證標準) 與 MITRE ATLAS (AI 攻擊戰術庫)，以「攻擊戰術 ➡️ 防禦驗證
+➡️ 最小代碼實踐」的攻防對照模式，為讀者與後續開發提供系統性的 AI
+系統防護指南。</p>
+<hr />
+<h2 id="發文硬性規範與防呆地雷">📋 1. 發文硬性規範與防呆地雷</h2>
+<p>為確保順利完賽，文章撰寫與 AI 協作必須嚴格遵守以下規則：</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">項目</th>
+<th style="text-align: left;">規範細則</th>
+<th style="text-align: left;">實務對策</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>字數限制</strong></td>
+<td style="text-align: left;">每篇必須大於 <strong>300
+字</strong>（中文計、含標點）。</td>
+<td style="text-align: left;">這是下限而非目標，技術實作文章實務上維持在
+<strong>1,500 - 3,000 字</strong>。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>引用比例</strong></td>
+<td style="text-align: left;"><strong>引用內容不得逾全文
+1/3</strong>。</td>
+<td
+style="text-align: left;">絕不整段抄寫或翻譯官方條文。僅列出條號與單句摘要，其餘
+60% 以上必須為原創程式碼、架構圖、踩坑紀錄與分析。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>生成式 AI</strong></td>
+<td
+style="text-align: left;">允許作為輔助工具，但不得進行無人為修改之完全生成。</td>
+<td style="text-align: left;">AI
+生成內容必須經過人工驗證、改寫，防範被判定為抄襲或灌水。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>時間修改</strong></td>
+<td
+style="text-align: left;">修改須於<strong>當日完成</strong>，評選以當日留存的文章快照為準。</td>
+<td
+style="text-align: left;">當天文章發出前務必校對完成，不可隔日回頭補圖或補結論。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>賽後刪文</strong></td>
+<td
+style="text-align: left;"><strong>賽後刪文會被取消完賽資格與獎項</strong>，並追回獎勵。</td>
+<td style="text-align: left;">文章必須永久保留於平台上，不可刪除。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>出版權利</strong></td>
+<td style="text-align: left;">5
+年內授予博碩文化「優先出版權」（同等條件優先集結出版）。</td>
+<td
+style="text-align: left;">涉及後續出書計畫時，需提前注意此條款約束。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>著作權標示</strong></td>
+<td style="text-align: left;">AISVS 採 <strong>CC BY-SA 4.0</strong>
+授權。</td>
+<td
+style="text-align: left;">在系列文首篇與涉及翻譯之處，明確聲明來源並以相同方式分享。</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="攻防對照策略-atlas-vs-aisvs">🛡️ 2. 攻防對照策略 (ATLAS vs
+AISVS)</h2>
+<ul>
+<li><strong>攻 (MITRE
+ATLAS)</strong>：告訴我們「敵人會怎麼打」（如上下文投毒、代理設定竄改、經由工具呼叫洩密等最新
+v5.x 戰術）。</li>
+<li><strong>防 (OWASP AISVS)</strong>：告訴我們「系統該怎麼驗證」（514
+條可測試的安全需求）。</li>
+<li><strong>寫作模式</strong>：每篇單元固定三段結構：
+<ol type="1">
+<li><strong>ATLAS
+戰術情境</strong>：用白話或真實事件說明該攻擊手法。</li>
+<li><strong>AISVS 防禦條文對照</strong>：引申對應的防禦與驗證標準。</li>
+<li><strong>最小可行範例 (PoC)</strong>：提供一段可運作的程式碼（如
+python）來演示防禦機制（如輸入過濾、斷路器、權限隔離）。</li>
+</ol></li>
+</ul>
+<hr />
+<h2 id="天系列文章骨架大綱">📅 3. 30 天系列文章骨架大綱</h2>
+<table>
+<colgroup>
+<col style="width: 35%" />
+<col style="width: 35%" />
+<col style="width: 28%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: center;">單元</th>
+<th style="text-align: center;">天數</th>
+<th style="text-align: left;">內容主題與實作要點</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><strong>Part 0<br>開場引言</strong></td>
+<td style="text-align: center;"><strong>Day 1 - 3</strong></td>
+<td style="text-align: left;"><strong>為什麼傳統資安框架接不住
+AI？</strong><br>· Day 1: 系列開場與 AI 安全新挑戰<br>· Day 2: MITRE
+ATLAS 框架導讀 (攻)<br>· Day 3: OWASP AISVS 1.0 框架導讀 (防)</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Part 1<br>輸入安全</strong></td>
+<td style="text-align: center;"><strong>Day 4 - 9</strong></td>
+<td style="text-align: left;"><strong>提示詞注入與輸入驗證</strong><br>·
+Day 4: 直接提示詞注入攻擊與防禦<br>· Day 5: 間接提示詞注入攻擊
+(網頁/文件掛載漏洞)<br>· Day 6: 輸入驗證與清理 (Unicode 正規化防禦)<br>·
+Day 7: 指令階層控制 (Instruction Hierarchy)<br>· Day 8:
+惡意輸入過濾PoC實作<br>· Day 9: 輸入安全之 AISVS 條文逐項對應審查</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Part
+2<br>資料與模型</strong></td>
+<td style="text-align: center;"><strong>Day 10 - 15</strong></td>
+<td
+style="text-align: left;"><strong>投毒、模型竊取與供應鏈安全</strong><br>·
+Day 10: 訓練資料投毒 (Data Poisoning) 手法與檢測<br>· Day 11: 模型竊取
+(Model Extraction) 與重構攻擊防禦<br>· Day 12: 記憶與上下文投毒防禦
+(Context Poisoning)<br>· Day 13: 模型供應鏈安全 (SHA-256 簽章驗證與
+Commit Hash 鎖定)<br>· Day 14: 資料治理與模型防護PoC實作<br>· Day 15:
+模型安全之 AISVS 條文逐項對應審查</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Part
+3<br>代理與工具</strong></td>
+<td style="text-align: center;"><strong>Day 16 - 22</strong></td>
+<td style="text-align: left;"><strong>自主代理 (Agent) 與 MCP
+工具鏈安全</strong> (核心亮點)<br>· Day 16: 代理式攻擊 (Agent Hijacking)
+威脅分析<br>· Day 17: MCP (Model Context Protocol) 工具鏈安全架構<br>·
+Day 18: 迴圈控制與資源預算防禦 (避免無限請求)<br>· Day 19: 斷路器
+(Circuit Breaker) 與 Kill Switch 實作<br>· Day 20:
+敏感操作雙因子/人工授權機制 (HITL)<br>· Day 21: Sandbox
+隔離與代理身分憑證治理<br>· Day 22: 代理安全之 AISVS 條文 (C09/C10)
+逐項對應審查</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Part 4<br>企業落地</strong></td>
+<td style="text-align: center;"><strong>Day 23 - 29</strong></td>
+<td style="text-align: left;"><strong>安全合規與評估實務</strong><br>·
+Day 23: 篩選 AISVS Level 1 組織最小控制集<br>· Day 24: AISVS 對應 ISO
+27001 附錄 A 控制項地圖<br>· Day 25: 稽核證據留存實務
+(日誌安全與不可篡改性)<br>· Day 26: 評估與防禦 AI 外部 API
+隱私曝露風險<br>· Day 27: 利用自動化腳本進行 AI 系統漏洞弱檢<br>· Day
+28: 企業內部 AI 導入可行性評估報告撰寫實務<br>· Day 29: AI
+安全合規與治理框架 (NIST AI RMF / ISO 42001) 對照</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>Part 5<br>收尾總結</strong></td>
+<td style="text-align: center;"><strong>Day 30</strong></td>
+<td style="text-align: left;"><strong>30 天挑戰總結</strong><br>· Day
+30: AI 系統安全自評清單 (可供下載之工具包)</td>
+</tr>
+<tr>
+<td
+style="text-align: center;"><!-- TEST: Trigger pre-commit hook compilation --></td>
+<td style="text-align: center;"></td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+
+        </article>
+    </div>
+</body>
+</html>

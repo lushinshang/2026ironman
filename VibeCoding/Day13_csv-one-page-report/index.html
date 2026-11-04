@@ -1,0 +1,2346 @@
+<!-- BUNDLED: util-escape@internal (project-internal) sha256:75d81be0a09695ce built 2026-08-24 -->
+<!-- BUNDLED: ui-toast@internal (project-internal) sha256:ae3a7ec34ac21b9d built 2026-08-24 -->
+<!-- BUNDLED: io-download@internal (project-internal) sha256:3da6c61784b1dd4b built 2026-08-24 -->
+<!-- BUNDLED: io-clipboard@internal (project-internal) sha256:afa2866517ff6f41 built 2026-08-24 -->
+<!-- BUNDLED: io-dropzone@internal (project-internal) sha256:85732c4d7a5eea7a built 2026-08-24 -->
+<!-- BUNDLED: papaparse@5.6.0 (MIT) sha256:7a3550ac537992d0 built 2026-08-24 -->
+<!-- BUNDLED: csv-parse@internal (project-internal) sha256:bd441bae55f1884d built 2026-08-24 -->
+<!-- BUNDLED: csv-decode@internal (project-internal) sha256:c8bbe207f322287e built 2026-08-24 -->
+<!-- BUNDLED: csv-write@internal (project-internal) sha256:befdcdbcae79d4b1 built 2026-08-24 -->
+<!-- BUNDLED: csv-types@internal (project-internal) sha256:89121be3d9a5db78 built 2026-08-24 -->
+<!-- BUNDLED: ui-chart-svg@internal (project-internal) sha256:f3b4b1fecd739ceb built 2026-08-24 -->
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSV 一頁式管理報告</title>
+<style>
+/* shared/base.css — 共用樣式基底，逐字複製，勿手動修改（改請去 shared/base.css 源頭並重新複製） */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 {
+  line-height: 1.3;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+textarea,
+input[type="text"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 160px;
+}
+
+button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--color-bg);
+}
+
+button.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover {
+  background: var(--color-primary-hover);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover {
+  text-decoration: underline;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+/* ---- 本題（csv-one-page-report）專屬樣式 ---- */
+.page-header {
+  margin-bottom: 8px;
+}
+
+.page-header h1 {
+  font-size: 1.4rem;
+  margin: 0 0 4px;
+}
+
+.page-header p {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.section-gap {
+  margin-top: 16px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.file-hint {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.file-meta {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  margin-top: 8px;
+}
+
+.file-meta span {
+  margin-right: 14px;
+}
+
+.msg {
+  font-size: 0.85rem;
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  margin-top: 8px;
+}
+
+.msg.warn {
+  background: #fdf3e0;
+  color: #8a5a00;
+  border: 1px solid #e8c99a;
+}
+
+.msg.error {
+  background: #fdeaea;
+  color: #a13a3a;
+  border: 1px solid #f0a3a3;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 10px;
+}
+
+button.small {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
+  flex: 1;
+}
+
+.field-group label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+select {
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.report-section {
+  margin-top: 12px;
+}
+
+.report-section h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.report-placeholder {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+/* ---- task 6：KPI 卡片／排名表格／圖表容器 ---- */
+
+.report-meta.hidden,
+.report-note.hidden {
+  display: none;
+}
+
+.report-meta h2 {
+  margin: 0 0 4px;
+  font-size: 1.2rem;
+}
+
+.report-note {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.kpi-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  text-align: center;
+}
+
+.kpi-card .kpi-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.kpi-card .kpi-value {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.rank-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.rank-table th,
+.rank-table td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.rank-table td.num {
+  text-align: right;
+}
+
+.chart-placeholder,
+.chart-empty {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.chart-note {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+
+.chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-legend-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+/* ---- task 7：列印版型 ---- */
+
+@page {
+  size: A4;
+  margin: 2cm;
+}
+
+#report-container {
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+#section-kpi,
+#section-top5,
+#section-bottom5,
+#section-category,
+#section-trend {
+  break-inside: avoid;
+}
+
+.rank-tables {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.rank-tables > .report-section {
+  flex: 1;
+  min-width: 220px;
+}
+
+/* 引用 shared/print.css — 共用列印樣式基底 */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+  }
+
+  .container {
+    max-width: none;
+    padding: 0;
+  }
+
+  .card {
+    border: none;
+    padding: 0;
+  }
+
+  .report-section {
+    margin-top: 8px;
+  }
+
+  .report-section h3 {
+    margin: 0 0 4px;
+    font-size: 0.9rem;
+  }
+
+  .kpi-grid {
+    gap: 6px;
+  }
+
+  .kpi-card {
+    padding: 6px 8px;
+  }
+
+  .rank-table th,
+  .rank-table td {
+    padding: 3px 6px;
+  }
+
+  .chart-legend {
+    gap: 2px 12px;
+    margin-top: 4px;
+    font-size: 0.75rem;
+  }
+
+  .chart-note {
+    margin-top: 2px;
+  }
+
+  .report-meta h2 {
+    font-size: 1.05rem;
+  }
+
+  .bundled-licenses {
+    display: none;
+  }
+}
+
+.bundled-licenses {
+  margin-top: 24px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.bundled-licenses ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="nav-back no-print" href="../index.html">← 返回作品集</a>
+
+  <div class="page-header no-print">
+    <h1>CSV 一頁式管理報告</h1>
+    <p>上傳 CSV、選定一個核心數值欄與一個核心分類欄，按「產生報告」產出可列印的一頁式管理摘要。所有處理都在瀏覽器本機完成，不上傳任何內容。</p>
+  </div>
+
+  <div class="card section-gap no-print">
+    <h3>1. 上傳 CSV</h3>
+    <div id="dropzone" class="dropzone">拖曳 .csv 檔案到此，或使用下方按鈕選取檔案</div>
+    <div class="button-row">
+      <button type="button" id="btn-pick-file">選取檔案</button>
+      <input type="file" id="file-input" accept=".csv" style="display:none;">
+    </div>
+    <div id="size-msg"></div>
+    <div id="file-meta" class="file-meta"></div>
+    <div id="encoding-fallback" class="msg warn hidden"></div>
+  </div>
+
+  <div class="card section-gap no-print">
+    <h3>2. 選擇欄位與報告資訊</h3>
+    <div class="field-row">
+      <div class="field-group">
+        <label for="measure-select">核心數值欄（measure）</label>
+        <select id="measure-select" disabled></select>
+      </div>
+      <div class="field-group">
+        <label for="dimension-select">核心分類欄（dimension）</label>
+        <select id="dimension-select" disabled></select>
+      </div>
+      <div id="date-select-group" class="field-group hidden">
+        <label for="date-select">日期欄（趨勢用）</label>
+        <select id="date-select" disabled></select>
+      </div>
+    </div>
+    <div id="date-hint" class="file-hint hidden">未偵測到日期欄位，此報告不含時間趨勢</div>
+
+    <div class="field-row">
+      <div class="field-group">
+        <label for="title-input">報告標題</label>
+        <input type="text" id="title-input" maxlength="60" placeholder="例如：2026 年 8 月營運摘要">
+      </div>
+      <div class="field-group">
+        <label for="period-input">期間</label>
+        <input type="text" id="period-input" maxlength="40" placeholder="例如：2026-08-01 ~ 2026-08-31">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-group" style="flex-basis:100%;">
+        <label for="note-input">註記</label>
+        <textarea id="note-input" maxlength="200" style="min-height:60px;"></textarea>
+      </div>
+    </div>
+
+    <div class="button-row">
+      <button type="button" id="btn-generate" class="primary" disabled>產生報告</button>
+    </div>
+  </div>
+
+  <div class="card section-gap" id="report-container">
+    <h3 class="no-print">報告預覽</h3>
+
+    <div id="report-meta" class="report-meta hidden">
+      <h2 id="report-title-out"></h2>
+      <div id="report-period-out" class="file-hint"></div>
+    </div>
+
+    <div class="report-section" id="section-kpi">
+      <h3>KPI</h3>
+      <div id="report-kpi" class="report-placeholder">尚未產生報告</div>
+      <div id="report-kpi-note" class="file-hint"></div>
+    </div>
+
+    <div class="rank-tables">
+      <div class="report-section" id="section-top5">
+        <h3>Top 5</h3>
+        <div id="report-top5" class="report-placeholder">尚未產生報告</div>
+      </div>
+
+      <div class="report-section" id="section-bottom5">
+        <h3>Bottom 5</h3>
+        <div id="report-bottom5" class="report-placeholder">尚未產生報告</div>
+      </div>
+    </div>
+
+    <div class="report-section" id="section-category">
+      <h3>分類占比</h3>
+      <div id="report-category" class="report-placeholder">尚未產生報告</div>
+    </div>
+
+    <div class="report-section" id="section-trend">
+      <h3>日期趨勢</h3>
+      <div id="report-trend" class="report-placeholder">尚未產生報告</div>
+    </div>
+
+    <div id="report-note-out" class="report-note hidden"></div>
+  </div>
+
+  <div class="card section-gap no-print">
+    <h3>結果</h3>
+    <div class="button-row">
+      <button type="button" id="btn-copy" disabled>複製報告摘要</button>
+      <button type="button" id="btn-export-html">匯出單一 HTML</button>
+      <button type="button" id="btn-download-offline">下載本工具離線版</button>
+    </div>
+    <div class="file-hint">此檔案包含完整報告資料，請確認分享對象</div>
+  </div>
+
+  <div class="bundled-licenses"><p>內嵌資源與授權：</p><ul><li>papaparse 5.6.0 — MIT</li></ul></div>
+</div>
+
+<script>
+// shared/util-escape.js
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+</script>
+<script>
+// shared/ui-toast.js
+function showToast(msg, ms) {
+  if (ms === undefined) ms = 2000;
+  var el = document.getElementById('__shared_toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '__shared_toast';
+    el.className = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  if (el.__hideTimer) {
+    clearTimeout(el.__hideTimer);
+  }
+  el.__hideTimer = setTimeout(function () {
+    el.classList.remove('show');
+  }, ms);
+}
+
+</script>
+<script>
+// shared/io-download.js
+function downloadFile(filename, content, mime) {
+  if (mime === undefined) mime = 'text/plain;charset=utf-8';
+  var blob = new Blob([content], { type: mime });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () {
+    URL.revokeObjectURL(url);
+  }, 0);
+}
+
+</script>
+<script>
+// shared/io-clipboard.js
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).then(function () {
+      return true;
+    }).catch(function () {
+      return false;
+    });
+  }
+  return new Promise(function (resolve) {
+    var textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    var ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch (e) {
+      ok = false;
+    }
+    document.body.removeChild(textarea);
+    resolve(ok);
+  });
+}
+
+function pasteImageFromClipboard() {
+  if (!navigator.clipboard || !navigator.clipboard.read) {
+    return Promise.resolve(null);
+  }
+  return navigator.clipboard.read().then(function (items) {
+    if (!items || items.length === 0) return null;
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (item && item.types) {
+        for (var t = 0; t < item.types.length; t++) {
+          if (item.types[t].indexOf('image/') === 0) {
+            return item.getType(item.types[t]);
+          }
+        }
+      }
+    }
+    return null;
+  }).catch(function () {
+    return null;
+  });
+}
+
+
+</script>
+<script>
+// shared/io-dropzone.js
+function ioDropzoneHandleFile(file, onData, opts) {
+  opts = opts || {};
+  // 預設只收 .txt / .md（契約第 3 節）。不要改成 [] ——那會變成靜默全收。
+  var accept = opts.accept || ['.txt', '.md'];
+  var onError = opts.onError || function () {};
+
+  function isAccepted(fileName) {
+    if (accept.length === 0) return true;
+    var lower = fileName.toLowerCase();
+    for (var i = 0; i < accept.length; i++) {
+      if (lower.indexOf(accept[i].toLowerCase(), lower.length - accept[i].length) !== -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  if (!isAccepted(file.name)) {
+    onError('不支援的檔案類型：' + file.name);
+    return;
+  }
+
+  if (opts.gate) {
+    var gateResult = opts.gate(file);
+    if (!gateResult.ok) {
+      onError(gateResult.message);
+      return;
+    }
+  }
+
+  var reader = new FileReader();
+  reader.onload = function () {
+    onData(reader.result, file.name);
+  };
+  reader.onerror = function () {
+    onError('讀取檔案失敗：' + file.name);
+  };
+  if (opts.mode === 'bytes') {
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.readAsText(file);
+  }
+}
+
+function setupDropZone(dropEl, onData, opts) {
+  opts = opts || {};
+
+  dropEl.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    dropEl.classList.add('dragover');
+  });
+
+  dropEl.addEventListener('dragleave', function () {
+    dropEl.classList.remove('dragover');
+  });
+
+  dropEl.addEventListener('drop', function (e) {
+    e.preventDefault();
+    dropEl.classList.remove('dragover');
+    var files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    if (opts.multiple === true) {
+      if (opts.gateBatch) {
+        var batchResult = opts.gateBatch(files);
+        if (!batchResult.ok) {
+          (opts.onError || function () {})(batchResult.message);
+          return;
+        }
+      }
+      var total = files.length;
+      for (var i = 0; i < total; i++) {
+        (function (idx) {
+          var meta = { index: idx, total: total };
+          var wrappedOnData = function (result, fileName) {
+            onData(result, fileName, meta);
+          };
+          ioDropzoneHandleFile(files[idx], wrappedOnData, opts);
+        })(i);
+      }
+    } else {
+      ioDropzoneHandleFile(files[0], onData, opts);
+    }
+  });
+}
+
+function setupFilePicker(inputEl, onData, opts) {
+  opts = opts || {};
+
+  inputEl.addEventListener('change', function () {
+    var files = inputEl.files;
+    if (!files || files.length === 0) return;
+
+    if (opts.multiple === true) {
+      if (opts.gateBatch) {
+        var batchResult = opts.gateBatch(files);
+        if (!batchResult.ok) {
+          (opts.onError || function () {})(batchResult.message);
+          return;
+        }
+      }
+      var total = files.length;
+      for (var i = 0; i < total; i++) {
+        (function (idx) {
+          var meta = { index: idx, total: total };
+          var wrappedOnData = function (result, fileName) {
+            onData(result, fileName, meta);
+          };
+          ioDropzoneHandleFile(files[idx], wrappedOnData, opts);
+        })(i);
+      }
+    } else {
+      ioDropzoneHandleFile(files[0], onData, opts);
+    }
+  });
+}
+
+
+</script>
+<script>
+/* @license
+Papa Parse
+v5.6.0
+https://github.com/mholt/PapaParse
+License: MIT
+*/
+((e,t)=>{"function"==typeof define&&define.amd?define([],t):"object"==typeof module&&"undefined"!=typeof exports?module.exports=t():e.Papa=t()})(this,function r(){var n="undefined"!=typeof self?self:"undefined"!=typeof window?window:void 0!==n?n:{};var s=!n.document&&!!n.postMessage,a=n.IS_PAPA_WORKER||!1,o={},h=0,w={};function P(e){return 65279===e.charCodeAt(0)?e.slice(1):e}function u(e){this._handle=null,this._finished=!1,this._completed=!1,this._halted=!1,this._input=null,this._baseIndex=0,this._partialLine="",this._rowCount=0,this._start=0,this._nextChunk=null,this.isFirstChunk=!0,this._completeResults={data:[],errors:[],meta:{}},function(e){var t=b(e);t.chunkSize=parseInt(t.chunkSize),e.step||e.chunk||(t.chunkSize=null);this._handle=new i(t),(this._handle.streamer=this)._config=t}.call(this,e),this.parseChunk=function(t,e){var i=parseInt(this._config.skipFirstNLines)||0;if(this.isFirstChunk&&0<i){let e=this._config.newline;e||(r=this._config.quoteChar||'"',e=this._handle.guessLineEndings(t,r)),t=[...t.split(e).slice(i)].join(e)}this.isFirstChunk&&U(this._config.beforeFirstChunk)&&void 0!==(r=this._config.beforeFirstChunk(t))&&(t=r),this.isFirstChunk=!1,this._halted=!1;var i=this._partialLine+t,r=(this._partialLine="",this._handle.parse(i,this._baseIndex,!this._finished));if(!this._handle.paused()&&!this._handle.aborted()){t=r.meta.cursor,i=(this._finished||(this._partialLine=i.substring(t-this._baseIndex),this._baseIndex=t),r&&r.data&&(this._rowCount+=r.data.length),this._finished||this._config.preview&&this._rowCount>=this._config.preview);if(a)n.postMessage({results:r,workerId:w.WORKER_ID,finished:i});else if(U(this._config.chunk)&&!e){if(this._config.chunk(r,this._handle),this._handle.paused()||this._handle.aborted())return void(this._halted=!0);this._completeResults=r=void 0}return this._config.step||this._config.chunk||(this._completeResults.data=this._completeResults.data.concat(r.data),this._completeResults.errors=this._completeResults.errors.concat(r.errors),this._completeResults.meta=r.meta),this._completed||!i||!U(this._config.complete)||r&&r.meta.aborted||(this._config.complete(this._completeResults,this._input),this._completed=!0),i||r&&r.meta.paused||this._nextChunk(),r}this._halted=!0},this._sendError=function(e){U(this._config.error)?this._config.error(e):a&&this._config.error&&n.postMessage({workerId:w.WORKER_ID,error:e,finished:!1})}}function d(e){var r;(e=e||{}).chunkSize||(e.chunkSize=w.RemoteChunkSize),u.call(this,e),this._nextChunk=s?function(){this._readChunk(),this._chunkLoaded()}:function(){this._readChunk()},this.stream=function(e){this._input=e,this._nextChunk()},this._readChunk=function(){if(this._finished)this._chunkLoaded();else{if(r=new XMLHttpRequest,this._config.withCredentials&&(r.withCredentials=this._config.withCredentials),s||(r.onload=m(this._chunkLoaded,this),r.onerror=m(this._chunkError,this)),r.open(this._config.downloadRequestBody?"POST":"GET",this._input,!s),this._config.downloadRequestHeaders){var e,t=this._config.downloadRequestHeaders;for(e in t)r.setRequestHeader(e,t[e])}var i;this._config.chunkSize&&(i=this._start+this._config.chunkSize-1,r.setRequestHeader("Range","bytes="+this._start+"-"+i));try{r.send(this._config.downloadRequestBody)}catch(e){this._chunkError(e.message)}s&&0===r.status&&this._chunkError()}},this._chunkLoaded=function(){4===r.readyState&&(r.status<200||400<=r.status?this._chunkError():(this._start+=this._config.chunkSize||r.responseText.length,this._finished=!this._config.chunkSize||this._start>=(e=>null!==(e=e.getResponseHeader("Content-Range"))?parseInt(e.substring(e.lastIndexOf("/")+1)):-1)(r),this.parseChunk(r.responseText)))},this._chunkError=function(e){e=r.statusText||e;this._sendError(new Error(e))}}function l(e){(e=e||{}).chunkSize||(e.chunkSize=w.LocalChunkSize),u.call(this,e);var i,r,n="undefined"!=typeof FileReader;this.stream=function(e){this._input=e,r=e.slice||e.webkitSlice||e.mozSlice,n?((i=new FileReader).onload=m(this._chunkLoaded,this),i.onerror=m(this._chunkError,this)):i=new FileReaderSync,this._nextChunk()},this._nextChunk=function(){this._finished||this._config.preview&&!(this._rowCount<this._config.preview)||this._readChunk()},this._readChunk=function(){var e=this._input,t=(this._config.chunkSize&&(t=Math.min(this._start+this._config.chunkSize,this._input.size),e=r.call(e,this._start,t)),i.readAsText(e,this._config.encoding));n||this._chunkLoaded({target:{result:t}})},this._chunkLoaded=function(e){this._start+=this._config.chunkSize,this._finished=!this._config.chunkSize||this._start>=this._input.size,this.parseChunk(e.target.result)},this._chunkError=function(){this._sendError(i.error)}}function f(e){var i;u.call(this,e=e||{}),this.stream=function(e){return i=e,this._nextChunk()},this._nextChunk=function(){var e,t;if(!this._finished)return e=this._config.chunkSize,i=e?(t=i.substring(0,e),i.substring(e)):(t=i,""),this._finished=!i,this.parseChunk(t)}}function c(e){u.call(this,e=e||{});var t=[],i=!0,r=!1;this.pause=function(){u.prototype.pause.apply(this,arguments),this._input.pause()},this.resume=function(){u.prototype.resume.apply(this,arguments),this._input.resume()},this.stream=function(e){this._input=e,this._input.on("data",this._streamData),this._input.on("end",this._streamEnd),this._input.on("error",this._streamError)},this._checkIsFinished=function(){r&&1===t.length&&(this._finished=!0)},this._nextChunk=function(){this._checkIsFinished(),t.length?this.parseChunk(t.shift()):i=!0},this._streamData=m(function(e){try{t.push("string"==typeof e?e:e.toString(this._config.encoding)),i&&(i=!1,this._checkIsFinished(),this.parseChunk(t.shift()))}catch(e){this._streamError(e)}},this),this._streamError=m(function(e){this._streamCleanUp(),this._sendError(e)},this),this._streamEnd=m(function(){this._streamCleanUp(),r=!0,this._streamData("")},this),this._streamCleanUp=m(function(){this._input.removeListener("data",this._streamData),this._input.removeListener("end",this._streamEnd),this._input.removeListener("error",this._streamError)},this)}function i(m){var n,s,a,t,o=Math.pow(2,53),h=-o,u=/^\s*-?(\d+\.?|\.\d+|\d+\.\d+)([eE][-+]?\d+)?\s*$/,d=/^((\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z)))$/,i=this,r=0,l=0,f=!1,e=!1,c=[],p={data:[],errors:[],meta:{}};function y(e){return"greedy"===m.skipEmptyLines?""===e.join("").trim():1===e.length&&0===e[0].length}function _(){if(p&&a&&(k("Delimiter","UndetectableDelimiter","Unable to auto-detect delimiting character; defaulted to '"+w.DefaultDelimiter+"'"),a=!1),m.skipEmptyLines&&(p.data=p.data.filter(function(e){return!y(e)})),g()){if(p)if(Array.isArray(p.data[0])){for(var e=0;g()&&e<p.data.length;e++)p.data[e].forEach(t);p.data.splice(0,1)}else p.data.forEach(t);function t(e,t){e=P(e),U(m.transformHeader)&&(e=m.transformHeader(e,t)),c.push(e)}}function i(e,t){for(var i=m.header?{}:[],r=0;r<e.length;r++){var n=r,s=e[r],s=((e,t)=>(e=>(m.dynamicTypingFunction&&void 0===m.dynamicTyping[e]&&(m.dynamicTyping[e]=m.dynamicTypingFunction(e)),!0===(m.dynamicTyping[e]||m.dynamicTyping)))(e)?"true"===t||"TRUE"===t||"false"!==t&&"FALSE"!==t&&((e=>{if(u.test(e)){e=parseFloat(e);if(h<e&&e<o)return 1}})(t)?parseFloat(t):d.test(t)?new Date(t):""===t?null:t):t)(n=m.header?r>=c.length?"__parsed_extra":c[r]:n,s=m.transform?m.transform(s,n):s);"__parsed_extra"===n?(i[n]=i[n]||[],i[n].push(s)):i[n]=s}return m.header&&(r>c.length?k("FieldMismatch","TooManyFields","Too many fields: expected "+c.length+" fields but parsed "+r,l+t):r<c.length&&k("FieldMismatch","TooFewFields","Too few fields: expected "+c.length+" fields but parsed "+r,l+t)),i}var r;p&&(m.header||m.dynamicTyping||m.transform)&&(r=1,!p.data.length||Array.isArray(p.data[0])?(p.data=p.data.map(i),r=p.data.length):p.data=i(p.data,0),m.header&&p.meta&&(p.meta.fields=c),l+=r)}function g(){return m.header&&0===c.length}function k(e,t,i,r){e={type:e,code:t,message:i};void 0!==r&&(e.row=r),p.errors.push(e)}U(m.step)&&(t=m.step,m.step=function(e){p=e,g()?_():(_(),0!==p.data.length&&(r+=e.data.length,m.preview&&r>m.preview?s.abort():(p.data=p.data[0],t(p,i))))}),this.parse=function(e,t,i){var r=m.quoteChar||'"',r=(m.newline||(m.newline=this.guessLineEndings(e,r)),a=!1,m.delimiter?U(m.delimiter)&&(m.delimiter=m.delimiter(e),p.meta.delimiter=m.delimiter):((r=((e,t,i,r,n)=>{var s,a,o,h;n=n||[",","\t","|",";",w.RECORD_SEP,w.UNIT_SEP];for(var u=0;u<n.length;u++){for(var d,l=n[u],f=0,c=0,p=0,_=(o=void 0,new E({comments:r,delimiter:l,newline:t,preview:10}).parse(e)),g=0;g<_.data.length;g++)i&&y(_.data[g])?p++:(d=_.data[g].length,c+=d,void 0===o?o=d:0<d&&(f+=Math.abs(d-o),o=d));0<_.data.length&&(c/=_.data.length-p),1.99<c&&(void 0===a||f<a||f===a&&h<c)&&(a=f,s=l,h=c)}return{successful:!!(m.delimiter=s),bestDelimiter:s}})(e,m.newline,m.skipEmptyLines,m.comments,m.delimitersToGuess)).successful?m.delimiter=r.bestDelimiter:(a=!0,m.delimiter=w.DefaultDelimiter),p.meta.delimiter=m.delimiter),b(m));return m.preview&&m.header&&r.preview++,n=e,s=new E(r),p=s.parse(n,t,i),_(),f?{meta:{paused:!0}}:p||{meta:{paused:!1}}},this.paused=function(){return f},this.pause=function(){f=!0,s.abort(),n=U(m.chunk)?"":n.substring(s.getCharIndex())},this.resume=function(){i.streamer._halted?(f=!1,i.streamer.parseChunk(n,!0)):setTimeout(i.resume,3)},this.aborted=function(){return e},this.abort=function(){e=!0,s.abort(),p.meta.aborted=!0,U(m.complete)&&m.complete(p),n=""},this.guessLineEndings=function(e,t){e=e.substring(0,1048576);var t=new RegExp(q(t)+"([^]*?)"+q(t),"gm"),i=(e=e.replace(t,"")).split("\r"),t=e.split("\n"),e=1<t.length&&t[0].length<i[0].length;if(1===i.length||e)return"\n";for(var r=0,n=0;n<i.length;n++)"\n"===i[n][0]&&r++;return r>=i.length/2?"\r\n":"\r"}}function q(e){return e.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}function E(C){var S=(C=C||{}).delimiter,O=C.newline,x=C.comments,I=C.step,A=C.preview,T=C.fastMode,D=null,L=!1,F=null==C.quoteChar?'"':C.quoteChar,z=F;if(void 0!==C.escapeChar&&(z=C.escapeChar),("string"!=typeof S||-1<w.BAD_DELIMITERS.indexOf(S))&&(S=","),x===S)throw new Error("Comment character same as delimiter");!0===x?x="#":("string"!=typeof x||-1<w.BAD_DELIMITERS.indexOf(x))&&(x=!1),"\n"!==O&&"\r"!==O&&"\r\n"!==O&&(O="\n");var M=0,j=!1;this.parse=function(i,t,r){if("string"!=typeof i)throw new Error("Input must be a string");var n=i.length,e=S.length,s=O.length,a=x.length,o=U(I),h=[],u=[],d=[],l=M=0;if(!i)return v();if(T||!1!==T&&-1===i.indexOf(F)){for(var f=i.split(O),c=0;c<f.length;c++){if(d=f[c],M+=d.length,c!==f.length-1)M+=O.length;else if(r)return v();if(!x||d.substring(0,a)!==x){if(o){if(h=[],k(d.split(S)),R(),j)return v()}else k(d.split(S));if(A&&A<=c)return h=h.slice(0,A),v(!0)}}return v()}for(var p=i.indexOf(S,M),_=i.indexOf(O,M),g=new RegExp(q(z)+q(F),"g"),m=i.indexOf(F,M);;)if(i[M]===F)for(m=M,M++;;){if(-1===(m=i.indexOf(F,m+1)))return r||u.push({type:"Quotes",code:"MissingQuotes",message:"Quoted field unterminated",row:h.length,index:M}),E();if(m===n-1)return E(i.substring(M,m).replace(g,F));if(F===z&&i[m+1]===z)m++;else if(F===z||0===m||i[m-1]!==z){-1!==p&&p<m+1&&(p=i.indexOf(S,m+1));var y=w(-1===(_=-1!==_&&_<m+1?i.indexOf(O,m+1):_)?p:Math.min(p,_));if(i.substr(m+1+y,e)===S){d.push(i.substring(M,m).replace(g,F)),i[M=m+1+y+e]!==F&&(m=i.indexOf(F,M)),p=i.indexOf(S,M),_=i.indexOf(O,M);break}y=w(_);if(i.substring(m+1+y,m+1+y+s)===O){if(d.push(i.substring(M,m).replace(g,F)),b(m+1+y+s),p=i.indexOf(S,M),m=i.indexOf(F,M),o&&(R(),j))return v();if(A&&h.length>=A)return v(!0);break}u.push({type:"Quotes",code:"InvalidQuotes",message:"Trailing quote on quoted field is malformed",row:h.length,index:M}),m++}}else if(x&&0===d.length&&i.substring(M,M+a)===x){if(-1===_)return v();M=_+s,_=i.indexOf(O,M),p=i.indexOf(S,M)}else if(-1!==p&&(p<_||-1===_))d.push(i.substring(M,p)),M=p+e,p=i.indexOf(S,M);else{if(-1===_)break;if(d.push(i.substring(M,_)),b(_+s),o&&(R(),j))return v();if(A&&h.length>=A)return v(!0)}return E();function k(e){h.push(e),l=M}function w(e){var t=0;return t=-1!==e&&(e=i.substring(m+1,e))&&""===e.trim()?e.length:t}function E(e){return r||(void 0===e&&(e=i.substring(M)),d.push(e),M=n,k(d),o&&R()),v()}function b(e){M=e,k(d),d=[],_=i.indexOf(O,M)}function v(e){if(C.header&&!t&&h.length&&!L){var s=h[0],a=Object.create(null),o=new Set(s);let n=!1;for(let r=0;r<s.length;r++){let i=P(s[r]);if(a[i=U(C.transformHeader)?C.transformHeader(i,r):i]){let e,t=a[i];for(;e=i+"_"+t,t++,o.has(e););o.add(e),s[r]=e,a[i]++,n=!0,(D=null===D?{}:D)[e]=i}else a[i]=1,s[r]=i;o.add(i)}n&&console.warn("Duplicate headers found and renamed."),L=!0}return{data:h,errors:u,meta:{delimiter:S,linebreak:O,aborted:j,truncated:!!e,cursor:l+(t||0),renamedHeaders:D}}}function R(){I(v()),h=[],u=[]}},this.abort=function(){j=!0},this.getCharIndex=function(){return M}}function p(e){var t=e.data,i=o[t.workerId],r=!1;if(t.error)i.userError(t.error,t.file);else if(t.results&&t.results.data){var n={abort:function(){r=!0,_(t.workerId,{data:[],errors:[],meta:{aborted:!0}})},pause:g,resume:g};if(U(i.userStep)){for(var s=0;s<t.results.data.length&&(i.userStep({data:t.results.data[s],errors:t.results.errors,meta:t.results.meta},n),!r);s++);delete t.results}else U(i.userChunk)&&(i.userChunk(t.results,n,t.file),delete t.results)}t.finished&&!r&&_(t.workerId,t.results)}function _(e,t){var i=o[e];U(i.userComplete)&&i.userComplete(t),i.terminate(),delete o[e]}function g(){throw new Error("Not implemented.")}function b(e){if("object"!=typeof e||null===e)return e;var t,i=Array.isArray(e)?[]:{};for(t in e)i[t]=b(e[t]);return i}function m(e,t){return function(){e.apply(t,arguments)}}function U(e){return"function"==typeof e}return w.parse=function(e,t){var i=(t=t||{}).dynamicTyping||!1;U(i)&&(t.dynamicTypingFunction=i,i={});if(t.dynamicTyping=i,t.transform=!!U(t.transform)&&t.transform,!t.worker||!w.WORKERS_SUPPORTED)return i=null,w.NODE_STREAM_INPUT,"string"==typeof e?(e=P(e),i=new(t.download?d:f)(t)):!0===e.readable&&U(e.read)&&U(e.on)?i=new c(t):(n.File&&e instanceof File||e instanceof Object)&&(i=new l(t)),i.stream(e);(i=(()=>{var e;return!!w.WORKERS_SUPPORTED&&(e=(()=>{var e=n.URL||n.webkitURL||null,t=r.toString();return w.BLOB_URL||(w.BLOB_URL=e.createObjectURL(new Blob(["var global = (function() { if (typeof self !== 'undefined') { return self; } if (typeof window !== 'undefined') { return window; } if (typeof global !== 'undefined') { return global; } return {}; })(); global.IS_PAPA_WORKER=true; ","(",t,")();"],{type:"text/javascript"})))})(),(e=new n.Worker(e)).onmessage=p,e.id=h++,o[e.id]=e)})()).userStep=t.step,i.userChunk=t.chunk,i.userComplete=t.complete,i.userError=t.error,t.step=U(t.step),t.chunk=U(t.chunk),t.complete=U(t.complete),t.error=U(t.error),delete t.worker,i.postMessage({input:e,config:t,workerId:i.id})},w.unparse=function(e,t){var s=!1,g=!0,m=",",y="\r\n",a='"',o=a+a,i=!1,r=null,h=!1,u=((()=>{if("object"==typeof t){if("string"!=typeof t.delimiter||w.BAD_DELIMITERS.filter(function(e){return-1!==t.delimiter.indexOf(e)}).length||(m=t.delimiter),"boolean"!=typeof t.quotes&&"function"!=typeof t.quotes&&!Array.isArray(t.quotes)||(s=t.quotes),"boolean"!=typeof t.skipEmptyLines&&"string"!=typeof t.skipEmptyLines||(i=t.skipEmptyLines),"string"==typeof t.newline&&(y=t.newline),"string"==typeof t.quoteChar&&(a=t.quoteChar,o=a+a),"boolean"==typeof t.header&&(g=t.header),Array.isArray(t.columns)){if(0===t.columns.length)throw new Error("Option columns is empty");r=t.columns}void 0!==t.escapeChar&&(o=t.escapeChar+a),t.escapeFormulae instanceof RegExp?h=t.escapeFormulae:"boolean"==typeof t.escapeFormulae&&t.escapeFormulae&&(h=/^[=+\-@\t\r].*$/)}})(),new RegExp(q(a),"g"));"string"==typeof e&&(e=JSON.parse(e));if(Array.isArray(e)){if(!e.length||Array.isArray(e[0]))return n(null,e,i);if("object"==typeof e[0])return n(r||Object.keys(e[0]),e,i)}else if("object"==typeof e)return"string"==typeof e.data&&(e.data=JSON.parse(e.data)),Array.isArray(e.data)&&(e.fields||(e.fields=e.meta&&e.meta.fields||r),e.fields||(e.fields=Array.isArray(e.data[0])?e.fields:"object"==typeof e.data[0]?Object.keys(e.data[0]):[]),Array.isArray(e.data[0])||"object"==typeof e.data[0]||(e.data=[e.data])),n(e.fields||[],e.data||[],i);throw new Error("Unable to serialize unrecognized input");function n(e,t,i){var r="",n=("string"==typeof e&&(e=JSON.parse(e)),"string"==typeof t&&(t=JSON.parse(t)),Array.isArray(e)&&0<e.length),s=!Array.isArray(t[0]);if(n&&g){for(var a=0;a<e.length;a++)0<a&&(r+=m),r+=k(e[a],a);0<t.length&&(r+=y)}for(var o=0;o<t.length;o++){var h=(n?e:t[o]).length,u=!1,d=n?0===Object.keys(t[o]).length:0===t[o].length;if(i&&!n&&(u="greedy"===i?""===t[o].join("").trim():1===t[o].length&&0===t[o][0].length),"greedy"===i&&n){for(var l=[],f=0;f<h;f++){var c=s?e[f]:f;l.push(t[o][c])}u=""===l.join("").trim()}if(!u){for(var p=0;p<h;p++){0<p&&!d&&(r+=m);var _=n&&s?e[p]:p;r+=k(t[o][_],p)}o<t.length-1&&(!i||0<h&&!d)&&(r+=y)}}return r}function k(e,t){var i,r,n;return null==e?"":e.constructor===Date?isNaN(e.getTime())?"":e.toISOString():(n=!1,h&&"string"==typeof e&&h.test(e)&&(e="'"+e,n=!0),r=(i=e.toString()).replace(u,o),(n=n||!0===s||"function"==typeof s&&s(e,t)||Array.isArray(s)&&s[t]||((e,t)=>{for(var i=0;i<t.length;i++)if(-1<e.indexOf(t[i]))return!0;return!1})(r,w.BAD_DELIMITERS)||-1<r.indexOf(m)||-1<i.indexOf(a)||" "===r.charAt(0)||" "===r.charAt(r.length-1))?a+r+a:r)}},w.RECORD_SEP=String.fromCharCode(30),w.UNIT_SEP=String.fromCharCode(31),w.BYTE_ORDER_MARK="\ufeff",w.BAD_DELIMITERS=["\r","\n",'"',w.BYTE_ORDER_MARK],w.WORKERS_SUPPORTED=!s&&!!n.Worker,w.NODE_STREAM_INPUT=1,w.LocalChunkSize=10485760,w.RemoteChunkSize=5242880,w.DefaultDelimiter=",",w.Parser=E,w.ParserHandle=i,w.NetworkStreamer=d,w.FileStreamer=l,w.StringStreamer=f,w.ReadableStreamStreamer=c,a&&(n.onmessage=function(e){e=e.data;void 0===w.WORKER_ID&&e&&(w.WORKER_ID=e.workerId);"string"==typeof e.input?n.postMessage({workerId:w.WORKER_ID,results:w.parse(e.input,e.config),finished:!0}):(n.File&&e.input instanceof File||e.input instanceof Object)&&(e=w.parse(e.input,e.config))&&n.postMessage({workerId:w.WORKER_ID,results:e,finished:!0})}),(d.prototype=Object.create(u.prototype)).constructor=d,(l.prototype=Object.create(u.prototype)).constructor=l,(f.prototype=Object.create(f.prototype)).constructor=f,(c.prototype=Object.create(u.prototype)).constructor=c,w});
+</script>
+<script>
+// shared/csv-parse.js
+// Papa Parse 5.6.0 must be bundled before this module.
+if (typeof Papa === 'undefined' || !Papa || typeof Papa.parse !== 'function') {
+  throw new Error('csv-parse.js requires the Papa Parse asset to be loaded first.');
+}
+
+function cellAt(row, i) {
+  if (!row || !row.cells || !Number.isInteger(i) || i < 0 || i >= row.cells.length) {
+    return '';
+  }
+  return typeof row.cells[i] === 'undefined' ? '' : row.cells[i];
+}
+
+function detectCsvLineEnding(text) {
+  var withoutCrlf = text.replace(/\r\n/g, '');
+  var hasCrlf = /\r\n/.test(text);
+  var hasBareCr = /\r/.test(withoutCrlf);
+  var hasBareLf = /\n/.test(withoutCrlf);
+
+  if (hasCrlf && !hasBareCr && !hasBareLf) return 'crlf';
+  if (!hasCrlf && !hasBareCr) return 'lf';
+  return 'mixed';
+}
+
+function normalizeCsvLineEndings(text) {
+  return text.replace(/\r\n?/g, '\n');
+}
+
+function detectCsvDelimiter(text) {
+  var candidates = [',', '\t', ';'];
+  var best = null;
+
+  candidates.forEach(function (delimiter, priority) {
+    var preview = Papa.parse(text, {
+      delimiter: delimiter,
+      preview: 10,
+      skipEmptyLines: true,
+      dynamicTyping: false
+    }).data;
+    var widths = {};
+    var modeWidth = 0;
+    var modeCount = 0;
+
+    preview.forEach(function (row) {
+      var width = row.length;
+      widths[width] = (widths[width] || 0) + 1;
+      if (widths[width] > modeCount) {
+        modeWidth = width;
+        modeCount = widths[width];
+      }
+    });
+
+    // A delimiter absent from every row makes a stable one-cell result. It is
+    // not evidence that the delimiter is in use, so do not select it.
+    if (!preview.length || modeWidth < 2) return;
+
+    var candidate = {
+      delimiter: delimiter,
+      stability: modeCount / preview.length,
+      width: modeWidth,
+      priority: priority
+    };
+    if (!best || candidate.stability > best.stability ||
+        (candidate.stability === best.stability && candidate.width > best.width) ||
+        (candidate.stability === best.stability && candidate.width === best.width &&
+         candidate.priority < best.priority)) {
+      best = candidate;
+    }
+  });
+
+  return best ? best.delimiter : ',';
+}
+
+function parseCsv(text, opts) {
+  opts = opts || {};
+  var beginsWithBom = text.charCodeAt(0) === 0xfeff;
+  if (beginsWithBom) text = text.slice(1);
+  var lineEnding = detectCsvLineEnding(text);
+  var normalizedText = normalizeCsvLineEndings(text);
+  var delimiter = opts.delimiter || detectCsvDelimiter(normalizedText);
+  var parsedRows = [];
+  var previousCursor = 0;
+  var currentLine = 1;
+
+  Papa.parse(normalizedText, {
+    delimiter: delimiter,
+    dynamicTyping: false,
+    step: function (result) {
+      var consumed = normalizedText.slice(previousCursor, result.meta.cursor);
+      var newlineCount = (consumed.match(/\n/g) || []).length;
+
+      parsedRows.push({
+        line: currentLine,
+        cells: result.data.map(String)
+      });
+      currentLine += newlineCount;
+      previousCursor = result.meta.cursor;
+    }
+  });
+  if (parsedRows.length && parsedRows[parsedRows.length - 1].cells.length === 1 &&
+      parsedRows[parsedRows.length - 1].cells[0] === '') {
+    parsedRows.pop();
+  }
+
+  var headers = parsedRows.length ? parsedRows.shift().cells : [];
+  var raggedRows = parsedRows.filter(function (row) {
+    return !(row.cells.length === 1 && row.cells[0] === '') &&
+      row.cells.length !== headers.length;
+  }).map(function (row) {
+    return row.line;
+  });
+
+  return {
+    headers: headers,
+    rows: parsedRows,
+    meta: {
+      encoding: opts.encoding || 'utf-8',
+      hadBom: beginsWithBom || opts.hadBom === true,
+      lineEnding: lineEnding,
+      delimiter: delimiter,
+      headerCount: headers.length,
+      raggedRows: raggedRows
+    }
+  };
+}
+
+</script>
+<script>
+// shared/csv-decode.js
+// CSV 位元組解碼與檔案大小閘門。所有門檻都以原始 File.size 的位元組計算。
+
+function decodeCsvBytes(arrayBuffer) {
+  var bytes = new Uint8Array(arrayBuffer);
+  var hasUtf8Bom = bytes.length >= 3 &&
+    bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
+
+  if (hasUtf8Bom) {
+    return {
+      text: new TextDecoder('utf-8').decode(arrayBuffer),
+      encoding: 'utf-8',
+      hadBom: true,
+      confidence: 'bom'
+    };
+  }
+
+  try {
+    return {
+      text: new TextDecoder('utf-8', { fatal: true }).decode(arrayBuffer),
+      encoding: 'utf-8',
+      hadBom: false,
+      confidence: 'strict'
+    };
+  } catch (err) {
+    return {
+      text: new TextDecoder('big5').decode(arrayBuffer),
+      encoding: 'big5',
+      hadBom: false,
+      confidence: 'fallback'
+    };
+  }
+}
+
+function checkCsvFileSize(byteLength) {
+  // 1 MB = 1,048,576 bytes. 5 MB and 20 MB are accepted; only >20 MB rejects.
+  var megabyte = 1024 * 1024;
+
+  if (byteLength < 5 * megabyte) {
+    return { ok: true, level: 'ok', message: '' };
+  }
+  if (byteLength <= 20 * megabyte) {
+    return {
+      ok: true,
+      level: 'warn',
+      message: '檔案較大，處理可能需要數秒。'
+    };
+  }
+  return {
+    ok: false,
+    level: 'reject',
+    message: '檔案超過 20 MB 上限，請縮小檔案後再試。'
+  };
+}
+
+</script>
+<script>
+// shared/csv-write.js
+
+// 試算表公式注入防護（見 CSV_CONTRACT.md 第 4.2a 節、LEVEL1B_RULINGS.md 裁示 17）
+var CSV_FORMULA_LEAD = /^[=+\-@\t\r]/;
+
+function needsFormulaGuard(text) {
+  if (!CSV_FORMULA_LEAD.test(text)) return false;
+  // 單一字元構不成公式，且 '-' 單獨一格是報表常見的「無資料」標記，不逃脫。
+  if (text.length < 2) return false;
+  if (typeof toNumber !== 'function') {
+    throw new Error('csv-write.js requires csv-types.js (toNumber) to be bundled first.');
+  }
+  // 數字不逃脫：'-5.6' 是合法數值，逃脫它會把整個數值欄變成文字。
+  return Number.isNaN(toNumber(text));
+}
+
+function csvCell(value, delimiter) {
+  var text = String(value);
+  if (needsFormulaGuard(text)) {
+    text = "'" + text;
+  }
+  if (text.indexOf(delimiter) !== -1 || text.indexOf('"') !== -1 ||
+      text.indexOf('\r') !== -1 || text.indexOf('\n') !== -1) {
+    return '"' + text.replace(/"/g, '""') + '"';
+  }
+  return text;
+}
+
+function toCsv(table, opts) {
+  opts = opts || {};
+  var delimiter = ',';
+  var columns = opts.columns;
+  var lines = [];
+
+  if (Object.prototype.hasOwnProperty.call(opts, 'columns')) {
+    if (!Array.isArray(columns)) {
+      throw new Error('opts.columns must be an array of column indexes.');
+    }
+    columns.forEach(function (index) {
+      if (!Number.isInteger(index) || index < 0 || index >= table.headers.length) {
+        throw new Error('opts.columns contains an invalid column index: ' + index);
+      }
+    });
+  }
+
+  var headerCount = (table.meta && Number.isInteger(table.meta.headerCount))
+    ? table.meta.headerCount
+    : table.headers.length;
+
+  function selectHeader() {
+    if (!columns) return table.headers;
+    return columns.map(function (index) {
+      return table.headers[index];
+    });
+  }
+
+  function selectCells(row) {
+    if (!columns) {
+      var full = [];
+      for (var i = 0; i < headerCount; i += 1) {
+        full.push(cellAt(row, i));
+      }
+      return full;
+    }
+    return columns.map(function (index) {
+      return cellAt(row, index);
+    });
+  }
+
+  lines.push(selectHeader().map(function (cell) {
+    return csvCell(cell, delimiter);
+  }).join(delimiter));
+  table.rows.forEach(function (row) {
+    lines.push(selectCells(row).map(function (cell) {
+      return csvCell(cell, delimiter);
+    }).join(delimiter));
+  });
+
+  return (opts.bom === false ? '' : '\ufeff') + lines.join('\r\n');
+}
+
+</script>
+<script>
+// shared/csv-types.js
+
+function toNumber(s) {
+  if (typeof s !== 'string') return NaN;
+  var text = s.trim();
+  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) {
+    return NaN;
+  }
+  var value = Number(text);
+  return Number.isFinite(value) ? value : NaN;
+}
+
+function validCompactDate(year, month, day) {
+  var daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  var leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  if (month < 1 || month > 12) return false;
+  if (month === 2 && leapYear) return day >= 1 && day <= 29;
+  return day >= 1 && day <= daysInMonth[month - 1];
+}
+
+function dateParts(s) {
+  if (typeof s !== 'string') return null;
+  var match = /^(\d{4})([-/])(\d{2})\2(\d{2})$/.exec(s);
+  if (match) {
+    return { y: Number(match[1]), m: Number(match[3]), d: Number(match[4]) };
+  }
+  match = /^(\d{4})([-/])(\d)\2(\d)$/.exec(s);
+  if (match) {
+    return { y: Number(match[1]), m: Number(match[3]), d: Number(match[4]) };
+  }
+  match = /^(\d{4})(\d{2})(\d{2})$/.exec(s);
+  if (match) {
+    var year = Number(match[1]);
+    var month = Number(match[2]);
+    var day = Number(match[3]);
+    return validCompactDate(year, month, day) ? { y: year, m: month, d: day } : null;
+  }
+  match = /^(\d{4})([-/])(\d{2})$/.exec(s);
+  if (match) {
+    return { y: Number(match[1]), m: Number(match[3]), d: null };
+  }
+  match = /^(\d{4})$/.exec(s);
+  if (match) {
+    return { y: Number(match[1]), m: null, d: null };
+  }
+  return null;
+}
+
+function isDateLike(s) {
+  return dateParts(s) !== null;
+}
+
+function inferColumnTypes(table) {
+  return table.headers.map(function (_, columnIndex) {
+    var samples = [];
+
+    table.rows.forEach(function (row) {
+      var cell = row.cells[columnIndex];
+      if (typeof cell === 'string' && cell !== '') {
+        samples.push({ value: cell, line: row.line });
+      }
+    });
+
+    var numericMatches = samples.filter(function (sample) {
+      return !Number.isNaN(toNumber(sample.value));
+    });
+    var dateMatches = samples.filter(function (sample) {
+      return isDateLike(sample.value);
+    });
+    var kind = 'text';
+    var matched = samples.length;
+    var mismatchLines = [];
+
+    if (samples.length >= 3 && numericMatches.length / samples.length >= 0.9) {
+      kind = 'number';
+      matched = numericMatches.length;
+      mismatchLines = samples.filter(function (sample) {
+        return Number.isNaN(toNumber(sample.value));
+      }).map(function (sample) {
+        return sample.line;
+      });
+    } else if (samples.length >= 3 && dateMatches.length / samples.length >= 0.9) {
+      kind = 'date';
+      matched = dateMatches.length;
+      mismatchLines = samples.filter(function (sample) {
+        return !isDateLike(sample.value);
+      }).map(function (sample) {
+        return sample.line;
+      });
+    }
+
+    return {
+      kind: kind,
+      sampleSize: samples.length,
+      matched: matched,
+      mismatchLines: mismatchLines
+    };
+  });
+}
+
+</script>
+<script>
+// shared/ui-chart-svg.js — 手寫 SVG 圖表模組（Bar／Line／Pie），不依賴任何 library、不碰 DOM。
+// 由 Day12（csv-pivot-dashboard 下篇）建立，見 CSV_CONTRACT.md 第 6.2 節。
+// 對外介面：renderBarChart(series, opts) / renderLineChart(series, opts) / renderPieChart(series, opts)
+// series: { label: string, value: number }[]（value 必為有限數，呼叫端負責過濾）
+// opts:   { width, height, valueFormat, maxPieSlices, title } 皆選填
+
+// ---------- B1 座標映射常數 ----------
+
+var CHART_PAD = { top: 24, right: 24, bottom: 72, left: 72 };
+var CHART_DEFAULT_WIDTH = 800;
+var CHART_DEFAULT_HEIGHT = 400;
+var CHART_FONT_SIZE = 12;
+
+// ---------- B4 色盤（Okabe–Ito 色盲友善色盤 7 色 + 1 補色，共 8 色；灰色不進循環） ----------
+
+var CHART_COLORS = [
+  '#0072B2', '#E69F00', '#009E73', '#CC79A7',
+  '#56B4E9', '#D55E00', '#F0E442', '#7F3C8D'
+];
+var CHART_GRAY = '#999999';
+var CHART_PRIMARY = '#0072B2'; // Bar/Line 只有一個 Measure，全部同色
+
+// ---------- B2 軸刻度取整（Heckbert nice numbers） ----------
+
+function niceNum(x, round) {
+  var exp = Math.floor(Math.log10(x));
+  var f = x / Math.pow(10, exp);
+  var nf;
+  if (round) {
+    nf = f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10;
+  } else {
+    nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
+  }
+  return nf * Math.pow(10, exp);
+}
+
+function niceScale(dataMin, dataMax, n) {
+  n = n || 5;
+  var range = niceNum(dataMax - dataMin, false);
+  var step = niceNum(range / (n - 1), true);
+  var niceMin = Math.floor(dataMin / step) * step;
+  var niceMax = Math.ceil(dataMax / step) * step;
+  var count = Math.round((niceMax - niceMin) / step);
+  var ticks = [];
+  for (var i = 0; i <= count; i++) {
+    ticks.push(Number((niceMin + i * step).toFixed(10)));
+  }
+  return ticks;
+}
+
+function safeRange(mn, mx) {
+  if (mx - mn === 0) {
+    return [mn - 1, mx + 1];
+  }
+  return [mn, mx];
+}
+
+function formatTick(v, decimals) {
+  return new Intl.NumberFormat('zh-TW', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  }).format(v);
+}
+
+// ---------- B3 標籤重疊（截斷／旋轉／抽稀決策鏈，fontSize 固定 12） ----------
+
+function estimateCharWidth(ch) {
+  return ch.codePointAt(0) > 0x2E80 ? 12 : 7.2;
+}
+
+function estimateLabelWidth(text) {
+  var chars = Array.from(String(text));
+  var w = 0;
+  for (var i = 0; i < chars.length; i++) w += estimateCharWidth(chars[i]);
+  return w;
+}
+
+function truncateLabel(label) {
+  var text = String(label);
+  var chars = Array.from(text);
+  if (chars.length > 12) {
+    return { text: chars.slice(0, 11).join('') + '…', full: text, truncated: true };
+  }
+  return { text: text, full: text, truncated: false };
+}
+
+// labels: string[]；決策以「截斷後最長標籤的估寬」為準，套用同一個 mode 到整組軸標籤
+function decideLabelLayout(labels, B, fontSize) {
+  fontSize = fontSize || CHART_FONT_SIZE;
+  var truncated = labels.map(truncateLabel);
+  var maxW = 0;
+  truncated.forEach(function (t) {
+    var w = estimateLabelWidth(t.text);
+    if (w > maxW) maxW = w;
+  });
+
+  if (maxW <= B - 4) {
+    return { mode: 'horizontal', k: 1, truncated: truncated };
+  }
+  if (B >= fontSize * 1.2) {
+    return { mode: 'rotate', k: 1, truncated: truncated };
+  }
+  var k = Math.ceil((fontSize * 1.2) / B);
+  return { mode: 'thin', k: k, truncated: truncated };
+}
+
+// ---------- SVG 字串組裝 ----------
+
+function svgOpen(width, height) {
+  return '<div style="overflow-x:auto"><svg width="' + width + '" height="' + height +
+    '" viewBox="0 0 ' + width + ' ' + height +
+    '" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">';
+}
+
+function svgClose() {
+  return '</svg></div>';
+}
+
+function chartEmptyHtml(message) {
+  return '<div class="chart-empty">' + escapeHtml(message) + '</div>';
+}
+
+function appendXLabel(parts, layout, i, cx, axisY, fontSize, isBar) {
+  var t = layout.truncated[i];
+  var showLabel = layout.mode !== 'thin' || (i % layout.k === 0);
+  if (!showLabel) {
+    parts.push('<line x1="' + cx.toFixed(2) + '" y1="' + axisY.toFixed(2) + '" x2="' + cx.toFixed(2) +
+      '" y2="' + (axisY + 4).toFixed(2) + '" stroke="#999999" stroke-width="1"/>');
+    return;
+  }
+  var titleTag = t.truncated ? ('<title>' + escapeHtml(t.full) + '</title>') : '';
+  if (layout.mode === 'horizontal') {
+    parts.push('<text x="' + cx.toFixed(2) + '" y="' + (axisY + 16).toFixed(2) +
+      '" font-size="' + fontSize + '" text-anchor="middle" fill="#333333">' +
+      escapeHtml(t.text) + titleTag + '</text>');
+  } else {
+    var anchorX = cx;
+    var anchorY = axisY + 8;
+    parts.push('<text x="' + anchorX.toFixed(2) + '" y="' + anchorY.toFixed(2) +
+      '" font-size="' + fontSize + '" text-anchor="end" fill="#333333" transform="rotate(-45 ' +
+      anchorX.toFixed(2) + ' ' + anchorY.toFixed(2) + ')">' + escapeHtml(t.text) + titleTag + '</text>');
+  }
+}
+
+function appendYAxis(parts, ticks, decimals, plotLeft, plotRight, fontSize, yFn) {
+  ticks.forEach(function (t) {
+    var ty = yFn(t);
+    parts.push('<line x1="' + plotLeft.toFixed(2) + '" y1="' + ty.toFixed(2) +
+      '" x2="' + plotRight.toFixed(2) + '" y2="' + ty.toFixed(2) +
+      '" stroke="#e5e5e5" stroke-width="1"/>');
+    parts.push('<text x="' + (plotLeft - 8).toFixed(2) + '" y="' + (ty + 4).toFixed(2) +
+      '" font-size="' + fontSize + '" text-anchor="end" fill="#333333">' +
+      escapeHtml(formatTick(t, decimals)) + '</text>');
+  });
+}
+
+// ---------- renderBarChart ----------
+
+function renderBarChart(series, opts) {
+  opts = opts || {};
+  series = (series || []).filter(function (s) {
+    return typeof s.value === 'number' && Number.isFinite(s.value);
+  });
+
+  if (series.length === 0) {
+    return chartEmptyHtml('沒有可繪製的資料。可能是 Filter 條件把所有列都排除了。');
+  }
+
+  var width = opts.width || CHART_DEFAULT_WIDTH;
+  var height = opts.height || CHART_DEFAULT_HEIGHT;
+  var plotW = width - CHART_PAD.left - CHART_PAD.right;
+  var plotH = height - CHART_PAD.top - CHART_PAD.bottom;
+  var fontSize = CHART_FONT_SIZE;
+
+  var labels = series.map(function (s) { return String(s.label); });
+  var values = series.map(function (s) { return s.value; });
+  var hasNegative = values.some(function (v) { return v < 0; });
+  var allZero = values.every(function (v) { return v === 0; });
+
+  var ticks;
+  if (allZero) {
+    ticks = [0, 0.2, 0.4, 0.6, 0.8, 1];
+  } else {
+    // B2：Bar 圖 dataMin 一律夾到 min(0, 實際最小值)
+    var dataMin = Math.min(0, Math.min.apply(null, values));
+    var dataMax = Math.max(0, Math.max.apply(null, values));
+    ticks = niceScale(dataMin, dataMax, 5);
+  }
+
+  var yMin = ticks[0], yMax = ticks[ticks.length - 1];
+  var step = ticks[1] - ticks[0];
+  var decimals = Math.max(0, -Math.floor(Math.log10(step)));
+
+  function y(v) {
+    return CHART_PAD.top + plotH * (yMax - v) / (yMax - yMin);
+  }
+
+  var n = series.length;
+  var B = plotW / n;
+  var barWidth = n === 1 ? Math.min(plotW / 3, 64) : Math.min(B * 0.7, 64);
+  var axisY = CHART_PAD.top + plotH;
+
+  var layout = decideLabelLayout(labels, B, fontSize);
+
+  var parts = [];
+  parts.push(svgOpen(width, height));
+
+  appendYAxis(parts, ticks, decimals, CHART_PAD.left, width - CHART_PAD.right, fontSize, y);
+
+  var zeroY = y(0);
+  if (hasNegative) {
+    parts.push('<line class="chart-zero-line" x1="' + CHART_PAD.left.toFixed(2) + '" y1="' + zeroY.toFixed(2) +
+      '" x2="' + (width - CHART_PAD.right).toFixed(2) + '" y2="' + zeroY.toFixed(2) +
+      '" stroke="#666666" stroke-width="1"/>');
+  }
+
+  series.forEach(function (s, i) {
+    var cx = CHART_PAD.left + B * (i + 0.5);
+    var bx = cx - barWidth / 2;
+    var v = s.value;
+
+    if (allZero) {
+      parts.push('<rect x="' + bx.toFixed(2) + '" y="' + (zeroY - 2).toFixed(2) +
+        '" width="' + barWidth.toFixed(2) + '" height="2" fill="' + CHART_PRIMARY + '">' +
+        '<title>' + escapeHtml(labels[i]) + '</title></rect>');
+    } else {
+      var top = v >= 0 ? y(v) : zeroY;
+      var bottom = v >= 0 ? zeroY : y(v);
+      var rectY = Math.min(top, bottom);
+      var rectH = Math.max(0, bottom - top);
+      parts.push('<rect x="' + bx.toFixed(2) + '" y="' + rectY.toFixed(2) +
+        '" width="' + barWidth.toFixed(2) + '" height="' + rectH.toFixed(2) + '" fill="' + CHART_PRIMARY + '">' +
+        '<title>' + escapeHtml(labels[i]) + '：' + v + '</title></rect>');
+    }
+
+    appendXLabel(parts, layout, i, cx, axisY, fontSize, true);
+  });
+
+  parts.push(svgClose());
+
+  var notes = [];
+  if (allZero) notes.push('所有數值皆為 0');
+  if (layout.mode === 'thin') notes.push('類別過多，每 ' + layout.k + ' 個顯示 1 個標籤');
+  if (notes.length) parts.push('<div class="chart-note">' + escapeHtml(notes.join('；')) + '</div>');
+
+  return parts.join('');
+}
+
+// ---------- renderLineChart ----------
+
+function renderLineChart(series, opts) {
+  opts = opts || {};
+  series = (series || []).filter(function (s) {
+    return typeof s.value === 'number' && Number.isFinite(s.value);
+  });
+
+  if (series.length === 0) {
+    return chartEmptyHtml('沒有可繪製的資料。可能是 Filter 條件把所有列都排除了。');
+  }
+
+  var width = opts.width || CHART_DEFAULT_WIDTH;
+  var height = opts.height || CHART_DEFAULT_HEIGHT;
+  var plotW = width - CHART_PAD.left - CHART_PAD.right;
+  var plotH = height - CHART_PAD.top - CHART_PAD.bottom;
+  var fontSize = CHART_FONT_SIZE;
+
+  var labels = series.map(function (s) { return String(s.label); });
+  var values = series.map(function (s) { return s.value; });
+  var n = series.length;
+
+  // B5-2：單一資料點，畫圓點加水平虛線，不畫完整座標軸
+  if (n === 1) {
+    var val = values[0];
+    var midY = CHART_PAD.top + plotH / 2;
+    var cxp = CHART_PAD.left + plotW / 2;
+    var p0 = [];
+    p0.push(svgOpen(width, height));
+    p0.push('<line x1="' + CHART_PAD.left.toFixed(2) + '" y1="' + midY.toFixed(2) + '" x2="' +
+      (width - CHART_PAD.right).toFixed(2) + '" y2="' + midY.toFixed(2) +
+      '" stroke="' + CHART_PRIMARY + '" stroke-width="1.5" stroke-dasharray="4 4"/>');
+    p0.push('<circle cx="' + cxp.toFixed(2) + '" cy="' + midY.toFixed(2) + '" r="4" fill="' + CHART_PRIMARY + '">' +
+      '<title>' + escapeHtml(labels[0]) + '：' + val + '</title></circle>');
+    p0.push(svgClose());
+    p0.push('<div class="chart-note">僅 1 個資料點，趨勢線無意義</div>');
+    return p0.join('');
+  }
+
+  var hasNegative = values.some(function (v) { return v < 0; });
+  var allZero = values.every(function (v) { return v === 0; });
+
+  var ticks;
+  if (allZero) {
+    ticks = [0, 0.2, 0.4, 0.6, 0.8, 1];
+  } else if (hasNegative) {
+    ticks = niceScale(Math.min(0, Math.min.apply(null, values)), Math.max(0, Math.max.apply(null, values)), 5);
+  } else {
+    var range = safeRange(Math.min.apply(null, values), Math.max.apply(null, values));
+    ticks = niceScale(range[0], range[1], 5); // Line 不強制含 0
+  }
+
+  var yMin = ticks[0], yMax = ticks[ticks.length - 1];
+  var step = ticks[1] - ticks[0];
+  var decimals = Math.max(0, -Math.floor(Math.log10(step)));
+
+  function y(v) {
+    return CHART_PAD.top + plotH * (yMax - v) / (yMax - yMin);
+  }
+  function x(i) {
+    return CHART_PAD.left + plotW * i / (n - 1);
+  }
+
+  var axisY = CHART_PAD.top + plotH;
+  var B = plotW / n;
+  var layout = decideLabelLayout(labels, B, fontSize);
+
+  var parts = [];
+  parts.push(svgOpen(width, height));
+
+  appendYAxis(parts, ticks, decimals, CHART_PAD.left, width - CHART_PAD.right, fontSize, y);
+
+  if (hasNegative) {
+    var zeroY = y(0);
+    parts.push('<line class="chart-zero-line" x1="' + CHART_PAD.left.toFixed(2) + '" y1="' + zeroY.toFixed(2) +
+      '" x2="' + (width - CHART_PAD.right).toFixed(2) + '" y2="' + zeroY.toFixed(2) +
+      '" stroke="#666666" stroke-width="1"/>');
+  }
+
+  var pts = series.map(function (s, i) {
+    return { x: x(i), y: y(s.value) };
+  });
+
+  var d = pts.map(function (p, i) {
+    return (i === 0 ? 'M' : 'L') + p.x.toFixed(2) + ',' + p.y.toFixed(2);
+  }).join(' ');
+  parts.push('<path d="' + d + '" fill="none" stroke="' + CHART_PRIMARY + '" stroke-width="2"/>');
+
+  pts.forEach(function (p, i) {
+    parts.push('<circle cx="' + p.x.toFixed(2) + '" cy="' + p.y.toFixed(2) + '" r="3" fill="' + CHART_PRIMARY + '">' +
+      '<title>' + escapeHtml(labels[i]) + '：' + series[i].value + '</title></circle>');
+    appendXLabel(parts, layout, i, p.x, axisY, fontSize, false);
+  });
+
+  parts.push(svgClose());
+
+  var notes = [];
+  if (allZero) notes.push('所有數值皆為 0');
+  if (layout.mode === 'thin') notes.push('類別過多，每 ' + layout.k + ' 個顯示 1 個標籤');
+  if (notes.length) parts.push('<div class="chart-note">' + escapeHtml(notes.join('；')) + '</div>');
+
+  return parts.join('');
+}
+
+// ---------- renderPieChart ----------
+
+function polarToCartesian(cx, cy, r, angleDeg) {
+  var rad = (angleDeg - 90) * Math.PI / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function describePieSlicePath(cx, cy, r, startAngle, endAngle) {
+  var start = polarToCartesian(cx, cy, r, startAngle);
+  var end = polarToCartesian(cx, cy, r, endAngle);
+  var largeArcFlag = (endAngle - startAngle) <= 180 ? '0' : '1';
+  return [
+    'M', cx.toFixed(2), cy.toFixed(2),
+    'L', start.x.toFixed(2), start.y.toFixed(2),
+    'A', r.toFixed(2), r.toFixed(2), 0, largeArcFlag, 1, end.x.toFixed(2), end.y.toFixed(2),
+    'Z'
+  ].join(' ');
+}
+
+function renderPieChart(series, opts) {
+  opts = opts || {};
+  series = (series || []).filter(function (s) {
+    return typeof s.value === 'number' && Number.isFinite(s.value);
+  });
+
+  if (series.length === 0) {
+    return chartEmptyHtml('沒有可繪製的資料。可能是 Filter 條件把所有列都排除了。');
+  }
+
+  var hasNegative = series.some(function (s) { return s.value < 0; });
+  if (hasNegative) {
+    return chartEmptyHtml('資料含負值，圓餅圖無法表達占比，請改用 Bar。');
+  }
+
+  var total = series.reduce(function (sum, s) { return sum + s.value; }, 0);
+  if (total === 0) {
+    return chartEmptyHtml('所有數值皆為 0，無法計算占比。');
+  }
+
+  var width = opts.width || CHART_DEFAULT_WIDTH;
+  var height = opts.height || CHART_DEFAULT_HEIGHT;
+  var maxSlices = opts.maxPieSlices || 8;
+
+  // B5-6：依 Measure 值降冪排序；類別數 <= 9 全畫，>= 10 取前 8 + 「其他」
+  var sorted = series.slice().sort(function (a, b) { return b.value - a.value; });
+
+  var slices;
+  if (sorted.length <= maxSlices + 1) {
+    slices = sorted.map(function (s) {
+      return { label: String(s.label), value: s.value, isOther: false };
+    });
+  } else {
+    var top = sorted.slice(0, maxSlices);
+    var rest = sorted.slice(maxSlices);
+    var restSum = rest.reduce(function (sum, s) { return sum + s.value; }, 0);
+    slices = top.map(function (s) {
+      return { label: String(s.label), value: s.value, isOther: false };
+    });
+    slices.push({ label: '其他（' + rest.length + ' 個類別）', value: restSum, isOther: true });
+  }
+
+  var cx = width / 2, cy = height / 2;
+  var r = Math.min(width, height) / 2 - 40;
+
+  var parts = [];
+  parts.push(svgOpen(width, height));
+
+  // B5-2：單一分片，畫整圓 100%
+  if (slices.length === 1) {
+    var onlyColor = slices[0].isOther ? CHART_GRAY : CHART_COLORS[0];
+    parts.push('<circle cx="' + cx.toFixed(2) + '" cy="' + cy.toFixed(2) + '" r="' + r.toFixed(2) +
+      '" fill="' + onlyColor + '"><title>' + escapeHtml(slices[0].label) + ' 100%</title></circle>');
+    parts.push('<text x="' + cx.toFixed(2) + '" y="' + cy.toFixed(2) + '" font-size="' + CHART_FONT_SIZE +
+      '" text-anchor="middle" fill="#ffffff">' + escapeHtml(slices[0].label) + ' 100%</text>');
+    parts.push(svgClose());
+    return parts.join('');
+  }
+
+  var cumulative = 0;
+  var legendParts = [];
+  slices.forEach(function (s, i) {
+    var color = s.isOther ? CHART_GRAY : CHART_COLORS[i % CHART_COLORS.length];
+    var pct = s.value / total * 100;
+    var startAngle = cumulative / total * 360;
+    cumulative += s.value;
+    var endAngle = cumulative / total * 360;
+
+    if (s.value > 0) {
+      var d = describePieSlicePath(cx, cy, r, startAngle, endAngle);
+      parts.push('<path d="' + d + '" fill="' + color + '"><title>' + escapeHtml(s.label) + ' ' +
+        pct.toFixed(1) + '%</title></path>');
+    }
+    legendParts.push('<div class="chart-legend-item"><span class="chart-legend-swatch" style="background:' +
+      color + '"></span>' + escapeHtml(s.label) + '（' + pct.toFixed(1) + '%）</div>');
+  });
+
+  parts.push(svgClose());
+  parts.push('<div class="chart-legend">' + legendParts.join('') + '</div>');
+  if (sorted.length > maxSlices + 1) {
+    parts.push('<div class="chart-note">已將第 ' + (maxSlices + 1) + ' 名以後的 ' +
+      (sorted.length - maxSlices) + ' 個類別合併為「其他」</div>');
+  }
+  return parts.join('');
+}
+
+// ---------- Node 測試用出口（瀏覽器端 module 為 undefined，不影響 bundle） ----------
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    niceNum: niceNum,
+    niceScale: niceScale,
+    decideLabelLayout: decideLabelLayout,
+    truncateLabel: truncateLabel,
+    estimateLabelWidth: estimateLabelWidth,
+    CHART_COLORS: CHART_COLORS,
+    CHART_GRAY: CHART_GRAY,
+    CHART_PAD: CHART_PAD,
+    CHART_DEFAULT_WIDTH: CHART_DEFAULT_WIDTH,
+    CHART_DEFAULT_HEIGHT: CHART_DEFAULT_HEIGHT,
+    renderBarChart: renderBarChart,
+    renderLineChart: renderLineChart,
+    renderPieChart: renderPieChart
+  };
+}
+
+</script>
+<script>
+(function () {
+  'use strict';
+
+  var state = {
+    arrayBuffer: null,
+    fileName: null,
+    table: null,
+    columnTypes: null,
+    dateColIdx: null,
+    report: null
+  };
+
+  // ---------- 小工具 ----------
+
+  function optionEl(value, text) {
+    var o = document.createElement('option');
+    o.value = String(value);
+    o.textContent = text;
+    return o;
+  }
+
+  function fmtNumber(v, decimals) {
+    if (v === null || typeof v === 'undefined' || Number.isNaN(v)) return '—';
+    var d = typeof decimals === 'number' ? decimals : (Number.isInteger(v) ? 0 : 2);
+    return new Intl.NumberFormat('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: d }).format(v);
+  }
+
+  function pad2(n) {
+    return n < 10 ? '0' + n : String(n);
+  }
+
+  // ---------- task 2：型別推論與欄位下拉 ----------
+
+  function populateFieldSelects(table, columnTypes) {
+    var measureSel = document.getElementById('measure-select');
+    var dimSel = document.getElementById('dimension-select');
+    var dateSel = document.getElementById('date-select');
+    var dateGroup = document.getElementById('date-select-group');
+    var dateHint = document.getElementById('date-hint');
+
+    measureSel.innerHTML = '';
+    dimSel.innerHTML = '';
+    dateSel.innerHTML = '';
+
+    var measureIdxs = [];
+    var dimIdxs = [];
+    var dateIdxs = [];
+
+    table.headers.forEach(function (h, i) {
+      var kind = columnTypes[i].kind;
+      if (kind === 'number') {
+        measureIdxs.push(i);
+      } else if (kind === 'date') {
+        dateIdxs.push(i);
+      } else {
+        // kind === 'text'，含樣本數 < 3 的欄位（依契約 4.0b，樣本不足一律判定為 text）
+        dimIdxs.push(i);
+      }
+    });
+
+    measureIdxs.forEach(function (i) { measureSel.appendChild(optionEl(i, table.headers[i])); });
+    dimIdxs.forEach(function (i) { dimSel.appendChild(optionEl(i, table.headers[i])); });
+
+    measureSel.disabled = measureIdxs.length === 0;
+    dimSel.disabled = dimIdxs.length === 0;
+
+    if (dateIdxs.length === 0) {
+      dateGroup.classList.add('hidden');
+      dateHint.classList.remove('hidden');
+      dateSel.disabled = true;
+      state.dateColIdx = null;
+    } else {
+      dateGroup.classList.remove('hidden');
+      dateHint.classList.add('hidden');
+      dateIdxs.forEach(function (i) { dateSel.appendChild(optionEl(i, table.headers[i])); });
+      dateSel.value = String(dateIdxs[0]);
+      dateSel.disabled = false;
+      state.dateColIdx = dateIdxs[0];
+    }
+
+    dateSel.addEventListener('change', function () {
+      state.dateColIdx = dateSel.value === '' ? null : Number(dateSel.value);
+    });
+  }
+
+  // ---------- task 3：KPI 計算（SUM/AVG/COUNT/MAX） ----------
+  // 一律用 cellAt() 取格，不得直接索引 row 的 cells 陣列（CSV_CONTRACT.md 第 3.2.1 節）。
+  // 排除規則：空值格（cellAt 回傳 ''）與非數值格（toNumber() 回傳 NaN，
+  // 這正是 inferColumnTypes() 的 mismatchLines 判準所在），兩者皆不納入計算。
+
+  function calcKpis(table, measureColIdx) {
+    var total = table.rows.length;
+    var included = 0;
+    var sum = 0;
+    var max = null;
+
+    table.rows.forEach(function (row) {
+      var cell = cellAt(row, measureColIdx);
+      var num = toNumber(cell);
+      if (Number.isNaN(num)) return; // 空值格與非數值格皆在此被排除
+      included += 1;
+      sum += num;
+      if (max === null || num > max) max = num;
+    });
+
+    var avg = included > 0 ? sum / included : 0;
+
+    return {
+      sum: sum,
+      avg: avg,
+      count: included,
+      max: max === null ? 0 : max,
+      included: included,
+      total: total
+    };
+  }
+
+  // ---------- 分組加總（task 4 / task 5a 共用） ----------
+  // 依核心 dimension 分組、對核心 measure 做 SUM 聚合；一律用 cellAt() 取格。
+  // 非數值 measure 格（含空值）比照 KPI 排除規則，不納入分組加總。
+
+  function groupSumByDimension(table, dimColIdx, measureColIdx) {
+    var groups = {};
+    var order = [];
+
+    table.rows.forEach(function (row) {
+      var dimVal = cellAt(row, dimColIdx);
+      var num = toNumber(cellAt(row, measureColIdx));
+      if (Number.isNaN(num)) return;
+      if (!Object.prototype.hasOwnProperty.call(groups, dimVal)) {
+        groups[dimVal] = { label: dimVal, sum: 0, order: order.length };
+        order.push(dimVal);
+      }
+      groups[dimVal].sum += num;
+    });
+
+    return order.map(function (k) { return groups[k]; });
+  }
+
+  // ---------- task 4：Top5 / Bottom5 ----------
+
+  function calcTopBottom(table, dimColIdx, measureColIdx) {
+    var list = groupSumByDimension(table, dimColIdx, measureColIdx);
+
+    var sortedDesc = list.slice().sort(function (a, b) {
+      return b.sum - a.sum || a.order - b.order;
+    });
+    var sortedAsc = list.slice().sort(function (a, b) {
+      return a.sum - b.sum || a.order - b.order;
+    });
+
+    return {
+      top5: sortedDesc.slice(0, 5),
+      bottom5: sortedAsc.slice(0, 5),
+      groupCount: list.length
+    };
+  }
+
+  // ---------- task 5a：分類占比 ----------
+  // 門檻依 CSV_CONTRACT.md 第 7.4b 節：類別數 ≤ 9 全畫；≥ 10 取前 8 大 + 其餘併為「其他」。
+
+  function calcCategoryShare(table, dimColIdx, measureColIdx) {
+    var list = groupSumByDimension(table, dimColIdx, measureColIdx);
+    var sorted = list.slice().sort(function (a, b) {
+      return b.sum - a.sum || a.order - b.order;
+    });
+
+    if (sorted.length <= 9) {
+      return { categories: sorted.map(function (g) { return { label: g.label, sum: g.sum, isOther: false }; }), hasOther: false };
+    }
+
+    var top8 = sorted.slice(0, 8);
+    var rest = sorted.slice(8);
+    var otherSum = rest.reduce(function (acc, g) { return acc + g.sum; }, 0);
+
+    var categories = top8.map(function (g) { return { label: g.label, sum: g.sum, isOther: false }; });
+    categories.push({ label: '其他', sum: otherSum, isOther: true });
+
+    return { categories: categories, hasOther: true };
+  }
+
+  // ---------- task 5b：日期趨勢 ----------
+  // 年月日拆解一律用 dateParts()，不自寫 regex。
+  // 【裁示 18】排除規則依「當下粒度」而定，不是一律「m 或 d 任一為 null 就排除」：
+  //   月分組（y／m）：只需 y+m，YYYY-MM（d===null）納入——放進「2026-08」這個月桶沒有捏造任何東西。
+  //   日分組（y／m／d）：需 y+m+d，YYYY-MM（d===null）排除——沒有日就沒有日分組要的粒度。
+  // 兩種粒度都要求至少 m 不為 null（僅 YYYY 缺月，任何粒度都無法納入，一律排除，不得補 0/1）。
+
+  function calcDateTrend(table, dateColIdx, measureColIdx) {
+    if (dateColIdx === null || typeof dateColIdx === 'undefined') {
+      return { noDate: true, granularity: null, series: [] };
+    }
+
+    // monthRows：至少有 y+m（月分組所需最低粒度），d 可能為 null（YYYY-MM）
+    var monthRows = [];
+    table.rows.forEach(function (row) {
+      var raw = cellAt(row, dateColIdx);
+      var parts = dateParts(raw);
+      if (parts === null) return;
+      if (parts.m === null) return; // 連月份都沒有（僅 YYYY），任何粒度都無法納入
+      var num = toNumber(cellAt(row, measureColIdx));
+      if (Number.isNaN(num)) return;
+      monthRows.push({ y: parts.y, m: parts.m, d: parts.d, value: num });
+    });
+
+    if (monthRows.length === 0) {
+      return { noDate: false, granularity: null, series: [] };
+    }
+
+    // fullDateRows：含日（y+m+d），用來判斷日期範圍以決定粒度、也是日分組時實際要用的列
+    var fullDateRows = monthRows.filter(function (r) { return r.d !== null; });
+
+    var granularity;
+    if (fullDateRows.length === 0) {
+      // 沒有任何一列含日，無法量測「範圍是否 < 31 天」，也無法做日分組，退回月分組
+      granularity = 'month';
+    } else {
+      var minEpoch = null;
+      var maxEpoch = null;
+      fullDateRows.forEach(function (r) {
+        var epoch = Date.UTC(r.y, r.m - 1, r.d);
+        if (minEpoch === null || epoch < minEpoch) minEpoch = epoch;
+        if (maxEpoch === null || epoch > maxEpoch) maxEpoch = epoch;
+      });
+      var rangeDays = (maxEpoch - minEpoch) / 86400000;
+      granularity = rangeDays < 31 ? 'day' : 'month';
+    }
+
+    // 依粒度決定納入哪些列：月分組用 monthRows（YYYY-MM 納入）；日分組用 fullDateRows（YYYY-MM 排除）
+    var rowsForGrouping = granularity === 'month' ? monthRows : fullDateRows;
+
+    var groups = {};
+    var order = [];
+    rowsForGrouping.forEach(function (r) {
+      var key, label;
+      if (granularity === 'month') {
+        key = r.y + '-' + pad2(r.m);
+        label = key;
+      } else {
+        key = r.y + '-' + pad2(r.m) + '-' + pad2(r.d);
+        label = key;
+      }
+      if (!Object.prototype.hasOwnProperty.call(groups, key)) {
+        groups[key] = { key: key, label: label, sum: 0 };
+        order.push(key);
+      }
+      groups[key].sum += r.value;
+    });
+
+    order.sort();
+
+    return {
+      noDate: false,
+      granularity: granularity,
+      series: order.map(function (k) { return groups[k]; })
+    };
+  }
+
+  // ---------- 產生報告（task 3–5 的計算結果最小化呈現；完整卡片／表格／SVG 由 task 6 接手） ----------
+
+  function clearReportShells() {
+    ['report-kpi', 'report-top5', 'report-bottom5', 'report-category', 'report-trend'].forEach(function (id) {
+      var el = document.getElementById(id);
+      el.className = 'report-placeholder';
+      el.textContent = '尚未產生報告';
+    });
+    document.getElementById('report-kpi-note').textContent = '';
+    document.getElementById('report-meta').classList.add('hidden');
+    document.getElementById('report-title-out').textContent = '';
+    document.getElementById('report-period-out').textContent = '';
+    var noteOut = document.getElementById('report-note-out');
+    noteOut.classList.add('hidden');
+    noteOut.textContent = '';
+    state.report = null;
+    document.getElementById('btn-copy').disabled = true;
+  }
+
+  // ---------- task 6：串接 UI（KPI 卡片／排名表格／圖表） ----------
+
+  function kpiCardHtml(label, value) {
+    return '<div class="kpi-card"><div class="kpi-label">' + escapeHtml(label) +
+      '</div><div class="kpi-value">' + escapeHtml(value) + '</div></div>';
+  }
+
+  function renderKpi(kpi) {
+    var el = document.getElementById('report-kpi');
+    el.className = 'kpi-grid';
+    el.innerHTML =
+      kpiCardHtml('SUM', fmtNumber(kpi.sum)) +
+      kpiCardHtml('AVG', fmtNumber(kpi.avg)) +
+      kpiCardHtml('COUNT', fmtNumber(kpi.count)) +
+      kpiCardHtml('MAX', fmtNumber(kpi.max));
+    document.getElementById('report-kpi-note').textContent =
+      '納入計算筆數：' + kpi.included + ' / ' + kpi.total + ' 筆';
+  }
+
+  function renderGroupList(elId, list) {
+    var el = document.getElementById(elId);
+    el.className = '';
+    if (list.length === 0) {
+      el.innerHTML = '<div class="report-placeholder">（無資料）</div>';
+      return;
+    }
+    var rows = list.map(function (g, i) {
+      return '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(String(g.label)) +
+        '</td><td class="num">' + escapeHtml(fmtNumber(g.sum)) + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<table class="rank-table"><thead><tr><th>#</th><th>分類</th><th>加總</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>';
+  }
+
+  // 分類占比圖：直接把分組加總（未預先合併）交給 renderPieChart()，
+  // 由該模組依 CSV_CONTRACT.md 7.4b 的門檻自行判斷是否合併「其他」並固定灰階
+  // （不自寫 SVG，也不重複實作合併規則——calcCategoryShare() 用的是同一套 groupSumByDimension()）。
+  function renderCategory(dimGroups) {
+    var el = document.getElementById('report-category');
+    el.className = '';
+    var series = dimGroups.map(function (g) { return { label: g.label, value: g.sum }; });
+    el.innerHTML = renderPieChart(series, { maxPieSlices: 8, width: 640, height: 200 });
+  }
+
+  function renderTrend(result) {
+    var el = document.getElementById('report-trend');
+    el.className = '';
+    if (result.noDate) {
+      el.innerHTML = '<div class="chart-placeholder">未偵測到日期欄位，此報告不含時間趨勢</div>';
+      return;
+    }
+    if (result.series.length === 0) {
+      el.innerHTML = '<div class="chart-placeholder">（無可用日期資料）</div>';
+      return;
+    }
+    var granLabel = result.granularity === 'day' ? '（依日分組）' : '（依月分組）';
+    var series = result.series.map(function (s) { return { label: s.label, value: s.sum }; });
+    el.innerHTML = '<div class="chart-note">' + escapeHtml(granLabel) + '</div>' +
+      renderLineChart(series, { width: 640, height: 170 });
+  }
+
+  function renderReportMeta(title, period, note) {
+    var metaEl = document.getElementById('report-meta');
+    var titleEl = document.getElementById('report-title-out');
+    var periodEl = document.getElementById('report-period-out');
+    var noteEl = document.getElementById('report-note-out');
+
+    if (title || period) {
+      metaEl.classList.remove('hidden');
+    } else {
+      metaEl.classList.add('hidden');
+    }
+    titleEl.innerHTML = escapeHtml(title);
+    periodEl.innerHTML = period ? '期間：' + escapeHtml(period) : '';
+
+    if (note) {
+      noteEl.classList.remove('hidden');
+      noteEl.innerHTML = '註記：' + escapeHtml(note);
+    } else {
+      noteEl.classList.add('hidden');
+      noteEl.innerHTML = '';
+    }
+  }
+
+  function generateReport() {
+    if (!state.table) return;
+    var measureIdx = Number(document.getElementById('measure-select').value);
+    var dimIdx = Number(document.getElementById('dimension-select').value);
+
+    var title = document.getElementById('title-input').value;
+    var period = document.getElementById('period-input').value;
+    var note = document.getElementById('note-input').value;
+
+    var kpi = calcKpis(state.table, measureIdx);
+    var topBottom = calcTopBottom(state.table, dimIdx, measureIdx);
+    var dimGroups = groupSumByDimension(state.table, dimIdx, measureIdx);
+    var category = calcCategoryShare(state.table, dimIdx, measureIdx);
+    var trend = calcDateTrend(state.table, state.dateColIdx, measureIdx);
+
+    state.report = { title: title, period: period, note: note, kpi: kpi, topBottom: topBottom, category: category, trend: trend };
+
+    renderReportMeta(title, period, note);
+    renderKpi(kpi);
+    renderGroupList('report-top5', topBottom.top5);
+    renderGroupList('report-bottom5', topBottom.bottom5);
+    renderCategory(dimGroups);
+    renderTrend(trend);
+
+    document.getElementById('btn-copy').disabled = false;
+  }
+
+  // ---------- task 6：複製報告摘要 ----------
+
+  function buildReportSummaryText() {
+    var r = state.report;
+    var lines = [];
+    lines.push('標題：' + r.title);
+    lines.push('期間：' + r.period);
+    lines.push('SUM：' + fmtNumber(r.kpi.sum));
+    lines.push('AVG：' + fmtNumber(r.kpi.avg));
+    lines.push('COUNT：' + fmtNumber(r.kpi.count));
+    lines.push('MAX：' + fmtNumber(r.kpi.max));
+    lines.push('Top 5：');
+    r.topBottom.top5.forEach(function (g) {
+      lines.push('  ' + g.label + '：' + fmtNumber(g.sum));
+    });
+    lines.push('Bottom 5：');
+    r.topBottom.bottom5.forEach(function (g) {
+      lines.push('  ' + g.label + '：' + fmtNumber(g.sum));
+    });
+    return lines.join('\n');
+  }
+
+  document.getElementById('btn-copy').addEventListener('click', function () {
+    if (!state.report) {
+      showToast('請先產生報告');
+      return;
+    }
+    var text = buildReportSummaryText();
+    copyToClipboard(text).then(function (ok) {
+      if (ok) {
+        showToast('已複製報告摘要');
+      } else {
+        showToast('複製失敗，請手動複製');
+      }
+    });
+  });
+
+  // ---------- 讀檔 ----------
+
+  function updateFileMeta(decoded) {
+    var el = document.getElementById('file-meta');
+    if (!decoded) { el.textContent = ''; return; }
+    el.innerHTML = '<span>編碼：' + escapeHtml(decoded.encoding) + '</span>' +
+      '<span>信心度：' + escapeHtml(decoded.confidence) + '</span>';
+  }
+
+  function renderEncodingFallback(decoded) {
+    var el = document.getElementById('encoding-fallback');
+    if (decoded.confidence === 'fallback') {
+      el.classList.remove('hidden');
+      el.innerHTML = '偵測為 Big5，若顯示為亂碼請手動切換編碼：' +
+        '<select id="encoding-select" style="width:auto; display:inline-block; margin-left:8px;">' +
+        '<option value="big5">Big5</option><option value="utf-8">UTF-8</option></select>';
+      var sel = el.querySelector('#encoding-select');
+      sel.value = 'big5';
+      sel.addEventListener('change', function (e) {
+        loadTableFromArrayBuffer(state.arrayBuffer, state.fileName, e.target.value);
+      });
+    } else {
+      el.classList.add('hidden');
+      el.innerHTML = '';
+    }
+  }
+
+  function loadTableFromArrayBuffer(arrayBuffer, fileName, forcedEncoding) {
+    state.arrayBuffer = arrayBuffer;
+    state.fileName = fileName;
+
+    var decoded;
+    if (forcedEncoding) {
+      decoded = {
+        text: new TextDecoder(forcedEncoding).decode(arrayBuffer),
+        encoding: forcedEncoding,
+        hadBom: false,
+        confidence: 'manual'
+      };
+    } else {
+      decoded = decodeCsvBytes(arrayBuffer);
+    }
+
+    var table = parseCsv(decoded.text, { encoding: decoded.encoding, hadBom: decoded.hadBom });
+    state.table = table;
+    state.columnTypes = inferColumnTypes(table);
+
+    updateFileMeta(decoded);
+    renderEncodingFallback(decoded);
+    populateFieldSelects(table, state.columnTypes);
+    clearReportShells();
+
+    document.getElementById('btn-generate').disabled = false;
+  }
+
+  function onData(arrayBuffer, fileName) {
+    // 不在此清空 #size-msg：onGate() 已先於此執行並視 level 設好訊息
+    // （warn 要保留顯示；ok 由 onGate 自己清空），這裡清空會把 warn 訊息洗掉。
+    loadTableFromArrayBuffer(arrayBuffer, fileName, null);
+  }
+
+  function onError(message) {
+    document.getElementById('size-msg').innerHTML = '<div class="msg error">' + escapeHtml(message) + '</div>';
+    document.getElementById('btn-generate').disabled = true;
+    state.table = null;
+  }
+
+  function onGate(file) {
+    var result = checkCsvFileSize(file.size);
+    if (result.level === 'warn') {
+      document.getElementById('size-msg').innerHTML = '<div class="msg warn">' + escapeHtml(result.message) + '</div>';
+    } else if (result.level === 'ok') {
+      document.getElementById('size-msg').innerHTML = '';
+    }
+    return result;
+  }
+
+  var dropOpts = { mode: 'bytes', accept: ['.csv'], gate: onGate, onError: onError };
+
+  var dropzoneEl = document.getElementById('dropzone');
+  var fileInputEl = document.getElementById('file-input');
+  setupDropZone(dropzoneEl, onData, dropOpts);
+  setupFilePicker(fileInputEl, onData, dropOpts);
+
+  document.getElementById('btn-pick-file').addEventListener('click', function () {
+    fileInputEl.click();
+  });
+
+  document.getElementById('btn-generate').addEventListener('click', generateReport);
+
+  // ---------- task 8：匯出單一 HTML（把已計算完成的數值與 SVG 寫死進匯出檔，不內嵌原始 CSV 全表） ----------
+
+  var EXPORT_CSS =
+    'body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC",sans-serif;' +
+    'color:#1f2328;background:#f7f7f8;line-height:1.6;}' +
+    '.container{max-width:960px;margin:0 auto;padding:24px 16px;}' +
+    '.card{background:#ffffff;border:1px solid #d9d9de;border-radius:8px;padding:16px;margin-top:16px;}' +
+    '.msg{font-size:.85rem;border-radius:8px;padding:8px 12px;background:#fdf3e0;color:#8a5a00;border:1px solid #e8c99a;}' +
+    '.file-hint{font-size:.8rem;color:#6b7280;margin-top:6px;}' +
+    '.report-meta h2{margin:0 0 4px;font-size:1.2rem;}' +
+    '.report-note{margin-top:12px;font-size:.85rem;color:#6b7280;white-space:pre-wrap;}' +
+    '.report-section{margin-top:16px;}' +
+    '.report-section h3{margin:0 0 8px;font-size:1rem;}' +
+    '.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}' +
+    '.kpi-card{background:#f7f7f8;border:1px solid #d9d9de;border-radius:8px;padding:10px 12px;text-align:center;}' +
+    '.kpi-card .kpi-label{font-size:.75rem;color:#6b7280;}' +
+    '.kpi-card .kpi-value{font-size:1.15rem;font-weight:600;margin-top:4px;}' +
+    '.rank-table{width:100%;border-collapse:collapse;font-size:.85rem;}' +
+    '.rank-table th,.rank-table td{border-bottom:1px solid #d9d9de;padding:6px 8px;text-align:left;}' +
+    '.rank-table td.num{text-align:right;}' +
+    '.chart-placeholder,.chart-empty{border:1px dashed #d9d9de;border-radius:8px;padding:24px;text-align:center;color:#6b7280;font-size:.9rem;}' +
+    '.chart-note{font-size:.8rem;color:#6b7280;margin-top:6px;}' +
+    '.chart-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:.85rem;}' +
+    '.chart-legend-item{display:flex;align-items:center;gap:6px;}' +
+    '.chart-legend-swatch{display:inline-block;width:10px;height:10px;border-radius:2px;}' +
+    '.rank-tables{display:flex;gap:16px;flex-wrap:wrap;}' +
+    '.rank-tables>.report-section{flex:1;min-width:220px;}' +
+    '@page{size:A4;margin:2cm;}' +
+    '#section-kpi,#section-top5,#section-bottom5,#section-category,#section-trend{break-inside:avoid;}' +
+    '#report-container{print-color-adjust:exact;-webkit-print-color-adjust:exact;}' +
+    '@media print{.container{max-width:none;padding:0;}.report-section{margin-top:8px;}' +
+    '.report-section h3{margin:0 0 4px;font-size:.9rem;}.kpi-grid{gap:6px;}.kpi-card{padding:6px 8px;}}';
+
+  // 只用畫面上已經算好、已經 escapeHtml 過的 innerHTML 組出靜態頁面，不重跑運算、不內嵌原始 CSV 全表
+  function buildReportHtml() {
+    var metaHtml = document.getElementById('report-meta').outerHTML;
+    var kpiHtml = document.getElementById('report-kpi').outerHTML;
+    var kpiNoteHtml = document.getElementById('report-kpi-note').outerHTML;
+    var top5Html = document.getElementById('report-top5').outerHTML;
+    var bottom5Html = document.getElementById('report-bottom5').outerHTML;
+    var categoryHtml = document.getElementById('report-category').outerHTML;
+    var trendHtml = document.getElementById('report-trend').outerHTML;
+    var noteOutHtml = document.getElementById('report-note-out').outerHTML;
+    var generatedAt = new Date().toLocaleString('zh-TW');
+
+    return '<!DOCTYPE html>\n<html lang="zh-Hant"><head><meta charset="UTF-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<title>CSV 一頁式管理報告</title><style>' + EXPORT_CSS + '</style></head><body>' +
+      '<div class="container" id="report-container">' +
+      '<div class="msg">本檔含已計算完成的報告內容，請確認分享對象</div>' +
+      '<p class="file-hint">產生時間：' + escapeHtml(generatedAt) + '</p>' +
+      metaHtml +
+      '<div class="report-section" id="section-kpi"><h3>KPI</h3>' + kpiHtml + kpiNoteHtml + '</div>' +
+      '<div class="rank-tables">' +
+      '<div class="report-section" id="section-top5"><h3>Top 5</h3>' + top5Html + '</div>' +
+      '<div class="report-section" id="section-bottom5"><h3>Bottom 5</h3>' + bottom5Html + '</div>' +
+      '</div>' +
+      '<div class="report-section" id="section-category"><h3>分類占比</h3>' + categoryHtml + '</div>' +
+      '<div class="report-section" id="section-trend"><h3>日期趨勢</h3>' + trendHtml + '</div>' +
+      noteOutHtml +
+      '</div></body></html>';
+  }
+
+  document.getElementById('btn-export-html').addEventListener('click', function () {
+    if (!state.report) {
+      showToast('請先產生報告');
+      return;
+    }
+    var html = buildReportHtml();
+    downloadFile('csv-one-page-report.html', html, 'text/html;charset=utf-8');
+    showToast('已下載報告 HTML');
+  });
+
+  // ---------- task 9：buildCleanHtmlCopy()（CONTRACT.md 第 6 節硬性要求，不含任何使用者資料） ----------
+  // 與 task 8 的匯出邏輯各自獨立實作，不共用「複製當下頁面再清空」的路徑。
+
+  function buildCleanHtmlCopy() {
+    var clone = document.documentElement.cloneNode(true);
+
+    // 檔案輸入與檔名顯示
+    var fileInputClone = clone.querySelector('#file-input');
+    if (fileInputClone) { fileInputClone.value = ''; fileInputClone.removeAttribute('value'); }
+    var sizeMsgClone = clone.querySelector('#size-msg');
+    if (sizeMsgClone) sizeMsgClone.innerHTML = '';
+
+    // 檔案資訊列
+    var fileMetaClone = clone.querySelector('#file-meta');
+    if (fileMetaClone) fileMetaClone.textContent = '';
+    var encFallbackClone = clone.querySelector('#encoding-fallback');
+    if (encFallbackClone) { encFallbackClone.innerHTML = ''; encFallbackClone.classList.add('hidden'); }
+
+    // 欄位下拉裡從 CSV headers 動態產生的所有 <option>（欄名本身就是使用者資料）
+    var measureClone = clone.querySelector('#measure-select');
+    if (measureClone) { measureClone.innerHTML = ''; measureClone.disabled = true; }
+    var dimClone = clone.querySelector('#dimension-select');
+    if (dimClone) { dimClone.innerHTML = ''; dimClone.disabled = true; }
+    var dateSelClone = clone.querySelector('#date-select');
+    if (dateSelClone) { dateSelClone.innerHTML = ''; dateSelClone.disabled = true; }
+    var dateGroupClone = clone.querySelector('#date-select-group');
+    if (dateGroupClone) dateGroupClone.classList.add('hidden');
+    var dateHintClone = clone.querySelector('#date-hint');
+    if (dateHintClone) dateHintClone.classList.add('hidden');
+
+    // 標題／期間／註記輸入框
+    var titleInClone = clone.querySelector('#title-input');
+    if (titleInClone) { titleInClone.value = ''; titleInClone.removeAttribute('value'); }
+    var periodInClone = clone.querySelector('#period-input');
+    if (periodInClone) { periodInClone.value = ''; periodInClone.removeAttribute('value'); }
+    var noteInClone = clone.querySelector('#note-input');
+    if (noteInClone) { noteInClone.value = ''; noteInClone.textContent = ''; }
+
+    // 報告預覽區：標題／期間／註記輸出與已算出的 KPI／排名／圖表結果，全部還原成初始空殼
+    var metaClone = clone.querySelector('#report-meta');
+    if (metaClone) metaClone.classList.add('hidden');
+    var titleOutClone = clone.querySelector('#report-title-out');
+    if (titleOutClone) titleOutClone.innerHTML = '';
+    var periodOutClone = clone.querySelector('#report-period-out');
+    if (periodOutClone) periodOutClone.innerHTML = '';
+    var noteOutClone = clone.querySelector('#report-note-out');
+    if (noteOutClone) { noteOutClone.innerHTML = ''; noteOutClone.classList.add('hidden'); }
+
+    ['report-kpi', 'report-top5', 'report-bottom5', 'report-category', 'report-trend'].forEach(function (id) {
+      var el = clone.querySelector('#' + id);
+      if (el) {
+        el.className = 'report-placeholder';
+        el.textContent = '尚未產生報告';
+      }
+    });
+    var kpiNoteClone = clone.querySelector('#report-kpi-note');
+    if (kpiNoteClone) kpiNoteClone.textContent = '';
+
+    // 「產生報告」「複製報告摘要」按鈕還原為停用（要重新上傳資料才能用）
+    var genBtnClone = clone.querySelector('#btn-generate');
+    if (genBtnClone) genBtnClone.setAttribute('disabled', 'disabled');
+    var copyBtnClone = clone.querySelector('#btn-copy');
+    if (copyBtnClone) copyBtnClone.setAttribute('disabled', 'disabled');
+
+    // showToast() 注入的 #__shared_toast（可能含使用者內容）
+    var toastClone = clone.querySelector('#__shared_toast');
+    if (toastClone && toastClone.parentNode) toastClone.parentNode.removeChild(toastClone);
+
+    // .nav-back 與所有指向本站的外連
+    Array.prototype.forEach.call(clone.querySelectorAll('.nav-back'), function (a) {
+      if (a.parentNode) a.parentNode.removeChild(a);
+    });
+
+    return '<!DOCTYPE html>\n' + clone.outerHTML;
+  }
+
+  document.getElementById('btn-download-offline').addEventListener('click', function () {
+    var html = buildCleanHtmlCopy();
+    downloadFile('csv-one-page-report-offline.html', html, 'text/html;charset=utf-8');
+    showToast('已下載本工具離線版');
+  });
+
+}());
+</script>
+</body>
+</html>

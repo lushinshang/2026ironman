@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF 密碼管理器 — Day23</title>
+  <style>
+/* shared/base.css — 共用樣式基底 */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 { line-height: 1.3; }
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 1rem;
+}
+
+button, .btn {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+button:hover, .btn:hover { background: var(--color-bg); }
+
+button.primary, .btn.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover, .btn.primary:hover { background: var(--color-primary-hover); }
+
+button:disabled, .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #eff6ff;
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover { text-decoration: underline; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show { opacity: 1; }
+
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+.mode-selector {
+  display: flex;
+  gap: 12px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+.mode-card {
+  flex: 1;
+  min-width: 200px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 12px;
+  cursor: pointer;
+  background: #ffffff;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.mode-card.active {
+  border-color: var(--color-primary);
+  background: #eff6ff;
+}
+.mode-card h4 {
+  margin: 0 0 4px 0;
+  font-size: 1rem;
+}
+.mode-card p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.password-input-wrap {
+  position: relative;
+  margin-bottom: 10px;
+  max-width: 400px;
+}
+.password-input {
+  width: 100%;
+  padding: 8px 36px 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+.btn-toggle-pwd {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  font-size: 1rem;
+}
+
+.batch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 1rem;
+}
+.batch-item {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+.item-status-tag {
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.tag-pending { background: #f1f5f9; color: #64748b; }
+.tag-success { background: #dcfce7; color: #166534; }
+.tag-error { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav-back">
+      <a href="../index.html">← 回首頁</a>
+    </nav>
+
+    <header>
+      <h1>PDF 密碼管理器</h1>
+      <p class="subtitle" style="color: var(--color-text-muted);">
+        批次移除密碼、設定開啟密碼或更換密碼。純本機端執行，密碼不寫入任何本機儲存空間，隱私零風險。
+      </p>
+    </header>
+
+    <div class="dropzone" id="drop-zone">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔐</div>
+      <div style="margin-bottom: 0.75rem;">拖放一或多份 PDF 檔案至此，或點擊選取</div>
+      <input type="file" id="file-input" accept="application/pdf,.pdf" multiple style="display: none;">
+      <button type="button" class="btn secondary" id="btn-select-file">選擇 PDF 檔案（可多選）</button>
+    </div>
+
+    <div id="editor-section" style="display: none;">
+      <div class="card">
+        <h3 style="margin: 0 0 8px 0; font-size: 1.1rem;">1. 選擇處理模式</h3>
+        <div class="mode-selector">
+          <div class="mode-card active" data-mode="unlock" id="mode-unlock">
+            <h4>🔓 解鎖 / 移除密碼</h4>
+            <p>輸入目前密碼，轉換為無密碼保護的公開 PDF。</p>
+          </div>
+          <div class="mode-card" data-mode="encrypt" id="mode-encrypt">
+            <h4>🔒 設定新密碼</h4>
+            <p>為未加密的 PDF 加上開啟密碼保護。</p>
+          </div>
+          <div class="mode-card" data-mode="change" id="mode-change">
+            <h4>🔄 更換密碼</h4>
+            <p>輸入舊密碼並設定全新密碼。</p>
+          </div>
+        </div>
+
+        <h3 style="margin: 1rem 0 8px 0; font-size: 1.1rem;">2. 密碼設定</h3>
+        <div id="pwd-fields-container">
+          <div id="field-old-pwd" style="display: block;">
+            <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px;" id="lbl-pwd-1">目前密碼：</label>
+            <div class="password-input-wrap">
+              <input type="password" id="input-pwd-1" class="password-input" placeholder="請輸入目前密碼...">
+              <button type="button" class="btn-toggle-pwd" data-target="input-pwd-1" title="顯示/隱藏密碼">👁️</button>
+            </div>
+          </div>
+
+          <div id="field-new-pwd" style="display: none;">
+            <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px;">新密碼：</label>
+            <div class="password-input-wrap">
+              <input type="password" id="input-pwd-2" class="password-input" placeholder="請設定新密碼...">
+              <button type="button" class="btn-toggle-pwd" data-target="input-pwd-2" title="顯示/隱藏密碼">👁️</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-group" style="margin-top: 1rem; border-top: 1px solid #f1f5f9; padding-top: 0.75rem;">
+          <button type="button" class="btn primary" id="btn-start-process">⚡ 開始批次處理</button>
+          <button type="button" class="btn secondary" id="btn-download-zip" disabled>📦 打包下載全部成功項目 ZIP</button>
+          <button type="button" class="btn secondary btn-sm" id="btn-copy-summary">📋 複製處理摘要</button>
+          <button type="button" class="btn secondary btn-sm" id="btn-reset">重新上傳</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <h3 style="margin: 0; font-size: 1.05rem;">批次處理列表</h3>
+          <span style="font-size: 0.85rem; color: #64748b;" id="batch-stats-text">共 0 份檔案</span>
+        </div>
+
+        <div class="batch-list" id="batch-list"></div>
+      </div>
+    </div>
+
+    <div class="btn-group" style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+      <button type="button" class="btn secondary" id="btn-download-offline">💾 下載本工具離線版</button>
+    </div>
+
+    <!--{{LICENSES}}-->
+  </div>
+
+  <!--{{ASSET:cantoo_pdf_lib}}-->
+  <!--{{ASSET:fflate}}-->
+  <!--{{SHARED:util-escape}}-->
+  <!--{{SHARED:ui-toast}}-->
+  <!--{{SHARED:ui-debounce}}-->
+  <!--{{SHARED:io-download}}-->
+  <!--{{SHARED:io-clipboard}}-->
+  <!--{{SHARED:io-dropzone}}-->
+  <!--{{SHARED:io-zip}}-->
+  <!--{{SHARED:pdf-file-size}}-->
+  <!--{{SHARED:pdf-build}}-->
+
+  <script>
+  (function () {
+    var state = {
+      mode: 'unlock', // 'unlock' | 'encrypt' | 'change'
+      files: [],      // Array<{ name: string, size: number, bytes: Uint8Array, status: 'pending'|'success'|'error', errorMsg?: string, outputBytes?: Uint8Array, outName?: string }>
+      isProcessing: false
+    };
+
+    var dropZone = document.getElementById('drop-zone');
+    var fileInput = document.getElementById('file-input');
+    var btnSelectFile = document.getElementById('btn-select-file');
+    var editorSection = document.getElementById('editor-section');
+
+    var modeUnlock = document.getElementById('mode-unlock');
+    var modeEncrypt = document.getElementById('mode-encrypt');
+    var modeChange = document.getElementById('mode-change');
+
+    var fieldOldPwd = document.getElementById('field-old-pwd');
+    var fieldNewPwd = document.getElementById('field-new-pwd');
+    var lblPwd1 = document.getElementById('lbl-pwd-1');
+    var inputPwd1 = document.getElementById('input-pwd-1');
+    var inputPwd2 = document.getElementById('input-pwd-2');
+
+    var btnStartProcess = document.getElementById('btn-start-process');
+    var btnDownloadZip = document.getElementById('btn-download-zip');
+    var btnCopySummary = document.getElementById('btn-copy-summary');
+    var btnReset = document.getElementById('btn-reset');
+    var btnDownloadOffline = document.getElementById('btn-download-offline');
+
+    var batchStatsText = document.getElementById('batch-stats-text');
+    var batchList = document.getElementById('batch-list');
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes <= 0) return '0 B';
+      var k = 1024;
+      var sizes = ['B', 'KB', 'MB', 'GB'];
+      var i = Math.floor(Math.log(bytes) / Math.log(k));
+      return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+    }
+
+    function getBaseName(fileName) {
+      var dot = fileName.lastIndexOf('.');
+      return (dot !== -1) ? fileName.substring(0, dot) : fileName;
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      document.querySelectorAll('.mode-card').forEach(function (c) {
+        c.classList.remove('active');
+      });
+
+      if (mode === 'unlock') {
+        if (modeUnlock) modeUnlock.classList.add('active');
+        if (fieldOldPwd) fieldOldPwd.style.display = 'block';
+        if (lblPwd1) lblPwd1.textContent = '目前密碼：';
+        if (fieldNewPwd) fieldNewPwd.style.display = 'none';
+      } else if (mode === 'encrypt') {
+        if (modeEncrypt) modeEncrypt.classList.add('active');
+        if (fieldOldPwd) fieldOldPwd.style.display = 'block';
+        if (lblPwd1) lblPwd1.textContent = '新密碼：';
+        if (fieldNewPwd) fieldNewPwd.style.display = 'none';
+      } else if (mode === 'change') {
+        if (modeChange) modeChange.classList.add('active');
+        if (fieldOldPwd) fieldOldPwd.style.display = 'block';
+        if (lblPwd1) lblPwd1.textContent = '舊密碼：';
+        if (fieldNewPwd) fieldNewPwd.style.display = 'block';
+      }
+    }
+
+    if (modeUnlock) modeUnlock.addEventListener('click', function () { setMode('unlock'); });
+    if (modeEncrypt) modeEncrypt.addEventListener('click', function () { setMode('encrypt'); });
+    if (modeChange) modeChange.addEventListener('click', function () { setMode('change'); });
+
+    // Password visibility toggles
+    document.querySelectorAll('.btn-toggle-pwd').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var targetId = btn.dataset.target;
+        var inp = document.getElementById(targetId);
+        if (inp) {
+          if (inp.type === 'password') {
+            inp.type = 'text';
+            btn.textContent = '🙈';
+          } else {
+            inp.type = 'password';
+            btn.textContent = '👁️';
+          }
+        }
+      });
+    });
+
+    function updateBatchStats() {
+      var total = state.files.length;
+      var successCount = state.files.filter(function (f) { return f.status === 'success'; }).length;
+      var errorCount = state.files.filter(function (f) { return f.status === 'error'; }).length;
+
+      if (batchStatsText) {
+        batchStatsText.innerHTML = '共 <strong>' + total + '</strong> 份檔案' +
+                                   (successCount > 0 ? '｜<span style="color: #16a34a;">' + successCount + ' 成功</span>' : '') +
+                                   (errorCount > 0 ? '｜<span style="color: #dc2626;">' + errorCount + ' 失敗</span>' : '');
+      }
+
+      if (btnDownloadZip) {
+        btnDownloadZip.disabled = (successCount === 0);
+      }
+    }
+
+    function renderBatchList() {
+      if (!batchList) return;
+      batchList.innerHTML = '';
+
+      state.files.forEach(function (f, idx) {
+        var item = document.createElement('div');
+        item.className = 'batch-item';
+        item.id = 'batch-item-' + idx;
+
+        var info = document.createElement('div');
+        info.style.flex = '1';
+        info.innerHTML = '<div><strong>' + escapeHtml(f.name) + '</strong> <small style="color: #64748b;">(' + formatBytes(f.size) + ')</small></div>' +
+                         (f.errorMsg ? '<div style="color: #dc2626; font-size: 0.8rem; margin-top: 2px;">' + escapeHtml(f.errorMsg) + '</div>' : '');
+
+        var actions = document.createElement('div');
+        actions.style.display = 'flex';
+        actions.style.alignItems = 'center';
+        actions.style.gap = '8px';
+
+        var statusTag = document.createElement('span');
+        statusTag.className = 'item-status-tag tag-' + f.status;
+        statusTag.textContent = f.status === 'success' ? '✅ 成功' : (f.status === 'error' ? '❌ 失敗' : '⏳ 待處理');
+        actions.appendChild(statusTag);
+
+        if (f.status === 'success' && f.outputBytes) {
+          var btnDl = document.createElement('button');
+          btnDl.type = 'button';
+          btnDl.className = 'btn btn-sm secondary';
+          btnDl.textContent = '⬇️ 下載';
+          btnDl.addEventListener('click', function () {
+            var blob = new Blob([f.outputBytes], { type: 'application/pdf' });
+            downloadFile(f.outName || (getBaseName(f.name) + '_processed.pdf'), blob, 'application/pdf');
+            showToast('已下載：' + f.outName);
+          });
+          actions.appendChild(btnDl);
+        }
+
+        item.appendChild(info);
+        item.appendChild(actions);
+        batchList.appendChild(item);
+      });
+
+      updateBatchStats();
+    }
+
+    function processBatchFiles(fileList) {
+      var files = Array.prototype.slice.call(fileList);
+      if (files.length === 0) return;
+
+      var totalBytes = files.reduce(function (sum, f) { return sum + f.size; }, 0);
+      var batchGate = checkPdfBatchSize(totalBytes, files.length);
+      if (!batchGate.ok) {
+        showToast(batchGate.message, 3500);
+        return;
+      }
+
+      showToast('正在讀取 ' + files.length + ' 份檔案...');
+
+      var readPromises = files.map(function (file) {
+        var singleGate = checkPdfFileSize(file.size);
+        if (!singleGate.ok) {
+          showToast('檔案「' + file.name + '」' + singleGate.message);
+          return Promise.resolve();
+        }
+
+        return file.arrayBuffer().then(function (ab) {
+          state.files.push({
+            name: file.name,
+            size: file.size,
+            bytes: new Uint8Array(ab),
+            status: 'pending'
+          });
+        });
+      });
+
+      Promise.all(readPromises).then(function () {
+        if (state.files.length > 0) {
+          if (dropZone) dropZone.style.display = 'none';
+          if (editorSection) editorSection.style.display = 'block';
+          renderBatchList();
+          showToast('已加入 ' + state.files.length + ' 份檔案');
+        }
+      });
+    }
+
+    if (btnSelectFile && fileInput) {
+      btnSelectFile.addEventListener('click', function () {
+        fileInput.click();
+      });
+      fileInput.addEventListener('change', function () {
+        if (fileInput.files && fileInput.files.length > 0) {
+          processBatchFiles(fileInput.files);
+          fileInput.value = '';
+        }
+      });
+    }
+
+    if (dropZone) {
+      setupDropZone(dropZone, function () {}, {
+        accept: ['.pdf', 'application/pdf'],
+        multiple: true,
+        gate: function (file) { return checkPdfFileSize(file.size); },
+        onError: function (msg) { showToast(msg); }
+      });
+      dropZone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          processBatchFiles(e.dataTransfer.files);
+        }
+      });
+    }
+
+    function runBatchExecution() {
+      var pwd1 = (inputPwd1.value || '').trim();
+      var pwd2 = (inputPwd2.value || '').trim();
+
+      if (state.mode === 'unlock' && !pwd1) {
+        showToast('請輸入要解鎖的目前密碼');
+        return;
+      }
+      if (state.mode === 'encrypt' && !pwd1) {
+        showToast('請輸入要設定的新密碼');
+        return;
+      }
+      if (state.mode === 'change') {
+        if (!pwd1) { showToast('請輸入舊密碼'); return; }
+        if (!pwd2) { showToast('請輸入新密碼'); return; }
+      }
+
+      state.isProcessing = true;
+      btnStartProcess.disabled = true;
+      showToast('開始執行批次處理...');
+
+      var sequence = Promise.resolve();
+
+      state.files.forEach(function (f) {
+        sequence = sequence.then(function () {
+          if (state.mode === 'unlock') {
+            // First test if already plain
+            return PDFLib.PDFDocument.load(f.bytes).then(function (plainDoc) {
+              // File is NOT encrypted
+              f.status = 'error';
+              f.errorMsg = '此檔案為未加密檔案，無需解鎖';
+            }).catch(function (loadErr) {
+              // File is encrypted, attempt decryption
+              return decryptPdf(f.bytes, pwd1).then(function (doc) {
+                return doc.save().then(function (outBytes) {
+                  f.status = 'success';
+                  f.errorMsg = null;
+                  f.outputBytes = outBytes;
+                  f.outName = getBaseName(f.name) + '_unlocked.pdf';
+                });
+              }).catch(function (err) {
+                f.status = 'error';
+                f.errorMsg = err.message || '解密失敗（密碼錯誤）';
+              });
+            });
+          } else if (state.mode === 'encrypt') {
+            return PDFLib.PDFDocument.load(f.bytes).then(function (doc) {
+              encryptPdf(doc, { userPassword: pwd1 });
+              return doc.save().then(function (outBytes) {
+                f.status = 'success';
+                f.errorMsg = null;
+                f.outputBytes = outBytes;
+                f.outName = getBaseName(f.name) + '_encrypted.pdf';
+              });
+            }).catch(function (err) {
+              f.status = 'error';
+              f.errorMsg = (err && err.message && (err.message.includes('encrypted') || err.message.includes('Password'))) ?
+                '此檔案已加密，請改用「解鎖」或「更換密碼」' :
+                '加密失敗：' + (err.message || '無效檔案');
+            });
+          } else if (state.mode === 'change') {
+            return decryptPdf(f.bytes, pwd1).then(function (doc) {
+              encryptPdf(doc, { userPassword: pwd2 });
+              return doc.save().then(function (outBytes) {
+                f.status = 'success';
+                f.errorMsg = null;
+                f.outputBytes = outBytes;
+                f.outName = getBaseName(f.name) + '_reencrypted.pdf';
+              });
+            }).catch(function (err) {
+              f.status = 'error';
+              f.errorMsg = '舊密碼錯誤或解密失敗：' + (err.message || '密碼錯誤');
+            });
+          }
+        }).then(function () {
+          renderBatchList();
+        });
+      });
+
+      sequence.then(function () {
+        state.isProcessing = false;
+        btnStartProcess.disabled = false;
+        var succ = state.files.filter(function (f) { return f.status === 'success'; }).length;
+        var fail = state.files.filter(function (f) { return f.status === 'error'; }).length;
+        showToast('處理完成！共 ' + succ + ' 份成功，' + fail + ' 份失敗。');
+      });
+    }
+
+    if (btnStartProcess) {
+      btnStartProcess.addEventListener('click', runBatchExecution);
+    }
+
+    if (btnDownloadZip) {
+      btnDownloadZip.addEventListener('click', function () {
+        var succFiles = state.files.filter(function (f) { return f.status === 'success' && f.outputBytes; });
+        if (succFiles.length === 0) {
+          showToast('目前無可下載的成功項目');
+          return;
+        }
+
+        showToast('正在封裝 ZIP 壓縮檔...');
+        var zipEntries = succFiles.map(function (f) {
+          return {
+            name: f.outName || (getBaseName(f.name) + '_processed.pdf'),
+            bytes: f.outputBytes
+          };
+        });
+
+        try {
+          var zipBlob = createZipBlob(zipEntries);
+          downloadFile('pdf_password_processed.zip', zipBlob, 'application/zip');
+          showToast('已下載 ZIP 壓縮包！');
+        } catch (err) {
+          showToast('ZIP 打包失敗：' + err.message);
+        }
+      });
+    }
+
+    if (btnCopySummary) {
+      btnCopySummary.addEventListener('click', function () {
+        var succ = state.files.filter(function (f) { return f.status === 'success'; }).length;
+        var fail = state.files.filter(function (f) { return f.status === 'error'; }).length;
+        var modeName = state.mode === 'unlock' ? '解鎖/移除密碼' : (state.mode === 'encrypt' ? '設定新密碼' : '更換密碼');
+        var text = '【PDF 密碼管理器處理摘要】\n' +
+                   '處理模式：' + modeName + '\n' +
+                   '總處理檔案數：' + state.files.length + ' 份\n' +
+                   '成功：' + succ + ' 份\n' +
+                   '失敗：' + fail + ' 份\n';
+        copyToClipboard(text).then(function () {
+          showToast('已複製摘要至剪貼簿（不含密碼）');
+        });
+      });
+    }
+
+    if (btnReset) {
+      btnReset.addEventListener('click', function () {
+        state.files = [];
+        state.isProcessing = false;
+        inputPwd1.value = '';
+        inputPwd2.value = '';
+
+        if (batchList) batchList.innerHTML = '';
+        if (editorSection) editorSection.style.display = 'none';
+        if (dropZone) dropZone.style.display = 'block';
+        showToast('已重置');
+      });
+    }
+
+    function buildCleanHtmlCopy() {
+      var doc = document.documentElement.cloneNode(true);
+
+      var toast = doc.querySelector('#__shared_toast');
+      if (toast) toast.remove();
+
+      var navBack = doc.querySelector('.nav-back');
+      if (navBack) navBack.remove();
+
+      var offlineBtn = doc.querySelector('#btn-download-offline');
+      if (offlineBtn) offlineBtn.remove();
+
+      var edSection = doc.querySelector('#editor-section');
+      if (edSection) edSection.style.display = 'none';
+
+      var dZone = doc.querySelector('#drop-zone');
+      if (dZone) dZone.style.display = 'block';
+
+      var bList = doc.querySelector('#batch-list');
+      if (bList) bList.innerHTML = '';
+
+      var p1 = doc.querySelector('#input-pwd-1');
+      if (p1) p1.value = '';
+
+      var p2 = doc.querySelector('#input-pwd-2');
+      if (p2) p2.value = '';
+
+      var sText = doc.querySelector('#batch-stats-text');
+      if (sText) sText.innerHTML = '共 0 份檔案';
+
+      return '<!DOCTYPE html>\n' + doc.outerHTML;
+    }
+
+    window.buildCleanHtmlCopy = buildCleanHtmlCopy;
+
+    if (btnDownloadOffline) {
+      btnDownloadOffline.addEventListener('click', function () {
+        var cleanHtml = buildCleanHtmlCopy();
+        downloadFile('pdf-password-manager-offline.html', cleanHtml, 'text/html;charset=utf-8');
+        showToast('已下載離線版工具');
+      });
+    }
+  })();
+  </script>
+</body>
+</html>

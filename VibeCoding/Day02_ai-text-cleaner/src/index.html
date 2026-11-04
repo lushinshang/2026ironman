@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 回答 → Office 文字清理器</title>
+<style>
+/* shared/base.css — 共用樣式基底，逐字複製，勿手動修改（改請去 shared/base.css 源頭並重新複製） */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 {
+  line-height: 1.3;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+textarea,
+input[type="text"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 160px;
+}
+
+button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--color-bg);
+}
+
+button.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover {
+  background: var(--color-primary-hover);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover {
+  text-decoration: underline;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+/* ---- 本題（ai-text-cleaner）專屬樣式 ---- */
+.page-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.page-header h1 {
+  font-size: 1.4rem;
+  margin: 0 0 16px;
+}
+
+.section-gap {
+  margin-top: 16px;
+}
+
+.options-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+}
+
+.mode-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.mode-group label,
+.emoji-option label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+#preview-output {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 1rem;
+  min-height: 160px;
+  color: var(--color-text);
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="nav-back" href="../index.html">← 返回作品集</a>
+
+  <div class="page-header">
+    <h1>AI 回答 → Office 文字清理器</h1>
+  </div>
+
+  <div class="card options-row">
+    <div class="mode-group" role="radiogroup" aria-label="輸出模式">
+      <label><input type="radio" name="mode" id="mode-word" value="word" checked> Word-friendly</label>
+      <label><input type="radio" name="mode" id="mode-email" value="email"> Email-friendly</label>
+      <label><input type="radio" name="mode" id="mode-plain" value="plain"> 純文字</label>
+    </div>
+    <div class="emoji-option">
+      <label><input type="checkbox" id="remove-emoji"> 移除 emoji</label>
+    </div>
+  </div>
+
+  <div class="section-gap grid-2">
+    <div>
+      <textarea id="text-input" placeholder="在這裡貼上 AI 回答的文字…" aria-label="輸入文字"></textarea>
+    </div>
+    <div class="card">
+      <h3>清理後預覽</h3>
+      <div id="preview-output"></div>
+    </div>
+  </div>
+
+  <div class="section-gap button-row">
+    <button type="button" id="btn-copy">複製</button>
+    <button type="button" id="btn-download">下載結果檔案</button>
+    <button type="button" id="btn-download-offline">下載本工具離線版</button>
+  </div>
+</div>
+
+<!--{{SHARED:util-escape}}-->
+<!--{{SHARED:ui-toast}}-->
+<!--{{SHARED:ui-debounce}}-->
+<!--{{SHARED:io-download}}-->
+<!--{{SHARED:io-clipboard}}-->
+
+<script>
+(function () {
+  "use strict";
+
+  // ------------------------------------------------------------------
+  // 清理 pipeline
+  // ------------------------------------------------------------------
+
+  // Unicode Extended_Pictographic 為判定基準，以完整 grapheme（含 VS16、膚色修飾符、ZWJ 序列）為移除單位
+  var EMOJI_RE = /\p{Extended_Pictographic}(?:[\u{1F3FB}-\u{1F3FF}])?(?:\u{FE0F})?(?:\u{200D}\p{Extended_Pictographic}(?:[\u{1F3FB}-\u{1F3FF}])?(?:\u{FE0F})?)*/gu;
+
+  // \p{Extended_Pictographic} 實際涵蓋 ©(U+00A9)/®(U+00AE)/™(U+2122)，但規格要求這三個字元一律保留
+  var PROTECTED_BASE = { 0xA9: true, 0xAE: true, 0x2122: true };
+
+  var IC_MARK = String.fromCharCode(1);
+  var FENCE_MARK = String.fromCharCode(2);
+
+  var UL_RE = /^(\s*)([-*+])\s+([\s\S]*)$/;
+  var OL_RE = /^(\s*)(\d+)[.)]\s+([\s\S]*)$/;
+  var HR_RE = /^(-{3,}|\*{3,}|_{3,})$/;
+
+  function repeat(s, n) {
+    var r = "";
+    for (var i = 0; i < n; i++) r += s;
+    return r;
+  }
+
+  function indentFor(depth, mode) {
+    if (mode === "plain") return "";
+    return repeat("  ", depth);
+  }
+
+  // 逐行掃描，把 code fence（含未閉合）獨立成區塊，其餘逐行保留
+  function extractFences(lines) {
+    var out = [];
+    var i = 0;
+    while (i < lines.length) {
+      var m = /^(\s*)```(.*)$/.exec(lines[i]);
+      if (m) {
+        var content = [];
+        var j = i + 1;
+        var closed = false;
+        while (j < lines.length) {
+          if (/^\s*```\s*$/.test(lines[j])) { closed = true; break; }
+          content.push(lines[j]);
+          j++;
+        }
+        out.push({ type: "fence", content: content });
+        i = closed ? j + 1 : j;
+      } else {
+        out.push({ type: "line", text: lines[i] });
+        i++;
+      }
+    }
+    return out;
+  }
+
+  // 行內代碼先抽出保護，再移除粗體／斜體記號保留文字
+  function processInline(text, inlineStore) {
+    text = text.replace(/`([^`\n]+)`/g, function (m, p1) {
+      var idx = inlineStore.length;
+      inlineStore.push(p1);
+      return IC_MARK + idx + IC_MARK;
+    });
+    text = text.replace(/\*\*([^\n]+?)\*\*/g, "$1");
+    text = text.replace(/__([^\n]+?)__/g, "$1");
+    text = text.replace(/\*([^\n]+?)\*/g, "$1");
+    text = text.replace(/_([^\n_]+?)_/g, "$1");
+    return text;
+  }
+
+  function cleanText(raw, mode, removeEmoji) {
+    var text = String(raw).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    var lines = text.split("\n").map(function (l) { return l.replace(/\t/g, "  "); });
+    var items = extractFences(lines);
+
+    var inlineStore = [];
+    var fenceStore = [];
+    var out = []; // { text, isHeading, isFenceToken }
+    var counterStack = [];
+    var plainOlCounter = 0;
+
+    for (var idx = 0; idx < items.length; idx++) {
+      var item = items[idx];
+      if (item.type === "fence") {
+        var token = FENCE_MARK + fenceStore.length + FENCE_MARK;
+        fenceStore.push(item.content);
+        out.push({ text: token, isHeading: false, isFenceToken: true });
+        counterStack = [];
+        continue;
+      }
+      var raw2 = item.text;
+      var trimmed = raw2.trim();
+
+      if (trimmed === "") {
+        out.push({ text: "", isHeading: false, isFenceToken: false });
+        counterStack = [];
+        continue;
+      }
+
+      if (HR_RE.test(trimmed)) {
+        counterStack = [];
+        continue; // 分隔線整行移除，不留空行替代
+      }
+
+      var ulm = UL_RE.exec(raw2);
+      var olm = !ulm ? OL_RE.exec(raw2) : null;
+
+      if (ulm) {
+        var ulDepth = Math.floor(ulm[1].length / 2);
+        var ulContent = processInline(ulm[3], inlineStore);
+        var bullet = mode === "word" ? "•" : "-";
+        var lineOut;
+        if (mode === "plain") {
+          lineOut = "- " + ulContent;
+        } else {
+          lineOut = indentFor(ulDepth, mode) + bullet + " " + ulContent;
+        }
+        out.push({ text: lineOut, isHeading: false, isFenceToken: false });
+        counterStack = [];
+        continue;
+      }
+
+      if (olm) {
+        var olDepth = Math.floor(olm[1].length / 2);
+        var olContent = processInline(olm[3], inlineStore);
+        var lineOut2;
+        if (mode === "plain") {
+          plainOlCounter++;
+          lineOut2 = plainOlCounter + ". " + olContent;
+        } else {
+          if (counterStack.length > olDepth + 1) counterStack.length = olDepth + 1;
+          counterStack[olDepth] = (counterStack[olDepth] || 0) + 1;
+          var marker = mode === "email" ? ")" : ".";
+          lineOut2 = indentFor(olDepth, mode) + counterStack[olDepth] + marker + " " + olContent;
+        }
+        out.push({ text: lineOut2, isHeading: false, isFenceToken: false });
+        continue;
+      }
+
+      // 一般段落／heading 行
+      var headingMatch = /^(#{1,6})\s+([\s\S]*)$/.exec(raw2);
+      var contentSrc = headingMatch ? headingMatch[2] : raw2;
+      var processed = processInline(contentSrc, inlineStore);
+      out.push({ text: processed, isHeading: !!headingMatch, isFenceToken: false });
+      counterStack = [];
+    }
+
+    // Word 模式：heading 前後各補 1 個空行（若原本沒有）
+    if (mode === "word") {
+      var withGaps = [];
+      for (var k = 0; k < out.length; k++) {
+        if (out[k].isHeading) {
+          if (withGaps.length > 0 && withGaps[withGaps.length - 1].text !== "") {
+            withGaps.push({ text: "", isHeading: false, isFenceToken: false });
+          }
+          withGaps.push(out[k]);
+          var nextIsBlank = (k + 1 < out.length) && out[k + 1].text === "" && !out[k + 1].isFenceToken;
+          if (!nextIsBlank) {
+            withGaps.push({ text: "", isHeading: false, isFenceToken: false });
+          }
+        } else {
+          withGaps.push(out[k]);
+        }
+      }
+      out = withGaps;
+    }
+
+    // 多餘空白行收斂：Word/Email 收斂為最多 1 行；純文字模式收斂為 0 行
+    var collapsed = [];
+    if (mode === "plain") {
+      for (var p = 0; p < out.length; p++) {
+        if (out[p].text === "" && !out[p].isFenceToken) continue;
+        collapsed.push(out[p].text);
+      }
+    } else {
+      var prevBlank = false;
+      for (var q = 0; q < out.length; q++) {
+        var isBlank = out[q].text === "" && !out[q].isFenceToken;
+        if (isBlank && prevBlank) continue;
+        collapsed.push(out[q].text);
+        prevBlank = isBlank;
+      }
+    }
+
+    var joined = collapsed.join("\n");
+
+    // 還原 code fence（內容保留，只移除記號；Word 模式加 4 空白縮排）
+    for (var f = 0; f < fenceStore.length; f++) {
+      var token2 = FENCE_MARK + f + FENCE_MARK;
+      var contentLines = fenceStore[f];
+      var prefix = mode === "word" ? "    " : "";
+      var block = contentLines.map(function (l) { return prefix + l; }).join("\n");
+      joined = joined.split(token2).join(block);
+    }
+
+    // 還原行內代碼
+    var icRe = new RegExp(IC_MARK + "(\\d+)" + IC_MARK, "g");
+    joined = joined.replace(icRe, function (m, i) {
+      return inlineStore[parseInt(i, 10)];
+    });
+
+    // emoji 移除選項（預設不移除）
+    if (removeEmoji) {
+      joined = joined.replace(EMOJI_RE, function (m) {
+        var base = m.codePointAt(0);
+        if (PROTECTED_BASE[base]) return m;
+        return "";
+      });
+    }
+
+    return joined;
+  }
+
+  // ------------------------------------------------------------------
+  // UI 串接
+  // ------------------------------------------------------------------
+
+  var textInput = document.getElementById("text-input");
+  var previewOutput = document.getElementById("preview-output");
+  var removeEmojiBox = document.getElementById("remove-emoji");
+
+  var lastCleaned = "";
+
+  function currentMode() {
+    var radios = document.getElementsByName("mode");
+    for (var i = 0; i < radios.length; i++) {
+      if (radios[i].checked) return radios[i].value;
+    }
+    return "word";
+  }
+
+  function render() {
+    var raw = textInput.value;
+    lastCleaned = cleanText(raw, currentMode(), removeEmojiBox.checked);
+    previewOutput.innerHTML = escapeHtml(lastCleaned);
+  }
+
+  var scheduleRender = debounce(render, 150);
+  textInput.addEventListener("input", scheduleRender);
+
+  var radios = document.getElementsByName("mode");
+  for (var ri = 0; ri < radios.length; ri++) {
+    radios[ri].addEventListener("change", render);
+  }
+  removeEmojiBox.addEventListener("change", render);
+
+  document.getElementById("btn-copy").addEventListener("click", function () {
+    copyToClipboard(lastCleaned).then(function (ok) {
+      showToast(ok ? "已複製到剪貼簿" : "複製失敗，請手動選取");
+    });
+  });
+
+  document.getElementById("btn-download").addEventListener("click", function () {
+    downloadFile("ai-text-cleaner-result.txt", lastCleaned, "text/plain;charset=utf-8");
+  });
+
+  function buildCleanHtmlCopy() {
+    var clone = document.documentElement.cloneNode(true);
+
+    var ta = clone.querySelector("#text-input");
+    if (ta) ta.value = "";
+
+    var pv = clone.querySelector("#preview-output");
+    if (pv) pv.innerHTML = "";
+
+    // showToast() 是共用模組動態塞進 DOM 的元素，訊息可能含使用者內容，直接移除避免外洩
+    var toastEl = clone.querySelector("#__shared_toast");
+    if (toastEl && toastEl.parentNode) toastEl.parentNode.removeChild(toastEl);
+
+    var navBack = clone.querySelector(".nav-back");
+    if (navBack && navBack.parentNode) navBack.parentNode.removeChild(navBack);
+
+    var htmlStr = "<!DOCTYPE html>\n" + clone.outerHTML;
+    downloadFile("ai-text-cleaner-offline.html", htmlStr, "text/html;charset=utf-8");
+  }
+
+  document.getElementById("btn-download-offline").addEventListener("click", function () {
+    try {
+      buildCleanHtmlCopy();
+      showToast("已下載離線版");
+    } catch (e) {
+      showToast("下載失敗");
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

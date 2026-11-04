@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF 安全遮蔽 / Flatten — Day24</title>
+  <style>
+/* shared/base.css — 共用樣式基底 */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 { line-height: 1.3; }
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 1rem;
+}
+
+button, .btn {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+button:hover, .btn:hover { background: var(--color-bg); }
+
+button.primary, .btn.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover, .btn.primary:hover { background: var(--color-primary-hover); }
+
+button:disabled, .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #eff6ff;
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover { text-decoration: underline; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show { opacity: 1; }
+
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+.workspace-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+  margin-top: 1rem;
+}
+@media (max-width: 840px) {
+  .workspace-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sidebar-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.setting-group {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 12px;
+}
+.setting-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #1e293b;
+}
+
+.color-picker-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.color-opt {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+.color-opt.active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.3);
+}
+
+.page-list-container {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.page-item-row {
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: #f8fafc;
+}
+.page-item-row.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  font-weight: 600;
+}
+
+.box-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+.box-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.editor-viewport {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.canvas-container {
+  position: relative;
+  max-width: 100%;
+  max-height: 600px;
+  overflow: auto;
+  background: #cbd5e1;
+  padding: 12px;
+  border-radius: 6px;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.1);
+  display: flex;
+  justify-content: center;
+}
+
+.canvas-wrapper {
+  position: relative;
+  display: inline-block;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  background: #ffffff;
+  user-select: none;
+}
+.canvas-wrapper canvas {
+  display: block;
+}
+
+.overlay-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  cursor: crosshair;
+}
+
+.tag-badge {
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+.badge-raster { background: #fee2e2; color: #991b1b; }
+.badge-vector { background: #f1f5f9; color: #475569; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav-back">
+      <a href="../index.html">← 回首頁</a>
+    </nav>
+
+    <header>
+      <h1>PDF 安全遮蔽 / Flatten</h1>
+      <p class="subtitle" style="color: var(--color-text-muted);">
+        在 PDF 上畫框遮蔽機密個資，將遮蔽頁面點陣化（Flatten）徹底抹除底層向量文字，杜絕複製貼上外洩。
+      </p>
+    </header>
+
+    <div class="dropzone" id="drop-zone">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">⬛</div>
+      <div style="margin-bottom: 0.75rem;">拖放 PDF 檔案至此，或點擊選取</div>
+      <input type="file" id="file-input" accept="application/pdf,.pdf" style="display: none;">
+      <button type="button" class="btn secondary" id="btn-select-file">選擇 PDF 檔案</button>
+    </div>
+
+    <div id="editor-section" style="display: none;">
+      <div class="card" style="margin-bottom: 0.75rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <h3 style="margin: 0 0 4px 0; font-size: 1.1rem;" id="doc-filename">document.pdf</h3>
+            <div style="font-size: 0.85rem; color: #64748b;">
+              總頁數：<strong id="doc-page-count" style="color: #2563eb;">0</strong> 頁｜遮蔽摘要：<span id="redact-summary-badge">0 頁點陣化遮蔽，0 頁原樣保留</span>
+            </div>
+          </div>
+
+          <div class="btn-group">
+            <button type="button" class="btn primary btn-sm" id="btn-export-pdf">🚀 下載遮蔽後 PDF</button>
+            <button type="button" class="btn secondary btn-sm" id="btn-copy-summary">📋 複製處理摘要</button>
+            <button type="button" class="btn secondary btn-sm" id="btn-reset">重新上傳</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="workspace-layout">
+        <!-- Sidebar -->
+        <div class="sidebar-panel">
+          <div class="setting-group">
+            <div class="setting-title">
+              <span>遮蔽顏色</span>
+            </div>
+            <div class="color-picker-group">
+              <div class="color-opt active" data-color="#000000" style="background: #000000;" title="純黑（預設）"></div>
+              <div class="color-opt" data-color="#ffffff" style="background: #ffffff; border: 1px solid #cbd5e1;" title="純白"></div>
+              <div class="color-opt" data-color="#64748b" style="background: #64748b;" title="深灰"></div>
+            </div>
+            <div style="font-size: 0.8rem; color: #64748b;">在右側預覽畫面直接用滑鼠拖曳框選遮蔽區域。</div>
+          </div>
+
+          <div class="setting-group">
+            <div class="setting-title">
+              <span>目前頁面遮蔽框 (<span id="cur-page-box-count">0</span>)</span>
+              <button type="button" class="btn btn-sm secondary" id="btn-clear-page-boxes" style="padding: 2px 6px; font-size: 0.75rem;">清空此頁</button>
+            </div>
+            <div class="box-list-container" id="box-list-container">
+              <div style="color: #94a3b8; font-size: 0.8rem; text-align: center; padding: 12px 0;">此頁尚無遮蔽框</div>
+            </div>
+          </div>
+
+          <div class="setting-group">
+            <div class="setting-title">
+              <span>頁面狀態總覽</span>
+            </div>
+            <div class="page-list-container" id="page-list-container"></div>
+          </div>
+        </div>
+
+        <!-- Main Editor -->
+        <div class="editor-viewport">
+          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; margin-bottom: 12px;">
+            <div class="btn-group" style="margin: 0;">
+              <button type="button" class="btn btn-sm secondary" id="btn-prev-page">◀ 上一頁</button>
+              <button type="button" class="btn btn-sm secondary" id="btn-next-page">下一頁 ▶</button>
+            </div>
+            <div style="font-size: 0.9rem; font-weight: 600;">
+              第 <span id="val-cur-page" style="color: #2563eb;">1</span> / <span id="val-total-page">1</span> 頁
+              <span id="cur-page-status-badge" class="tag-badge badge-vector" style="margin-left: 6px;">原樣保留</span>
+            </div>
+          </div>
+
+          <div class="canvas-container" id="canvas-container">
+            <div class="canvas-wrapper" id="canvas-wrapper">
+              <canvas id="pdf-canvas"></canvas>
+              <canvas id="overlay-canvas" class="overlay-canvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-group" style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+      <button type="button" class="btn secondary" id="btn-download-offline">💾 下載本工具離線版</button>
+    </div>
+
+    <!--{{LICENSES}}-->
+  </div>
+
+  <!--{{ASSET:pdfjs}}-->
+  <!--{{ASSET:pdfjs_worker}}-->
+  <!--{{ASSET:cantoo_pdf_lib}}-->
+  <!--{{SHARED:util-escape}}-->
+  <!--{{SHARED:ui-toast}}-->
+  <!--{{SHARED:ui-debounce}}-->
+  <!--{{SHARED:io-download}}-->
+  <!--{{SHARED:io-clipboard}}-->
+  <!--{{SHARED:io-dropzone}}-->
+  <!--{{SHARED:img-canvas}}-->
+  <!--{{SHARED:pdf-file-size}}-->
+  <!--{{SHARED:pdf-decode}}-->
+  <!--{{SHARED:pdf-build}}-->
+
+  <script>
+  (function () {
+    var state = {
+      file: null,
+      fileName: '',
+      pdfBytes: null,
+      pdfDocProxy: null,
+      totalPages: 0,
+      currentPage: 1,
+      currentColor: '#000000',
+      // boxes: Array<{ id: string, pageNum: number, x: number, y: number, w: number, h: number, color: string }> (normalized 0..1 coordinates)
+      boxes: [],
+      isDrawing: false,
+      startX: 0,
+      startY: 0,
+      currentDragBox: null
+    };
+
+    var dropZone = document.getElementById('drop-zone');
+    var fileInput = document.getElementById('file-input');
+    var btnSelectFile = document.getElementById('btn-select-file');
+    var editorSection = document.getElementById('editor-section');
+
+    var docFilename = document.getElementById('doc-filename');
+    var docPageCount = document.getElementById('doc-page-count');
+    var redactSummaryBadge = document.getElementById('redact-summary-badge');
+
+    var btnExportPdf = document.getElementById('btn-export-pdf');
+    var btnCopySummary = document.getElementById('btn-copy-summary');
+    var btnReset = document.getElementById('btn-reset');
+    var btnDownloadOffline = document.getElementById('btn-download-offline');
+
+    var curPageBoxCount = document.getElementById('cur-page-box-count');
+    var btnClearPageBoxes = document.getElementById('btn-clear-page-boxes');
+    var boxListContainer = document.getElementById('box-list-container');
+    var pageListContainer = document.getElementById('page-list-container');
+
+    var btnPrevPage = document.getElementById('btn-prev-page');
+    var btnNextPage = document.getElementById('btn-next-page');
+    var valCurPage = document.getElementById('val-cur-page');
+    var valTotalPage = document.getElementById('val-total-page');
+    var curPageStatusBadge = document.getElementById('cur-page-status-badge');
+
+    var pdfCanvas = document.getElementById('pdf-canvas');
+    var overlayCanvas = document.getElementById('overlay-canvas');
+    var canvasWrapper = document.getElementById('canvas-wrapper');
+
+    function getBaseName(fileName) {
+      var dot = fileName.lastIndexOf('.');
+      return (dot !== -1) ? fileName.substring(0, dot) : fileName;
+    }
+
+    // Color picker
+    document.querySelectorAll('.color-opt').forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        document.querySelectorAll('.color-opt').forEach(function (c) { c.classList.remove('active'); });
+        opt.classList.add('active');
+        state.currentColor = opt.dataset.color || '#000000';
+      });
+    });
+
+    function getBoxesForPage(pageNum) {
+      return state.boxes.filter(function (b) { return b.pageNum === pageNum; });
+    }
+
+    function updatePageListAndSummary() {
+      if (!pageListContainer) return;
+      pageListContainer.innerHTML = '';
+
+      var rasterPagesCount = 0;
+
+      for (var i = 1; i <= state.totalPages; i++) {
+        var pBoxes = getBoxesForPage(i);
+        var isRaster = pBoxes.length > 0;
+        if (isRaster) rasterPagesCount++;
+
+        var row = document.createElement('div');
+        row.className = 'page-item-row' + (i === state.currentPage ? ' active' : '');
+        row.dataset.page = i;
+
+        var pageLabel = document.createElement('span');
+        pageLabel.textContent = '第 ' + i + ' 頁';
+
+        var badge = document.createElement('span');
+        badge.className = 'tag-badge ' + (isRaster ? 'badge-raster' : 'badge-vector');
+        badge.textContent = isRaster ? '🖼️ 遮蔽 (' + pBoxes.length + ')' : '📄 原樣';
+
+        row.appendChild(pageLabel);
+        row.appendChild(badge);
+
+        (function (pageIndex) {
+          row.addEventListener('click', function () {
+            if (state.currentPage !== pageIndex) {
+              state.currentPage = pageIndex;
+              renderCurrentPage();
+            }
+          });
+        })(i);
+
+        pageListContainer.appendChild(row);
+      }
+
+      var vectorPagesCount = state.totalPages - rasterPagesCount;
+      if (redactSummaryBadge) {
+        redactSummaryBadge.textContent = rasterPagesCount + ' 頁點陣化遮蔽，' + vectorPagesCount + ' 頁原樣保留';
+      }
+
+      var curBoxes = getBoxesForPage(state.currentPage);
+      if (curPageStatusBadge) {
+        if (curBoxes.length > 0) {
+          curPageStatusBadge.className = 'tag-badge badge-raster';
+          curPageStatusBadge.textContent = '🖼️ 點陣化遮蔽 (' + curBoxes.length + ')';
+        } else {
+          curPageStatusBadge.className = 'tag-badge badge-vector';
+          curPageStatusBadge.textContent = '📄 原樣保留';
+        }
+      }
+    }
+
+    function renderBoxList() {
+      if (!boxListContainer) return;
+      var curBoxes = getBoxesForPage(state.currentPage);
+      if (curPageBoxCount) curPageBoxCount.textContent = curBoxes.length;
+
+      if (curBoxes.length === 0) {
+        boxListContainer.innerHTML = '<div style="color: #94a3b8; font-size: 0.8rem; text-align: center; padding: 12px 0;">此頁尚無遮蔽框</div>';
+        return;
+      }
+
+      boxListContainer.innerHTML = '';
+      curBoxes.forEach(function (b, idx) {
+        var item = document.createElement('div');
+        item.className = 'box-item-row';
+
+        var info = document.createElement('div');
+        info.innerHTML = '<span style="display:inline-block; width:10px; height:10px; background:' + b.color + '; border:1px solid #94a3b8; border-radius:2px; margin-right:4px;"></span>' +
+                         '遮蔽框 #' + (idx + 1) + ' <small style="color:#64748b;">(' + Math.round(b.w * 100) + '% × ' + Math.round(b.h * 100) + '%)</small>';
+
+        var btnDel = document.createElement('button');
+        btnDel.type = 'button';
+        btnDel.className = 'btn btn-sm secondary';
+        btnDel.style.padding = '1px 6px';
+        btnDel.style.fontSize = '0.75rem';
+        btnDel.textContent = '❌ 刪除';
+        btnDel.addEventListener('click', function () {
+          state.boxes = state.boxes.filter(function (x) { return x.id !== b.id; });
+          drawOverlay();
+          renderBoxList();
+          updatePageListAndSummary();
+        });
+
+        item.appendChild(info);
+        item.appendChild(btnDel);
+        boxListContainer.appendChild(item);
+      });
+    }
+
+    function drawOverlay() {
+      if (!overlayCanvas) return;
+      var ctx = overlayCanvas.getContext('2d');
+      var w = overlayCanvas.width;
+      var h = overlayCanvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      var curBoxes = getBoxesForPage(state.currentPage);
+      curBoxes.forEach(function (b) {
+        ctx.fillStyle = b.color;
+        ctx.fillRect(b.x * w, b.y * h, b.w * w, b.h * h);
+
+        // draw selection boundary
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(b.x * w, b.y * h, b.w * w, b.h * h);
+      });
+
+      if (state.isDrawing && state.currentDragBox) {
+        var db = state.currentDragBox;
+        ctx.fillStyle = state.currentColor;
+        ctx.fillRect(db.x * w, db.y * h, db.w * w, db.h * h);
+
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(db.x * w, db.y * h, db.w * w, db.h * h);
+      }
+    }
+
+    function renderCurrentPage() {
+      if (!state.pdfDocProxy) return;
+      if (valCurPage) valCurPage.textContent = state.currentPage;
+      if (valTotalPage) valTotalPage.textContent = state.totalPages;
+
+      renderPageToCanvas(state.pdfDocProxy, state.currentPage, { scale: 1.5 }).then(function (res) {
+        pdfCanvas.width = res.width;
+        pdfCanvas.height = res.height;
+        var ctx = pdfCanvas.getContext('2d');
+        ctx.drawImage(res.canvas, 0, 0);
+
+        overlayCanvas.width = res.width;
+        overlayCanvas.height = res.height;
+
+        drawOverlay();
+        renderBoxList();
+        updatePageListAndSummary();
+      });
+    }
+
+    // Pointer drawing on overlay canvas
+    if (overlayCanvas) {
+      overlayCanvas.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        var rect = overlayCanvas.getBoundingClientRect();
+        var scaleX = overlayCanvas.width / rect.width;
+        var scaleY = overlayCanvas.height / rect.height;
+
+        state.isDrawing = true;
+        state.startX = (e.clientX - rect.left) * scaleX / overlayCanvas.width;
+        state.startY = (e.clientY - rect.top) * scaleY / overlayCanvas.height;
+        state.currentDragBox = {
+          x: state.startX,
+          y: state.startY,
+          w: 0,
+          h: 0
+        };
+      });
+
+      window.addEventListener('pointermove', function (e) {
+        if (!state.isDrawing || !overlayCanvas) return;
+        var rect = overlayCanvas.getBoundingClientRect();
+        var scaleX = overlayCanvas.width / rect.width;
+        var scaleY = overlayCanvas.height / rect.height;
+
+        var curX = Math.max(0, Math.min(1, (e.clientX - rect.left) * scaleX / overlayCanvas.width));
+        var curY = Math.max(0, Math.min(1, (e.clientY - rect.top) * scaleY / overlayCanvas.height));
+
+        var x = Math.min(state.startX, curX);
+        var y = Math.min(state.startY, curY);
+        var w = Math.abs(curX - state.startX);
+        var h = Math.abs(curY - state.startY);
+
+        state.currentDragBox = { x: x, y: y, w: w, h: h };
+        drawOverlay();
+      });
+
+      window.addEventListener('pointerup', function () {
+        if (!state.isDrawing) return;
+        state.isDrawing = false;
+        if (state.currentDragBox && state.currentDragBox.w > 0.005 && state.currentDragBox.h > 0.005) {
+          state.boxes.push({
+            id: 'b_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+            pageNum: state.currentPage,
+            x: state.currentDragBox.x,
+            y: state.currentDragBox.y,
+            w: state.currentDragBox.w,
+            h: state.currentDragBox.h,
+            color: state.currentColor
+          });
+        }
+        state.currentDragBox = null;
+        drawOverlay();
+        renderBoxList();
+        updatePageListAndSummary();
+      });
+    }
+
+    if (btnClearPageBoxes) {
+      btnClearPageBoxes.addEventListener('click', function () {
+        state.boxes = state.boxes.filter(function (b) { return b.pageNum !== state.currentPage; });
+        drawOverlay();
+        renderBoxList();
+        updatePageListAndSummary();
+        showToast('已清空第 ' + state.currentPage + ' 頁的所有遮蔽框');
+      });
+    }
+
+    if (btnPrevPage) {
+      btnPrevPage.addEventListener('click', function () {
+        if (state.currentPage > 1) {
+          state.currentPage--;
+          renderCurrentPage();
+        }
+      });
+    }
+
+    if (btnNextPage) {
+      btnNextPage.addEventListener('click', function () {
+        if (state.currentPage < state.totalPages) {
+          state.currentPage++;
+          renderCurrentPage();
+        }
+      });
+    }
+
+    function loadPdf(file) {
+      var gate = checkPdfFileSize(file.size);
+      if (!gate.ok) {
+        showToast(gate.message, 3500);
+        return;
+      }
+
+      showToast('正在載入 PDF 文件...');
+
+      file.arrayBuffer().then(function (ab) {
+        var bytes = new Uint8Array(ab);
+        return loadPdfFile(bytes).then(function (pdfDocProxy) {
+          state.file = file;
+          state.fileName = file.name || 'document.pdf';
+          state.pdfBytes = bytes;
+          state.pdfDocProxy = pdfDocProxy;
+          state.totalPages = getPageCount(pdfDocProxy);
+          state.currentPage = 1;
+          state.boxes = [];
+
+          if (docFilename) docFilename.textContent = state.fileName;
+          if (docPageCount) docPageCount.textContent = state.totalPages;
+
+          if (dropZone) dropZone.style.display = 'none';
+          if (editorSection) editorSection.style.display = 'block';
+
+          renderCurrentPage();
+          showToast('載入成功，共 ' + state.totalPages + ' 頁');
+        });
+      }).catch(function (err) {
+        showToast('載入失敗：' + (err.message || '無效檔案'));
+      });
+    }
+
+    if (btnSelectFile && fileInput) {
+      btnSelectFile.addEventListener('click', function () { fileInput.click(); });
+      fileInput.addEventListener('change', function () {
+        if (fileInput.files && fileInput.files[0]) {
+          loadPdf(fileInput.files[0]);
+          fileInput.value = '';
+        }
+      });
+    }
+
+    if (dropZone) {
+      setupDropZone(dropZone, function () {}, {
+        accept: ['.pdf', 'application/pdf'],
+        gate: function (file) { return checkPdfFileSize(file.size); },
+        onError: function (msg) { showToast(msg); }
+      });
+      dropZone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          loadPdf(e.dataTransfer.files[0]);
+        }
+      });
+    }
+
+    function exportRedactedPdf() {
+      if (!state.pdfBytes || !state.pdfDocProxy) return;
+
+      showToast('正在進行選擇性點陣化遮蔽並合成 PDF...');
+      btnExportPdf.disabled = true;
+
+      PDFLib.PDFDocument.load(state.pdfBytes).then(function (sourceDoc) {
+        return PDFLib.PDFDocument.create().then(function (destDoc) {
+          var sequence = Promise.resolve();
+
+          var _loop = function (pNum) {
+            sequence = sequence.then(function () {
+              var pBoxes = getBoxesForPage(pNum);
+
+              if (pBoxes.length === 0) {
+                // Keep original vector page
+                return destDoc.copyPages(sourceDoc, [pNum - 1]).then(function (copiedPages) {
+                  destDoc.addPage(copiedPages[0]);
+                });
+              } else {
+                // High-res 2.0x Rasterization to destroy text layer
+                return renderPageToCanvas(state.pdfDocProxy, pNum, { scale: 2.0 }).then(function (res) {
+                  var c = res.canvas;
+                  var ctx = c.getContext('2d');
+                  var cw = c.width;
+                  var ch = c.height;
+
+                  pBoxes.forEach(function (b) {
+                    ctx.fillStyle = b.color;
+                    ctx.fillRect(b.x * cw, b.y * ch, b.w * cw, b.h * ch);
+                  });
+
+                  return new Promise(function (resolve, reject) {
+                    c.toBlob(function (blob) {
+                      if (!blob) { reject(new Error('Canvas toBlob failed')); return; }
+                      blob.arrayBuffer().then(function (buf) {
+                        resolve(new Uint8Array(buf));
+                      }).catch(reject);
+                    }, 'image/png');
+                  }).then(function (pngBytes) {
+                    return destDoc.embedPng(pngBytes).then(function (pngImage) {
+                      var origPage = sourceDoc.getPage(pNum - 1);
+                      var origWidth = origPage.getWidth();
+                      var origHeight = origPage.getHeight();
+
+                      var newPage = destDoc.addPage([origWidth, origHeight]);
+                      newPage.drawImage(pngImage, {
+                        x: 0,
+                        y: 0,
+                        width: origWidth,
+                        height: origHeight
+                      });
+                    });
+                  });
+                });
+              }
+            });
+          };
+
+          for (var p = 1; p <= state.totalPages; p++) {
+            _loop(p);
+          }
+
+          return sequence.then(function () {
+            return destDoc.save();
+          });
+        });
+      }).then(function (finalBytes) {
+        var blob = new Blob([finalBytes], { type: 'application/pdf' });
+        var outName = getBaseName(state.fileName) + '_redacted.pdf';
+        downloadFile(outName, blob, 'application/pdf');
+        btnExportPdf.disabled = false;
+        showToast('已完成安全遮蔽並下載：' + outName);
+      }).catch(function (err) {
+        btnExportPdf.disabled = false;
+        showToast('匯出失敗：' + err.message);
+      });
+    }
+
+    if (btnExportPdf) {
+      btnExportPdf.addEventListener('click', exportRedactedPdf);
+    }
+
+    if (btnCopySummary) {
+      btnCopySummary.addEventListener('click', function () {
+        var rasterCount = 0;
+        for (var i = 1; i <= state.totalPages; i++) {
+          if (getBoxesForPage(i).length > 0) rasterCount++;
+        }
+        var vectorCount = state.totalPages - rasterCount;
+        var text = '【PDF 安全遮蔽 / Flatten 處理摘要】\n' +
+                   '檔案名稱：' + state.fileName + '\n' +
+                   '總頁數：' + state.totalPages + ' 頁\n' +
+                   '點陣化遮蔽頁數：' + rasterCount + ' 頁（文字層已徹底銷毀）\n' +
+                   '原樣保留頁數：' + vectorCount + ' 頁（保留向量文字與清晰度）\n';
+        copyToClipboard(text).then(function () {
+          showToast('已複製處理摘要至剪貼簿');
+        });
+      });
+    }
+
+    if (btnReset) {
+      btnReset.addEventListener('click', function () {
+        state.file = null;
+        state.fileName = '';
+        state.pdfBytes = null;
+        state.pdfDocProxy = null;
+        state.totalPages = 0;
+        state.currentPage = 1;
+        state.boxes = [];
+
+        if (editorSection) editorSection.style.display = 'none';
+        if (dropZone) dropZone.style.display = 'block';
+        showToast('已重置');
+      });
+    }
+
+    function buildCleanHtmlCopy() {
+      var doc = document.documentElement.cloneNode(true);
+
+      var toast = doc.querySelector('#__shared_toast');
+      if (toast) toast.remove();
+
+      var navBack = doc.querySelector('.nav-back');
+      if (navBack) navBack.remove();
+
+      var offlineBtn = doc.querySelector('#btn-download-offline');
+      if (offlineBtn) offlineBtn.remove();
+
+      var edSection = doc.querySelector('#editor-section');
+      if (edSection) edSection.style.display = 'none';
+
+      var dZone = doc.querySelector('#drop-zone');
+      if (dZone) dZone.style.display = 'block';
+
+      var pCount = doc.querySelector('#doc-page-count');
+      if (pCount) pCount.textContent = '0';
+
+      var fName = doc.querySelector('#doc-filename');
+      if (fName) fName.textContent = 'document.pdf';
+
+      var rSummary = doc.querySelector('#redact-summary-badge');
+      if (rSummary) rSummary.textContent = '0 頁點陣化遮蔽，0 頁原樣保留';
+
+      var pList = doc.querySelector('#page-list-container');
+      if (pList) pList.innerHTML = '';
+
+      var bList = doc.querySelector('#box-list-container');
+      if (bList) bList.innerHTML = '<div style="color: #94a3b8; font-size: 0.8rem; text-align: center; padding: 12px 0;">此頁尚無遮蔽框</div>';
+
+      return '<!DOCTYPE html>\n' + doc.outerHTML;
+    }
+
+    window.buildCleanHtmlCopy = buildCleanHtmlCopy;
+    window._debugState = state;
+
+    if (btnDownloadOffline) {
+      btnDownloadOffline.addEventListener('click', function () {
+        var cleanHtml = buildCleanHtmlCopy();
+        downloadFile('pdf-secure-redactor-offline.html', cleanHtml, 'text/html;charset=utf-8');
+        showToast('已下載離線版工具');
+      });
+    }
+  })();
+  </script>
+</body>
+</html>

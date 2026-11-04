@@ -1,0 +1,16 @@
+{
+  "assets": {
+    "pdfjs": {
+      "path": "../../shared/vendor/pdf.min.js",
+      "license": "Apache-2.0",
+      "version": "3.11.174",
+      "escape_mode": "raw_js"
+    },
+    "pdfjs_worker": {
+      "path": "../../shared/vendor/pdf.worker.min.js",
+      "license": "Apache-2.0",
+      "version": "3.11.174",
+      "escape_mode": "json_string"
+    }
+  }
+}

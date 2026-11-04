@@ -1,0 +1,1685 @@
+<!-- BUNDLED: util-escape@internal (project-internal) sha256:75d81be0a09695ce built 2026-08-24 -->
+<!-- BUNDLED: ui-toast@internal (project-internal) sha256:ae3a7ec34ac21b9d built 2026-08-24 -->
+<!-- BUNDLED: io-download@internal (project-internal) sha256:3da6c61784b1dd4b built 2026-08-24 -->
+<!-- BUNDLED: io-clipboard@internal (project-internal) sha256:afa2866517ff6f41 built 2026-08-24 -->
+<!-- BUNDLED: io-dropzone@internal (project-internal) sha256:85732c4d7a5eea7a built 2026-08-24 -->
+<!-- BUNDLED: csv-decode@internal (project-internal) sha256:c8bbe207f322287e built 2026-08-24 -->
+<!-- BUNDLED: papaparse@5.6.0 (MIT) sha256:7a3550ac537992d0 built 2026-08-24 -->
+<!-- BUNDLED: csv-parse@internal (project-internal) sha256:bd441bae55f1884d built 2026-08-24 -->
+<!-- BUNDLED: csv-types@internal (project-internal) sha256:89121be3d9a5db78 built 2026-08-24 -->
+<!-- BUNDLED: csv-write@internal (project-internal) sha256:befdcdbcae79d4b1 built 2026-08-24 -->
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>兩期清冊異動報告</title>
+<style>
+/* shared/base.css — 共用樣式基底，逐字複製，勿手動修改（改請去 shared/base.css 源頭並重新複製） */
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-toast-bg: #1f2328;
+  --color-toast-text: #ffffff;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 {
+  line-height: 1.3;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+textarea,
+input[type="text"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 160px;
+}
+
+button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--color-bg);
+}
+
+button.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+button.primary:hover {
+  background: var(--color-primary-hover);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.nav-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.nav-back:hover {
+  text-decoration: underline;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-toast-text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+/* ---- 本題（csv-period-diff）專屬樣式 ---- */
+.page-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.page-header h1 {
+  font-size: 1.4rem;
+  margin: 0 0 16px;
+}
+
+.section-gap {
+  margin-top: 16px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.col-label {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.file-input-row {
+  margin-top: 8px;
+}
+
+.status-line {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.hidden {
+  display: none;
+}
+
+.encoding-fallback {
+  font-size: 0.85rem;
+  background: #fdf3e0;
+  color: #8a5a00;
+  border: 1px solid #e8c99a;
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  margin-top: 6px;
+}
+
+.encoding-fallback button {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
+.swatch-added { background: #d1fae5; }
+.swatch-removed { background: #fee2e2; }
+.swatch-modified { background: #fef3c7; }
+.swatch-unchanged { background: var(--color-surface); }
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--color-border);
+  font-size: 0.95rem;
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-row .stat-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.key-checkbox-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.key-checkbox-list label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.field-diff-block {
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
+.field-diff-block .empty {
+  color: var(--color-text-muted);
+}
+
+.result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-list .empty {
+  color: var(--color-text-muted);
+  padding: 8px 0;
+}
+
+.result-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+}
+
+.result-item .result-key {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 8px;
+  font-size: 0.88rem;
+  padding: 2px 0;
+}
+
+.field-row .field-name {
+  color: var(--color-text-muted);
+}
+
+.field-row .field-value {
+  word-break: break-word;
+}
+
+.diff-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 1fr;
+  gap: 8px;
+  font-size: 0.88rem;
+  padding: 2px 0;
+  align-items: start;
+}
+
+.diff-row .field-name {
+  color: var(--color-text-muted);
+}
+
+.diff-row .diff-old,
+.diff-row .diff-new {
+  word-break: break-word;
+  border-radius: 3px;
+  padding: 2px 4px;
+}
+
+.pager {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.warn-list {
+  font-size: 0.88rem;
+}
+
+.warn-list .empty {
+  color: var(--color-text-muted);
+}
+
+.warn-item {
+  padding: 2px 0;
+  border-bottom: 1px dashed var(--color-border);
+}
+
+.warn-item:last-child {
+  border-bottom: none;
+}
+
+.about-box {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="nav-back" href="../index.html">← 返回作品集</a>
+
+  <div class="page-header">
+    <h1>兩期清冊異動報告</h1>
+  </div>
+
+  <p class="section-gap" style="color: var(--color-text-muted); font-size: 0.9rem; margin-top: 0;">
+    分別上傳前期與本期兩份 CSV 清冊，勾選 Primary Key 欄位後按「開始比對」，找出新增、移除與欄位異動的列。
+  </p>
+
+  <div class="grid-2">
+    <div>
+      <div class="col-label">前期 CSV</div>
+      <div id="dropzone-a" class="dropzone">拖曳前期 .csv 檔案到此</div>
+      <div class="file-input-row">
+        <input type="file" id="file-a" accept=".csv">
+      </div>
+      <div class="status-line" id="status-a">尚未上傳</div>
+      <div class="encoding-fallback hidden" id="encoding-fallback-a"></div>
+    </div>
+    <div>
+      <div class="col-label">本期 CSV</div>
+      <div id="dropzone-b" class="dropzone">拖曳本期 .csv 檔案到此</div>
+      <div class="file-input-row">
+        <input type="file" id="file-b" accept=".csv">
+      </div>
+      <div class="status-line" id="status-b">尚未上傳</div>
+      <div class="encoding-fallback hidden" id="encoding-fallback-b"></div>
+    </div>
+  </div>
+
+  <div class="section-gap card" id="field-diff-card">
+    <h3>欄位結構差異</h3>
+    <div class="field-diff-block" id="field-diff"><div class="empty">尚未上傳兩份檔案</div></div>
+  </div>
+
+  <div class="section-gap card" id="key-card">
+    <h3>Key 欄位（勾選 1 至多欄）</h3>
+    <div class="key-checkbox-list" id="key-checkbox-list"><div class="empty">尚未上傳兩份檔案</div></div>
+  </div>
+
+  <div class="section-gap button-row">
+    <button type="button" id="btn-compare" class="primary">開始比對</button>
+  </div>
+
+  <div class="section-gap card">
+    <h3>統計摘要</h3>
+    <div class="stat-row"><span>新增</span><span class="stat-value" id="stat-added">0</span></div>
+    <div class="stat-row"><span>移除</span><span class="stat-value" id="stat-removed">0</span></div>
+    <div class="stat-row"><span>異動</span><span class="stat-value" id="stat-modified">0</span></div>
+    <div class="stat-row"><span>無異動</span><span class="stat-value" id="stat-unchanged">0</span></div>
+    <div class="stat-row"><span>略過（Key 重複）</span><span class="stat-value" id="stat-dup">0</span></div>
+    <div class="stat-row"><span>略過（Key 缺值）</span><span class="stat-value" id="stat-missing">0</span></div>
+  </div>
+
+  <div class="section-gap card">
+    <h3>Key 重複，略過比對</h3>
+    <div class="warn-list" id="warn-dup"><div class="empty">尚未比對</div></div>
+  </div>
+
+  <div class="section-gap card">
+    <h3>Key 缺值，略過比對</h3>
+    <div class="warn-list" id="warn-missing"><div class="empty">尚未比對</div></div>
+  </div>
+
+  <div class="section-gap card">
+    <h3>新增</h3>
+    <div class="result-list" id="list-added"><div class="empty">尚未比對</div></div>
+    <div class="pager" id="pager-added"></div>
+  </div>
+
+  <div class="section-gap card">
+    <h3>移除</h3>
+    <div class="result-list" id="list-removed"><div class="empty">尚未比對</div></div>
+    <div class="pager" id="pager-removed"></div>
+  </div>
+
+  <div class="section-gap card">
+    <h3>異動</h3>
+    <div class="result-list" id="list-modified"><div class="empty">尚未比對</div></div>
+    <div class="pager" id="pager-modified"></div>
+  </div>
+
+  <div class="section-gap button-row">
+    <button type="button" id="btn-download-added">下載新增 CSV</button>
+    <button type="button" id="btn-download-removed">下載移除 CSV</button>
+    <button type="button" id="btn-download-modified">下載異動 CSV</button>
+    <button type="button" id="btn-download-report">下載 HTML 摘要報告</button>
+    <button type="button" id="btn-download-offline">下載本工具離線版</button>
+  </div>
+
+  <div class="about-box" id="about-box">
+    <p style="margin: 0 0 8px;">本工具全程在瀏覽器本機執行，不上傳任何內容。</p>
+    <div class="bundled-licenses"><p>內嵌資源與授權：</p><ul><li>papaparse 5.6.0 — MIT</li></ul></div>
+  </div>
+</div>
+
+<script>
+// shared/util-escape.js
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+</script>
+<script>
+// shared/ui-toast.js
+function showToast(msg, ms) {
+  if (ms === undefined) ms = 2000;
+  var el = document.getElementById('__shared_toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '__shared_toast';
+    el.className = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  if (el.__hideTimer) {
+    clearTimeout(el.__hideTimer);
+  }
+  el.__hideTimer = setTimeout(function () {
+    el.classList.remove('show');
+  }, ms);
+}
+
+</script>
+<script>
+// shared/io-download.js
+function downloadFile(filename, content, mime) {
+  if (mime === undefined) mime = 'text/plain;charset=utf-8';
+  var blob = new Blob([content], { type: mime });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () {
+    URL.revokeObjectURL(url);
+  }, 0);
+}
+
+</script>
+<script>
+// shared/io-clipboard.js
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).then(function () {
+      return true;
+    }).catch(function () {
+      return false;
+    });
+  }
+  return new Promise(function (resolve) {
+    var textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    var ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch (e) {
+      ok = false;
+    }
+    document.body.removeChild(textarea);
+    resolve(ok);
+  });
+}
+
+function pasteImageFromClipboard() {
+  if (!navigator.clipboard || !navigator.clipboard.read) {
+    return Promise.resolve(null);
+  }
+  return navigator.clipboard.read().then(function (items) {
+    if (!items || items.length === 0) return null;
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (item && item.types) {
+        for (var t = 0; t < item.types.length; t++) {
+          if (item.types[t].indexOf('image/') === 0) {
+            return item.getType(item.types[t]);
+          }
+        }
+      }
+    }
+    return null;
+  }).catch(function () {
+    return null;
+  });
+}
+
+
+</script>
+<script>
+// shared/io-dropzone.js
+function ioDropzoneHandleFile(file, onData, opts) {
+  opts = opts || {};
+  // 預設只收 .txt / .md（契約第 3 節）。不要改成 [] ——那會變成靜默全收。
+  var accept = opts.accept || ['.txt', '.md'];
+  var onError = opts.onError || function () {};
+
+  function isAccepted(fileName) {
+    if (accept.length === 0) return true;
+    var lower = fileName.toLowerCase();
+    for (var i = 0; i < accept.length; i++) {
+      if (lower.indexOf(accept[i].toLowerCase(), lower.length - accept[i].length) !== -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  if (!isAccepted(file.name)) {
+    onError('不支援的檔案類型：' + file.name);
+    return;
+  }
+
+  if (opts.gate) {
+    var gateResult = opts.gate(file);
+    if (!gateResult.ok) {
+      onError(gateResult.message);
+      return;
+    }
+  }
+
+  var reader = new FileReader();
+  reader.onload = function () {
+    onData(reader.result, file.name);
+  };
+  reader.onerror = function () {
+    onError('讀取檔案失敗：' + file.name);
+  };
+  if (opts.mode === 'bytes') {
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.readAsText(file);
+  }
+}
+
+function setupDropZone(dropEl, onData, opts) {
+  opts = opts || {};
+
+  dropEl.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    dropEl.classList.add('dragover');
+  });
+
+  dropEl.addEventListener('dragleave', function () {
+    dropEl.classList.remove('dragover');
+  });
+
+  dropEl.addEventListener('drop', function (e) {
+    e.preventDefault();
+    dropEl.classList.remove('dragover');
+    var files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    if (opts.multiple === true) {
+      if (opts.gateBatch) {
+        var batchResult = opts.gateBatch(files);
+        if (!batchResult.ok) {
+          (opts.onError || function () {})(batchResult.message);
+          return;
+        }
+      }
+      var total = files.length;
+      for (var i = 0; i < total; i++) {
+        (function (idx) {
+          var meta = { index: idx, total: total };
+          var wrappedOnData = function (result, fileName) {
+            onData(result, fileName, meta);
+          };
+          ioDropzoneHandleFile(files[idx], wrappedOnData, opts);
+        })(i);
+      }
+    } else {
+      ioDropzoneHandleFile(files[0], onData, opts);
+    }
+  });
+}
+
+function setupFilePicker(inputEl, onData, opts) {
+  opts = opts || {};
+
+  inputEl.addEventListener('change', function () {
+    var files = inputEl.files;
+    if (!files || files.length === 0) return;
+
+    if (opts.multiple === true) {
+      if (opts.gateBatch) {
+        var batchResult = opts.gateBatch(files);
+        if (!batchResult.ok) {
+          (opts.onError || function () {})(batchResult.message);
+          return;
+        }
+      }
+      var total = files.length;
+      for (var i = 0; i < total; i++) {
+        (function (idx) {
+          var meta = { index: idx, total: total };
+          var wrappedOnData = function (result, fileName) {
+            onData(result, fileName, meta);
+          };
+          ioDropzoneHandleFile(files[idx], wrappedOnData, opts);
+        })(i);
+      }
+    } else {
+      ioDropzoneHandleFile(files[0], onData, opts);
+    }
+  });
+}
+
+
+</script>
+<script>
+// shared/csv-decode.js
+// CSV 位元組解碼與檔案大小閘門。所有門檻都以原始 File.size 的位元組計算。
+
+function decodeCsvBytes(arrayBuffer) {
+  var bytes = new Uint8Array(arrayBuffer);
+  var hasUtf8Bom = bytes.length >= 3 &&
+    bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
+
+  if (hasUtf8Bom) {
+    return {
+      text: new TextDecoder('utf-8').decode(arrayBuffer),
+      encoding: 'utf-8',
+      hadBom: true,
+      confidence: 'bom'
+    };
+  }
+
+  try {
+    return {
+      text: new TextDecoder('utf-8', { fatal: true }).decode(arrayBuffer),
+      encoding: 'utf-8',
+      hadBom: false,
+      confidence: 'strict'
+    };
+  } catch (err) {
+    return {
+      text: new TextDecoder('big5').decode(arrayBuffer),
+      encoding: 'big5',
+      hadBom: false,
+      confidence: 'fallback'
+    };
+  }
+}
+
+function checkCsvFileSize(byteLength) {
+  // 1 MB = 1,048,576 bytes. 5 MB and 20 MB are accepted; only >20 MB rejects.
+  var megabyte = 1024 * 1024;
+
+  if (byteLength < 5 * megabyte) {
+    return { ok: true, level: 'ok', message: '' };
+  }
+  if (byteLength <= 20 * megabyte) {
+    return {
+      ok: true,
+      level: 'warn',
+      message: '檔案較大，處理可能需要數秒。'
+    };
+  }
+  return {
+    ok: false,
+    level: 'reject',
+    message: '檔案超過 20 MB 上限，請縮小檔案後再試。'
+  };
+}
+
+</script>
+<script>
+/* @license
+Papa Parse
+v5.6.0
+https://github.com/mholt/PapaParse
+License: MIT
+*/
+((e,t)=>{"function"==typeof define&&define.amd?define([],t):"object"==typeof module&&"undefined"!=typeof exports?module.exports=t():e.Papa=t()})(this,function r(){var n="undefined"!=typeof self?self:"undefined"!=typeof window?window:void 0!==n?n:{};var s=!n.document&&!!n.postMessage,a=n.IS_PAPA_WORKER||!1,o={},h=0,w={};function P(e){return 65279===e.charCodeAt(0)?e.slice(1):e}function u(e){this._handle=null,this._finished=!1,this._completed=!1,this._halted=!1,this._input=null,this._baseIndex=0,this._partialLine="",this._rowCount=0,this._start=0,this._nextChunk=null,this.isFirstChunk=!0,this._completeResults={data:[],errors:[],meta:{}},function(e){var t=b(e);t.chunkSize=parseInt(t.chunkSize),e.step||e.chunk||(t.chunkSize=null);this._handle=new i(t),(this._handle.streamer=this)._config=t}.call(this,e),this.parseChunk=function(t,e){var i=parseInt(this._config.skipFirstNLines)||0;if(this.isFirstChunk&&0<i){let e=this._config.newline;e||(r=this._config.quoteChar||'"',e=this._handle.guessLineEndings(t,r)),t=[...t.split(e).slice(i)].join(e)}this.isFirstChunk&&U(this._config.beforeFirstChunk)&&void 0!==(r=this._config.beforeFirstChunk(t))&&(t=r),this.isFirstChunk=!1,this._halted=!1;var i=this._partialLine+t,r=(this._partialLine="",this._handle.parse(i,this._baseIndex,!this._finished));if(!this._handle.paused()&&!this._handle.aborted()){t=r.meta.cursor,i=(this._finished||(this._partialLine=i.substring(t-this._baseIndex),this._baseIndex=t),r&&r.data&&(this._rowCount+=r.data.length),this._finished||this._config.preview&&this._rowCount>=this._config.preview);if(a)n.postMessage({results:r,workerId:w.WORKER_ID,finished:i});else if(U(this._config.chunk)&&!e){if(this._config.chunk(r,this._handle),this._handle.paused()||this._handle.aborted())return void(this._halted=!0);this._completeResults=r=void 0}return this._config.step||this._config.chunk||(this._completeResults.data=this._completeResults.data.concat(r.data),this._completeResults.errors=this._completeResults.errors.concat(r.errors),this._completeResults.meta=r.meta),this._completed||!i||!U(this._config.complete)||r&&r.meta.aborted||(this._config.complete(this._completeResults,this._input),this._completed=!0),i||r&&r.meta.paused||this._nextChunk(),r}this._halted=!0},this._sendError=function(e){U(this._config.error)?this._config.error(e):a&&this._config.error&&n.postMessage({workerId:w.WORKER_ID,error:e,finished:!1})}}function d(e){var r;(e=e||{}).chunkSize||(e.chunkSize=w.RemoteChunkSize),u.call(this,e),this._nextChunk=s?function(){this._readChunk(),this._chunkLoaded()}:function(){this._readChunk()},this.stream=function(e){this._input=e,this._nextChunk()},this._readChunk=function(){if(this._finished)this._chunkLoaded();else{if(r=new XMLHttpRequest,this._config.withCredentials&&(r.withCredentials=this._config.withCredentials),s||(r.onload=m(this._chunkLoaded,this),r.onerror=m(this._chunkError,this)),r.open(this._config.downloadRequestBody?"POST":"GET",this._input,!s),this._config.downloadRequestHeaders){var e,t=this._config.downloadRequestHeaders;for(e in t)r.setRequestHeader(e,t[e])}var i;this._config.chunkSize&&(i=this._start+this._config.chunkSize-1,r.setRequestHeader("Range","bytes="+this._start+"-"+i));try{r.send(this._config.downloadRequestBody)}catch(e){this._chunkError(e.message)}s&&0===r.status&&this._chunkError()}},this._chunkLoaded=function(){4===r.readyState&&(r.status<200||400<=r.status?this._chunkError():(this._start+=this._config.chunkSize||r.responseText.length,this._finished=!this._config.chunkSize||this._start>=(e=>null!==(e=e.getResponseHeader("Content-Range"))?parseInt(e.substring(e.lastIndexOf("/")+1)):-1)(r),this.parseChunk(r.responseText)))},this._chunkError=function(e){e=r.statusText||e;this._sendError(new Error(e))}}function l(e){(e=e||{}).chunkSize||(e.chunkSize=w.LocalChunkSize),u.call(this,e);var i,r,n="undefined"!=typeof FileReader;this.stream=function(e){this._input=e,r=e.slice||e.webkitSlice||e.mozSlice,n?((i=new FileReader).onload=m(this._chunkLoaded,this),i.onerror=m(this._chunkError,this)):i=new FileReaderSync,this._nextChunk()},this._nextChunk=function(){this._finished||this._config.preview&&!(this._rowCount<this._config.preview)||this._readChunk()},this._readChunk=function(){var e=this._input,t=(this._config.chunkSize&&(t=Math.min(this._start+this._config.chunkSize,this._input.size),e=r.call(e,this._start,t)),i.readAsText(e,this._config.encoding));n||this._chunkLoaded({target:{result:t}})},this._chunkLoaded=function(e){this._start+=this._config.chunkSize,this._finished=!this._config.chunkSize||this._start>=this._input.size,this.parseChunk(e.target.result)},this._chunkError=function(){this._sendError(i.error)}}function f(e){var i;u.call(this,e=e||{}),this.stream=function(e){return i=e,this._nextChunk()},this._nextChunk=function(){var e,t;if(!this._finished)return e=this._config.chunkSize,i=e?(t=i.substring(0,e),i.substring(e)):(t=i,""),this._finished=!i,this.parseChunk(t)}}function c(e){u.call(this,e=e||{});var t=[],i=!0,r=!1;this.pause=function(){u.prototype.pause.apply(this,arguments),this._input.pause()},this.resume=function(){u.prototype.resume.apply(this,arguments),this._input.resume()},this.stream=function(e){this._input=e,this._input.on("data",this._streamData),this._input.on("end",this._streamEnd),this._input.on("error",this._streamError)},this._checkIsFinished=function(){r&&1===t.length&&(this._finished=!0)},this._nextChunk=function(){this._checkIsFinished(),t.length?this.parseChunk(t.shift()):i=!0},this._streamData=m(function(e){try{t.push("string"==typeof e?e:e.toString(this._config.encoding)),i&&(i=!1,this._checkIsFinished(),this.parseChunk(t.shift()))}catch(e){this._streamError(e)}},this),this._streamError=m(function(e){this._streamCleanUp(),this._sendError(e)},this),this._streamEnd=m(function(){this._streamCleanUp(),r=!0,this._streamData("")},this),this._streamCleanUp=m(function(){this._input.removeListener("data",this._streamData),this._input.removeListener("end",this._streamEnd),this._input.removeListener("error",this._streamError)},this)}function i(m){var n,s,a,t,o=Math.pow(2,53),h=-o,u=/^\s*-?(\d+\.?|\.\d+|\d+\.\d+)([eE][-+]?\d+)?\s*$/,d=/^((\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z)))$/,i=this,r=0,l=0,f=!1,e=!1,c=[],p={data:[],errors:[],meta:{}};function y(e){return"greedy"===m.skipEmptyLines?""===e.join("").trim():1===e.length&&0===e[0].length}function _(){if(p&&a&&(k("Delimiter","UndetectableDelimiter","Unable to auto-detect delimiting character; defaulted to '"+w.DefaultDelimiter+"'"),a=!1),m.skipEmptyLines&&(p.data=p.data.filter(function(e){return!y(e)})),g()){if(p)if(Array.isArray(p.data[0])){for(var e=0;g()&&e<p.data.length;e++)p.data[e].forEach(t);p.data.splice(0,1)}else p.data.forEach(t);function t(e,t){e=P(e),U(m.transformHeader)&&(e=m.transformHeader(e,t)),c.push(e)}}function i(e,t){for(var i=m.header?{}:[],r=0;r<e.length;r++){var n=r,s=e[r],s=((e,t)=>(e=>(m.dynamicTypingFunction&&void 0===m.dynamicTyping[e]&&(m.dynamicTyping[e]=m.dynamicTypingFunction(e)),!0===(m.dynamicTyping[e]||m.dynamicTyping)))(e)?"true"===t||"TRUE"===t||"false"!==t&&"FALSE"!==t&&((e=>{if(u.test(e)){e=parseFloat(e);if(h<e&&e<o)return 1}})(t)?parseFloat(t):d.test(t)?new Date(t):""===t?null:t):t)(n=m.header?r>=c.length?"__parsed_extra":c[r]:n,s=m.transform?m.transform(s,n):s);"__parsed_extra"===n?(i[n]=i[n]||[],i[n].push(s)):i[n]=s}return m.header&&(r>c.length?k("FieldMismatch","TooManyFields","Too many fields: expected "+c.length+" fields but parsed "+r,l+t):r<c.length&&k("FieldMismatch","TooFewFields","Too few fields: expected "+c.length+" fields but parsed "+r,l+t)),i}var r;p&&(m.header||m.dynamicTyping||m.transform)&&(r=1,!p.data.length||Array.isArray(p.data[0])?(p.data=p.data.map(i),r=p.data.length):p.data=i(p.data,0),m.header&&p.meta&&(p.meta.fields=c),l+=r)}function g(){return m.header&&0===c.length}function k(e,t,i,r){e={type:e,code:t,message:i};void 0!==r&&(e.row=r),p.errors.push(e)}U(m.step)&&(t=m.step,m.step=function(e){p=e,g()?_():(_(),0!==p.data.length&&(r+=e.data.length,m.preview&&r>m.preview?s.abort():(p.data=p.data[0],t(p,i))))}),this.parse=function(e,t,i){var r=m.quoteChar||'"',r=(m.newline||(m.newline=this.guessLineEndings(e,r)),a=!1,m.delimiter?U(m.delimiter)&&(m.delimiter=m.delimiter(e),p.meta.delimiter=m.delimiter):((r=((e,t,i,r,n)=>{var s,a,o,h;n=n||[",","\t","|",";",w.RECORD_SEP,w.UNIT_SEP];for(var u=0;u<n.length;u++){for(var d,l=n[u],f=0,c=0,p=0,_=(o=void 0,new E({comments:r,delimiter:l,newline:t,preview:10}).parse(e)),g=0;g<_.data.length;g++)i&&y(_.data[g])?p++:(d=_.data[g].length,c+=d,void 0===o?o=d:0<d&&(f+=Math.abs(d-o),o=d));0<_.data.length&&(c/=_.data.length-p),1.99<c&&(void 0===a||f<a||f===a&&h<c)&&(a=f,s=l,h=c)}return{successful:!!(m.delimiter=s),bestDelimiter:s}})(e,m.newline,m.skipEmptyLines,m.comments,m.delimitersToGuess)).successful?m.delimiter=r.bestDelimiter:(a=!0,m.delimiter=w.DefaultDelimiter),p.meta.delimiter=m.delimiter),b(m));return m.preview&&m.header&&r.preview++,n=e,s=new E(r),p=s.parse(n,t,i),_(),f?{meta:{paused:!0}}:p||{meta:{paused:!1}}},this.paused=function(){return f},this.pause=function(){f=!0,s.abort(),n=U(m.chunk)?"":n.substring(s.getCharIndex())},this.resume=function(){i.streamer._halted?(f=!1,i.streamer.parseChunk(n,!0)):setTimeout(i.resume,3)},this.aborted=function(){return e},this.abort=function(){e=!0,s.abort(),p.meta.aborted=!0,U(m.complete)&&m.complete(p),n=""},this.guessLineEndings=function(e,t){e=e.substring(0,1048576);var t=new RegExp(q(t)+"([^]*?)"+q(t),"gm"),i=(e=e.replace(t,"")).split("\r"),t=e.split("\n"),e=1<t.length&&t[0].length<i[0].length;if(1===i.length||e)return"\n";for(var r=0,n=0;n<i.length;n++)"\n"===i[n][0]&&r++;return r>=i.length/2?"\r\n":"\r"}}function q(e){return e.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}function E(C){var S=(C=C||{}).delimiter,O=C.newline,x=C.comments,I=C.step,A=C.preview,T=C.fastMode,D=null,L=!1,F=null==C.quoteChar?'"':C.quoteChar,z=F;if(void 0!==C.escapeChar&&(z=C.escapeChar),("string"!=typeof S||-1<w.BAD_DELIMITERS.indexOf(S))&&(S=","),x===S)throw new Error("Comment character same as delimiter");!0===x?x="#":("string"!=typeof x||-1<w.BAD_DELIMITERS.indexOf(x))&&(x=!1),"\n"!==O&&"\r"!==O&&"\r\n"!==O&&(O="\n");var M=0,j=!1;this.parse=function(i,t,r){if("string"!=typeof i)throw new Error("Input must be a string");var n=i.length,e=S.length,s=O.length,a=x.length,o=U(I),h=[],u=[],d=[],l=M=0;if(!i)return v();if(T||!1!==T&&-1===i.indexOf(F)){for(var f=i.split(O),c=0;c<f.length;c++){if(d=f[c],M+=d.length,c!==f.length-1)M+=O.length;else if(r)return v();if(!x||d.substring(0,a)!==x){if(o){if(h=[],k(d.split(S)),R(),j)return v()}else k(d.split(S));if(A&&A<=c)return h=h.slice(0,A),v(!0)}}return v()}for(var p=i.indexOf(S,M),_=i.indexOf(O,M),g=new RegExp(q(z)+q(F),"g"),m=i.indexOf(F,M);;)if(i[M]===F)for(m=M,M++;;){if(-1===(m=i.indexOf(F,m+1)))return r||u.push({type:"Quotes",code:"MissingQuotes",message:"Quoted field unterminated",row:h.length,index:M}),E();if(m===n-1)return E(i.substring(M,m).replace(g,F));if(F===z&&i[m+1]===z)m++;else if(F===z||0===m||i[m-1]!==z){-1!==p&&p<m+1&&(p=i.indexOf(S,m+1));var y=w(-1===(_=-1!==_&&_<m+1?i.indexOf(O,m+1):_)?p:Math.min(p,_));if(i.substr(m+1+y,e)===S){d.push(i.substring(M,m).replace(g,F)),i[M=m+1+y+e]!==F&&(m=i.indexOf(F,M)),p=i.indexOf(S,M),_=i.indexOf(O,M);break}y=w(_);if(i.substring(m+1+y,m+1+y+s)===O){if(d.push(i.substring(M,m).replace(g,F)),b(m+1+y+s),p=i.indexOf(S,M),m=i.indexOf(F,M),o&&(R(),j))return v();if(A&&h.length>=A)return v(!0);break}u.push({type:"Quotes",code:"InvalidQuotes",message:"Trailing quote on quoted field is malformed",row:h.length,index:M}),m++}}else if(x&&0===d.length&&i.substring(M,M+a)===x){if(-1===_)return v();M=_+s,_=i.indexOf(O,M),p=i.indexOf(S,M)}else if(-1!==p&&(p<_||-1===_))d.push(i.substring(M,p)),M=p+e,p=i.indexOf(S,M);else{if(-1===_)break;if(d.push(i.substring(M,_)),b(_+s),o&&(R(),j))return v();if(A&&h.length>=A)return v(!0)}return E();function k(e){h.push(e),l=M}function w(e){var t=0;return t=-1!==e&&(e=i.substring(m+1,e))&&""===e.trim()?e.length:t}function E(e){return r||(void 0===e&&(e=i.substring(M)),d.push(e),M=n,k(d),o&&R()),v()}function b(e){M=e,k(d),d=[],_=i.indexOf(O,M)}function v(e){if(C.header&&!t&&h.length&&!L){var s=h[0],a=Object.create(null),o=new Set(s);let n=!1;for(let r=0;r<s.length;r++){let i=P(s[r]);if(a[i=U(C.transformHeader)?C.transformHeader(i,r):i]){let e,t=a[i];for(;e=i+"_"+t,t++,o.has(e););o.add(e),s[r]=e,a[i]++,n=!0,(D=null===D?{}:D)[e]=i}else a[i]=1,s[r]=i;o.add(i)}n&&console.warn("Duplicate headers found and renamed."),L=!0}return{data:h,errors:u,meta:{delimiter:S,linebreak:O,aborted:j,truncated:!!e,cursor:l+(t||0),renamedHeaders:D}}}function R(){I(v()),h=[],u=[]}},this.abort=function(){j=!0},this.getCharIndex=function(){return M}}function p(e){var t=e.data,i=o[t.workerId],r=!1;if(t.error)i.userError(t.error,t.file);else if(t.results&&t.results.data){var n={abort:function(){r=!0,_(t.workerId,{data:[],errors:[],meta:{aborted:!0}})},pause:g,resume:g};if(U(i.userStep)){for(var s=0;s<t.results.data.length&&(i.userStep({data:t.results.data[s],errors:t.results.errors,meta:t.results.meta},n),!r);s++);delete t.results}else U(i.userChunk)&&(i.userChunk(t.results,n,t.file),delete t.results)}t.finished&&!r&&_(t.workerId,t.results)}function _(e,t){var i=o[e];U(i.userComplete)&&i.userComplete(t),i.terminate(),delete o[e]}function g(){throw new Error("Not implemented.")}function b(e){if("object"!=typeof e||null===e)return e;var t,i=Array.isArray(e)?[]:{};for(t in e)i[t]=b(e[t]);return i}function m(e,t){return function(){e.apply(t,arguments)}}function U(e){return"function"==typeof e}return w.parse=function(e,t){var i=(t=t||{}).dynamicTyping||!1;U(i)&&(t.dynamicTypingFunction=i,i={});if(t.dynamicTyping=i,t.transform=!!U(t.transform)&&t.transform,!t.worker||!w.WORKERS_SUPPORTED)return i=null,w.NODE_STREAM_INPUT,"string"==typeof e?(e=P(e),i=new(t.download?d:f)(t)):!0===e.readable&&U(e.read)&&U(e.on)?i=new c(t):(n.File&&e instanceof File||e instanceof Object)&&(i=new l(t)),i.stream(e);(i=(()=>{var e;return!!w.WORKERS_SUPPORTED&&(e=(()=>{var e=n.URL||n.webkitURL||null,t=r.toString();return w.BLOB_URL||(w.BLOB_URL=e.createObjectURL(new Blob(["var global = (function() { if (typeof self !== 'undefined') { return self; } if (typeof window !== 'undefined') { return window; } if (typeof global !== 'undefined') { return global; } return {}; })(); global.IS_PAPA_WORKER=true; ","(",t,")();"],{type:"text/javascript"})))})(),(e=new n.Worker(e)).onmessage=p,e.id=h++,o[e.id]=e)})()).userStep=t.step,i.userChunk=t.chunk,i.userComplete=t.complete,i.userError=t.error,t.step=U(t.step),t.chunk=U(t.chunk),t.complete=U(t.complete),t.error=U(t.error),delete t.worker,i.postMessage({input:e,config:t,workerId:i.id})},w.unparse=function(e,t){var s=!1,g=!0,m=",",y="\r\n",a='"',o=a+a,i=!1,r=null,h=!1,u=((()=>{if("object"==typeof t){if("string"!=typeof t.delimiter||w.BAD_DELIMITERS.filter(function(e){return-1!==t.delimiter.indexOf(e)}).length||(m=t.delimiter),"boolean"!=typeof t.quotes&&"function"!=typeof t.quotes&&!Array.isArray(t.quotes)||(s=t.quotes),"boolean"!=typeof t.skipEmptyLines&&"string"!=typeof t.skipEmptyLines||(i=t.skipEmptyLines),"string"==typeof t.newline&&(y=t.newline),"string"==typeof t.quoteChar&&(a=t.quoteChar,o=a+a),"boolean"==typeof t.header&&(g=t.header),Array.isArray(t.columns)){if(0===t.columns.length)throw new Error("Option columns is empty");r=t.columns}void 0!==t.escapeChar&&(o=t.escapeChar+a),t.escapeFormulae instanceof RegExp?h=t.escapeFormulae:"boolean"==typeof t.escapeFormulae&&t.escapeFormulae&&(h=/^[=+\-@\t\r].*$/)}})(),new RegExp(q(a),"g"));"string"==typeof e&&(e=JSON.parse(e));if(Array.isArray(e)){if(!e.length||Array.isArray(e[0]))return n(null,e,i);if("object"==typeof e[0])return n(r||Object.keys(e[0]),e,i)}else if("object"==typeof e)return"string"==typeof e.data&&(e.data=JSON.parse(e.data)),Array.isArray(e.data)&&(e.fields||(e.fields=e.meta&&e.meta.fields||r),e.fields||(e.fields=Array.isArray(e.data[0])?e.fields:"object"==typeof e.data[0]?Object.keys(e.data[0]):[]),Array.isArray(e.data[0])||"object"==typeof e.data[0]||(e.data=[e.data])),n(e.fields||[],e.data||[],i);throw new Error("Unable to serialize unrecognized input");function n(e,t,i){var r="",n=("string"==typeof e&&(e=JSON.parse(e)),"string"==typeof t&&(t=JSON.parse(t)),Array.isArray(e)&&0<e.length),s=!Array.isArray(t[0]);if(n&&g){for(var a=0;a<e.length;a++)0<a&&(r+=m),r+=k(e[a],a);0<t.length&&(r+=y)}for(var o=0;o<t.length;o++){var h=(n?e:t[o]).length,u=!1,d=n?0===Object.keys(t[o]).length:0===t[o].length;if(i&&!n&&(u="greedy"===i?""===t[o].join("").trim():1===t[o].length&&0===t[o][0].length),"greedy"===i&&n){for(var l=[],f=0;f<h;f++){var c=s?e[f]:f;l.push(t[o][c])}u=""===l.join("").trim()}if(!u){for(var p=0;p<h;p++){0<p&&!d&&(r+=m);var _=n&&s?e[p]:p;r+=k(t[o][_],p)}o<t.length-1&&(!i||0<h&&!d)&&(r+=y)}}return r}function k(e,t){var i,r,n;return null==e?"":e.constructor===Date?isNaN(e.getTime())?"":e.toISOString():(n=!1,h&&"string"==typeof e&&h.test(e)&&(e="'"+e,n=!0),r=(i=e.toString()).replace(u,o),(n=n||!0===s||"function"==typeof s&&s(e,t)||Array.isArray(s)&&s[t]||((e,t)=>{for(var i=0;i<t.length;i++)if(-1<e.indexOf(t[i]))return!0;return!1})(r,w.BAD_DELIMITERS)||-1<r.indexOf(m)||-1<i.indexOf(a)||" "===r.charAt(0)||" "===r.charAt(r.length-1))?a+r+a:r)}},w.RECORD_SEP=String.fromCharCode(30),w.UNIT_SEP=String.fromCharCode(31),w.BYTE_ORDER_MARK="\ufeff",w.BAD_DELIMITERS=["\r","\n",'"',w.BYTE_ORDER_MARK],w.WORKERS_SUPPORTED=!s&&!!n.Worker,w.NODE_STREAM_INPUT=1,w.LocalChunkSize=10485760,w.RemoteChunkSize=5242880,w.DefaultDelimiter=",",w.Parser=E,w.ParserHandle=i,w.NetworkStreamer=d,w.FileStreamer=l,w.StringStreamer=f,w.ReadableStreamStreamer=c,a&&(n.onmessage=function(e){e=e.data;void 0===w.WORKER_ID&&e&&(w.WORKER_ID=e.workerId);"string"==typeof e.input?n.postMessage({workerId:w.WORKER_ID,results:w.parse(e.input,e.config),finished:!0}):(n.File&&e.input instanceof File||e.input instanceof Object)&&(e=w.parse(e.input,e.config))&&n.postMessage({workerId:w.WORKER_ID,results:e,finished:!0})}),(d.prototype=Object.create(u.prototype)).constructor=d,(l.prototype=Object.create(u.prototype)).constructor=l,(f.prototype=Object.create(f.prototype)).constructor=f,(c.prototype=Object.create(u.prototype)).constructor=c,w});
+</script>
+<script>
+// shared/csv-parse.js
+// Papa Parse 5.6.0 must be bundled before this module.
+if (typeof Papa === 'undefined' || !Papa || typeof Papa.parse !== 'function') {
+  throw new Error('csv-parse.js requires the Papa Parse asset to be loaded first.');
+}
+
+function cellAt(row, i) {
+  if (!row || !row.cells || !Number.isInteger(i) || i < 0 || i >= row.cells.length) {
+    return '';
+  }
+  return typeof row.cells[i] === 'undefined' ? '' : row.cells[i];
+}
+
+function detectCsvLineEnding(text) {
+  var withoutCrlf = text.replace(/\r\n/g, '');
+  var hasCrlf = /\r\n/.test(text);
+  var hasBareCr = /\r/.test(withoutCrlf);
+  var hasBareLf = /\n/.test(withoutCrlf);
+
+  if (hasCrlf && !hasBareCr && !hasBareLf) return 'crlf';
+  if (!hasCrlf && !hasBareCr) return 'lf';
+  return 'mixed';
+}
+
+function normalizeCsvLineEndings(text) {
+  return text.replace(/\r\n?/g, '\n');
+}
+
+function detectCsvDelimiter(text) {
+  var candidates = [',', '\t', ';'];
+  var best = null;
+
+  candidates.forEach(function (delimiter, priority) {
+    var preview = Papa.parse(text, {
+      delimiter: delimiter,
+      preview: 10,
+      skipEmptyLines: true,
+      dynamicTyping: false
+    }).data;
+    var widths = {};
+    var modeWidth = 0;
+    var modeCount = 0;
+
+    preview.forEach(function (row) {
+      var width = row.length;
+      widths[width] = (widths[width] || 0) + 1;
+      if (widths[width] > modeCount) {
+        modeWidth = width;
+        modeCount = widths[width];
+      }
+    });
+
+    // A delimiter absent from every row makes a stable one-cell result. It is
+    // not evidence that the delimiter is in use, so do not select it.
+    if (!preview.length || modeWidth < 2) return;
+
+    var candidate = {
+      delimiter: delimiter,
+      stability: modeCount / preview.length,
+      width: modeWidth,
+      priority: priority
+    };
+    if (!best || candidate.stability > best.stability ||
+        (candidate.stability === best.stability && candidate.width > best.width) ||
+        (candidate.stability === best.stability && candidate.width === best.width &&
+         candidate.priority < best.priority)) {
+      best = candidate;
+    }
+  });
+
+  return best ? best.delimiter : ',';
+}
+
+function parseCsv(text, opts) {
+  opts = opts || {};
+  var beginsWithBom = text.charCodeAt(0) === 0xfeff;
+  if (beginsWithBom) text = text.slice(1);
+  var lineEnding = detectCsvLineEnding(text);
+  var normalizedText = normalizeCsvLineEndings(text);
+  var delimiter = opts.delimiter || detectCsvDelimiter(normalizedText);
+  var parsedRows = [];
+  var previousCursor = 0;
+  var currentLine = 1;
+
+  Papa.parse(normalizedText, {
+    delimiter: delimiter,
+    dynamicTyping: false,
+    step: function (result) {
+      var consumed = normalizedText.slice(previousCursor, result.meta.cursor);
+      var newlineCount = (consumed.match(/\n/g) || []).length;
+
+      parsedRows.push({
+        line: currentLine,
+        cells: result.data.map(String)
+      });
+      currentLine += newlineCount;
+      previousCursor = result.meta.cursor;
+    }
+  });
+  if (parsedRows.length && parsedRows[parsedRows.length - 1].cells.length === 1 &&
+      parsedRows[parsedRows.length - 1].cells[0] === '') {
+    parsedRows.pop();
+  }
+
+  var headers = parsedRows.length ? parsedRows.shift().cells : [];
+  var raggedRows = parsedRows.filter(function (row) {
+    return !(row.cells.length === 1 && row.cells[0] === '') &&
+      row.cells.length !== headers.length;
+  }).map(function (row) {
+    return row.line;
+  });
+
+  return {
+    headers: headers,
+    rows: parsedRows,
+    meta: {
+      encoding: opts.encoding || 'utf-8',
+      hadBom: beginsWithBom || opts.hadBom === true,
+      lineEnding: lineEnding,
+      delimiter: delimiter,
+      headerCount: headers.length,
+      raggedRows: raggedRows
+    }
+  };
+}
+
+</script>
+<script>
+// shared/csv-types.js
+
+function toNumber(s) {
+  if (typeof s !== 'string') return NaN;
+  var text = s.trim();
+  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) {
+    return NaN;
+  }
+  var value = Number(text);
+  return Number.isFinite(value) ? value : NaN;
+}
+
+function validCompactDate(year, month, day) {
+  var daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  var leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  if (month < 1 || month > 12) return false;
+  if (month === 2 && leapYear) return day >= 1 && day <= 29;
+  return day >= 1 && day <= daysInMonth[month - 1];
+}
+
+function dateParts(s) {
+  if (typeof s !== 'string') return null;
+  var match = /^(\d{4})([-/])(\d{2})\2(\d{2})$/.exec(s);
+  if (match) {
+    return { y: Number(match[1]), m: Number(match[3]), d: Number(match[4]) };
+  }
+  match = /^(\d{4})([-/])(\d)\2(\d)$/.exec(s);
+  if (match) {
+    return { y: Number(match[1]), m: Number(match[3]), d: Number(match[4]) };
+  }
+  match = /^(\d{4})(\d{2})(\d{2})$/.exec(s);
+  if (match) {
+    var year = Number(match[1]);
+    var month = Number(match[2]);
+    var day = Number(match[3]);
+    return validCompactDate(year, month, day) ? { y: year, m: month, d: day } : null;
+  }
+  match = /^(\d{4})([-/])(\d{2})$/.exec(s);
+  if (match) {
+    return { y: Number(match[1]), m: Number(match[3]), d: null };
+  }
+  match = /^(\d{4})$/.exec(s);
+  if (match) {
+    return { y: Number(match[1]), m: null, d: null };
+  }
+  return null;
+}
+
+function isDateLike(s) {
+  return dateParts(s) !== null;
+}
+
+function inferColumnTypes(table) {
+  return table.headers.map(function (_, columnIndex) {
+    var samples = [];
+
+    table.rows.forEach(function (row) {
+      var cell = row.cells[columnIndex];
+      if (typeof cell === 'string' && cell !== '') {
+        samples.push({ value: cell, line: row.line });
+      }
+    });
+
+    var numericMatches = samples.filter(function (sample) {
+      return !Number.isNaN(toNumber(sample.value));
+    });
+    var dateMatches = samples.filter(function (sample) {
+      return isDateLike(sample.value);
+    });
+    var kind = 'text';
+    var matched = samples.length;
+    var mismatchLines = [];
+
+    if (samples.length >= 3 && numericMatches.length / samples.length >= 0.9) {
+      kind = 'number';
+      matched = numericMatches.length;
+      mismatchLines = samples.filter(function (sample) {
+        return Number.isNaN(toNumber(sample.value));
+      }).map(function (sample) {
+        return sample.line;
+      });
+    } else if (samples.length >= 3 && dateMatches.length / samples.length >= 0.9) {
+      kind = 'date';
+      matched = dateMatches.length;
+      mismatchLines = samples.filter(function (sample) {
+        return !isDateLike(sample.value);
+      }).map(function (sample) {
+        return sample.line;
+      });
+    }
+
+    return {
+      kind: kind,
+      sampleSize: samples.length,
+      matched: matched,
+      mismatchLines: mismatchLines
+    };
+  });
+}
+
+</script>
+<script>
+// shared/csv-write.js
+
+// 試算表公式注入防護（見 CSV_CONTRACT.md 第 4.2a 節、LEVEL1B_RULINGS.md 裁示 17）
+var CSV_FORMULA_LEAD = /^[=+\-@\t\r]/;
+
+function needsFormulaGuard(text) {
+  if (!CSV_FORMULA_LEAD.test(text)) return false;
+  // 單一字元構不成公式，且 '-' 單獨一格是報表常見的「無資料」標記，不逃脫。
+  if (text.length < 2) return false;
+  if (typeof toNumber !== 'function') {
+    throw new Error('csv-write.js requires csv-types.js (toNumber) to be bundled first.');
+  }
+  // 數字不逃脫：'-5.6' 是合法數值，逃脫它會把整個數值欄變成文字。
+  return Number.isNaN(toNumber(text));
+}
+
+function csvCell(value, delimiter) {
+  var text = String(value);
+  if (needsFormulaGuard(text)) {
+    text = "'" + text;
+  }
+  if (text.indexOf(delimiter) !== -1 || text.indexOf('"') !== -1 ||
+      text.indexOf('\r') !== -1 || text.indexOf('\n') !== -1) {
+    return '"' + text.replace(/"/g, '""') + '"';
+  }
+  return text;
+}
+
+function toCsv(table, opts) {
+  opts = opts || {};
+  var delimiter = ',';
+  var columns = opts.columns;
+  var lines = [];
+
+  if (Object.prototype.hasOwnProperty.call(opts, 'columns')) {
+    if (!Array.isArray(columns)) {
+      throw new Error('opts.columns must be an array of column indexes.');
+    }
+    columns.forEach(function (index) {
+      if (!Number.isInteger(index) || index < 0 || index >= table.headers.length) {
+        throw new Error('opts.columns contains an invalid column index: ' + index);
+      }
+    });
+  }
+
+  var headerCount = (table.meta && Number.isInteger(table.meta.headerCount))
+    ? table.meta.headerCount
+    : table.headers.length;
+
+  function selectHeader() {
+    if (!columns) return table.headers;
+    return columns.map(function (index) {
+      return table.headers[index];
+    });
+  }
+
+  function selectCells(row) {
+    if (!columns) {
+      var full = [];
+      for (var i = 0; i < headerCount; i += 1) {
+        full.push(cellAt(row, i));
+      }
+      return full;
+    }
+    return columns.map(function (index) {
+      return cellAt(row, index);
+    });
+  }
+
+  lines.push(selectHeader().map(function (cell) {
+    return csvCell(cell, delimiter);
+  }).join(delimiter));
+  table.rows.forEach(function (row) {
+    lines.push(selectCells(row).map(function (cell) {
+      return csvCell(cell, delimiter);
+    }).join(delimiter));
+  });
+
+  return (opts.bom === false ? '' : '\ufeff') + lines.join('\r\n');
+}
+
+</script>
+
+<script>
+(function () {
+  "use strict";
+
+  var PAGE_SIZE = 50;
+  var KEY_SEP = "\u0000";
+
+  // ---- T2：兩區各自的模組層 size 變數與大小門檻 gate ----
+
+  var periodASize = null;
+  var periodBSize = null;
+
+  function gateFor(getOtherSize, setOwnSize) {
+    return function (file) {
+      var single = checkCsvFileSize(file.size);
+      if (!single.ok) return single;
+      var otherSize = getOtherSize();
+      if (otherSize !== null) {
+        var total = checkCsvFileSize(otherSize + file.size);
+        if (!total.ok) {
+          return { ok: false, level: "reject", message: "兩檔合計超過 20 MB 上限，請縮小檔案後再試。" };
+        }
+      }
+      setOwnSize(file.size);
+      return single;
+    };
+  }
+
+  var gateA = gateFor(function () { return periodBSize; }, function (size) { periodASize = size; });
+  var gateB = gateFor(function () { return periodASize; }, function (size) { periodBSize = size; });
+
+  // ---- 狀態 ----
+
+  var tableA = null;
+  var tableB = null;
+  var fileNameA = null;
+  var fileNameB = null;
+  var arrayBufferA = null;
+  var arrayBufferB = null;
+
+  var lastResult = null; // { added, removed, modified, unchangedCount, dupA, dupB, missingA, missingB, keyCols }
+  var pageState = { added: 1, removed: 1, modified: 1 };
+
+  // ---- DOM ----
+
+  var dropzoneA = document.getElementById("dropzone-a");
+  var dropzoneB = document.getElementById("dropzone-b");
+  var fileInputA = document.getElementById("file-a");
+  var fileInputB = document.getElementById("file-b");
+  var statusA = document.getElementById("status-a");
+  var statusB = document.getElementById("status-b");
+  var fieldDiffEl = document.getElementById("field-diff");
+  var keyCheckboxList = document.getElementById("key-checkbox-list");
+
+  var statAdded = document.getElementById("stat-added");
+  var statRemoved = document.getElementById("stat-removed");
+  var statModified = document.getElementById("stat-modified");
+  var statUnchanged = document.getElementById("stat-unchanged");
+  var statDup = document.getElementById("stat-dup");
+  var statMissing = document.getElementById("stat-missing");
+
+  var warnDupEl = document.getElementById("warn-dup");
+  var warnMissingEl = document.getElementById("warn-missing");
+
+  var listAdded = document.getElementById("list-added");
+  var listRemoved = document.getElementById("list-removed");
+  var listModified = document.getElementById("list-modified");
+  var pagerAdded = document.getElementById("pager-added");
+  var pagerRemoved = document.getElementById("pager-removed");
+  var pagerModified = document.getElementById("pager-modified");
+
+  // ---- 上傳與解析 ----
+
+  function statusText(table, fileName) {
+    return fileName + "（" + table.headers.length + " 欄，" + table.rows.length + " 列，編碼 " + table.meta.encoding + "）";
+  }
+
+  function fallbackElFor(which) {
+    return document.getElementById(which === "A" ? "encoding-fallback-a" : "encoding-fallback-b");
+  }
+
+  function resetComparisonResult() {
+    lastResult = null;
+    pageState = { added: 1, removed: 1, modified: 1 };
+    statAdded.textContent = "0";
+    statRemoved.textContent = "0";
+    statModified.textContent = "0";
+    statUnchanged.textContent = "0";
+    statDup.textContent = "0";
+    statMissing.textContent = "0";
+    warnDupEl.innerHTML = '<div class="empty">尚未比對</div>';
+    warnMissingEl.innerHTML = '<div class="empty">尚未比對</div>';
+    listAdded.innerHTML = '<div class="empty">尚未比對</div>';
+    listRemoved.innerHTML = '<div class="empty">尚未比對</div>';
+    listModified.innerHTML = '<div class="empty">尚未比對</div>';
+    pagerAdded.innerHTML = "";
+    pagerRemoved.innerHTML = "";
+    pagerModified.innerHTML = "";
+  }
+
+  // 編碼偵測為 fallback（猜的）或使用者手動切換後，都顯示切換橫幅，
+  // 讓使用者可在 UTF-8／Big5 間來回切換以救回猜錯的情形（CSV_CONTRACT.md 第 7.2 節）。
+  function renderEncodingFallback(which, decoded) {
+    var el = fallbackElFor(which);
+    if (!el) return;
+    if (decoded.confidence !== "fallback" && decoded.confidence !== "manual") {
+      el.classList.add("hidden");
+      el.innerHTML = "";
+      return;
+    }
+    var label = decoded.confidence === "fallback"
+      ? "偵測為 Big5，若顯示為亂碼請手動切換編碼："
+      : "已手動切換為 " + decoded.encoding.toUpperCase() + "，如仍為亂碼可再切換：";
+    el.classList.remove("hidden");
+    el.innerHTML = escapeHtml(label) +
+      '<button type="button" class="btn-switch-utf8">切換為 UTF-8</button> ' +
+      '<button type="button" class="btn-switch-big5">切換為 Big5</button>';
+    el.querySelector(".btn-switch-utf8").addEventListener("click", function () {
+      loadTable(which, which === "A" ? arrayBufferA : arrayBufferB, which === "A" ? fileNameA : fileNameB, "utf-8");
+    });
+    el.querySelector(".btn-switch-big5").addEventListener("click", function () {
+      loadTable(which, which === "A" ? arrayBufferA : arrayBufferB, which === "A" ? fileNameA : fileNameB, "big5");
+    });
+  }
+
+  // which: "A" 或 "B"，兩份檔案各自獨立切換編碼（互不影響另一份）。
+  // forcedEncoding 非空時代表使用者手動切換：因為其中一份資料已用不同編碼重新解碼，
+  // 舊比對結果可能是根據錯誤解碼的文字算出來的，會誤導使用者，故一律清空、要求重新按「開始比對」。
+  function loadTable(which, arrayBuffer, fileName, forcedEncoding) {
+    var decoded;
+    if (forcedEncoding) {
+      decoded = {
+        text: new TextDecoder(forcedEncoding).decode(arrayBuffer),
+        encoding: forcedEncoding,
+        hadBom: false,
+        confidence: "manual"
+      };
+    } else {
+      decoded = decodeCsvBytes(arrayBuffer);
+    }
+
+    var table = parseCsv(decoded.text, { encoding: decoded.encoding, hadBom: decoded.hadBom });
+
+    var seen = {};
+    for (var i = 0; i < table.headers.length; i++) {
+      if (Object.prototype.hasOwnProperty.call(seen, table.headers[i])) {
+        showToast("偵測到重複欄名，請先用 CSV 健檢清理後再比對");
+        return;
+      }
+      seen[table.headers[i]] = true;
+    }
+
+    if (which === "A") {
+      arrayBufferA = arrayBuffer;
+      tableA = table;
+      fileNameA = fileName;
+      statusA.textContent = statusText(table, fileName);
+    } else {
+      arrayBufferB = arrayBuffer;
+      tableB = table;
+      fileNameB = fileName;
+      statusB.textContent = statusText(table, fileName);
+    }
+
+    renderEncodingFallback(which, decoded);
+    if (forcedEncoding) {
+      resetComparisonResult();
+    }
+    renderFieldDiffAndKeys();
+  }
+
+  function makeOnData(which) {
+    return function (arrayBuffer, fileName) {
+      loadTable(which, arrayBuffer, fileName, null);
+    };
+  }
+
+  function makeOnError() {
+    return function (msg) { showToast(msg); };
+  }
+
+  var optsA = { mode: "bytes", accept: [".csv"], gate: gateA, onError: makeOnError() };
+  var optsB = { mode: "bytes", accept: [".csv"], gate: gateB, onError: makeOnError() };
+
+  setupDropZone(dropzoneA, makeOnData("A"), optsA);
+  setupFilePicker(fileInputA, makeOnData("A"), optsA);
+  setupDropZone(dropzoneB, makeOnData("B"), optsB);
+  setupFilePicker(fileInputB, makeOnData("B"), optsB);
+
+  // ---- T3：欄位結構差異 + Key 候選 ----
+
+  function renderFieldDiffAndKeys() {
+    if (!tableA || !tableB) {
+      fieldDiffEl.innerHTML = '<div class="empty">尚未上傳兩份檔案</div>';
+      keyCheckboxList.innerHTML = '<div class="empty">尚未上傳兩份檔案</div>';
+      return;
+    }
+
+    var setA = {};
+    tableA.headers.forEach(function (h) { setA[h] = true; });
+    var setB = {};
+    tableB.headers.forEach(function (h) { setB[h] = true; });
+
+    var common = tableA.headers.filter(function (h) { return setB[h]; });
+    var onlyA = tableA.headers.filter(function (h) { return !setB[h]; });
+    var onlyB = tableB.headers.filter(function (h) { return !setA[h]; });
+
+    var parts = [];
+    if (onlyA.length === 0 && onlyB.length === 0) {
+      parts.push('<div>兩期欄位結構相同</div>');
+    } else {
+      if (onlyA.length > 0) parts.push('<div>僅前期有：' + escapeHtml(onlyA.join("、")) + '</div>');
+      if (onlyB.length > 0) parts.push('<div>僅本期有：' + escapeHtml(onlyB.join("、")) + '</div>');
+    }
+    fieldDiffEl.innerHTML = parts.join("");
+
+    if (common.length === 0) {
+      keyCheckboxList.innerHTML = '<div class="empty">兩期沒有共同欄位，無法選取 Key</div>';
+      return;
+    }
+    keyCheckboxList.innerHTML = common.map(function (h, idx) {
+      var id = "key-cb-" + idx;
+      return '<label><input type="checkbox" class="key-checkbox" id="' + id + '" value="' + escapeHtml(h) + '">' + escapeHtml(h) + '</label>';
+    }).join("");
+  }
+
+  // ---- T4–T6：比對 ----
+
+  function getSelectedKeyCols() {
+    var boxes = keyCheckboxList.querySelectorAll(".key-checkbox:checked");
+    var result = [];
+    for (var i = 0; i < boxes.length; i++) result.push(boxes[i].value);
+    return result;
+  }
+
+  function buildPeriodMap(table, keyCols) {
+    var idxs = keyCols.map(function (name) { return table.headers.indexOf(name); });
+    var map = {};
+    table.rows.forEach(function (row) {
+      var hasEmpty = false;
+      var parts = idxs.map(function (i) {
+        var v = cellAt(row, i);
+        if (v === "") hasEmpty = true;
+        return v;
+      });
+      var key = parts.join(KEY_SEP);
+      if (!map[key]) map[key] = [];
+      map[key].push({ row: row, hasEmpty: hasEmpty });
+    });
+    return map;
+  }
+
+  function classifyMap(map) {
+    var clean = {};
+    var dup = [];
+    var missing = [];
+    Object.keys(map).forEach(function (key) {
+      var entries = map[key];
+      if (entries.length > 1) {
+        dup.push({ key: key, lines: entries.map(function (e) { return e.row.line; }) });
+        return;
+      }
+      var entry = entries[0];
+      if (entry.hasEmpty) {
+        missing.push({ key: key, lines: [entry.row.line] });
+        return;
+      }
+      clean[key] = entry.row;
+    });
+    return { clean: clean, dup: dup, missing: missing };
+  }
+
+  function compare() {
+    var keyCols = getSelectedKeyCols();
+    if (keyCols.length === 0) {
+      showToast("請至少選擇一個 Key 欄位");
+      return;
+    }
+
+    var mapA = buildPeriodMap(tableA, keyCols);
+    var mapB = buildPeriodMap(tableB, keyCols);
+    var classA = classifyMap(mapA);
+    var classB = classifyMap(mapB);
+
+    var setA = {};
+    tableA.headers.forEach(function (h) { setA[h] = true; });
+    var commonHeaders = tableB.headers.filter(function (h) { return setA[h]; });
+
+    var added = [];
+    var removed = [];
+    var modified = [];
+    var unchangedCount = 0;
+
+    var allKeys = {};
+    Object.keys(classA.clean).forEach(function (k) { allKeys[k] = true; });
+    Object.keys(classB.clean).forEach(function (k) { allKeys[k] = true; });
+
+    Object.keys(allKeys).forEach(function (key) {
+      var inA = Object.prototype.hasOwnProperty.call(classA.clean, key);
+      var inB = Object.prototype.hasOwnProperty.call(classB.clean, key);
+      if (inA && !inB) {
+        removed.push({ key: key, row: classA.clean[key] });
+        return;
+      }
+      if (!inA && inB) {
+        added.push({ key: key, row: classB.clean[key] });
+        return;
+      }
+      var rowA = classA.clean[key];
+      var rowB = classB.clean[key];
+      var changes = [];
+      commonHeaders.forEach(function (h) {
+        var ia = tableA.headers.indexOf(h);
+        var ib = tableB.headers.indexOf(h);
+        var va = cellAt(rowA, ia);
+        var vb = cellAt(rowB, ib);
+        if (va !== vb) changes.push({ field: h, oldVal: va, newVal: vb });
+      });
+      if (changes.length > 0) {
+        modified.push({ key: key, rowA: rowA, rowB: rowB, changes: changes });
+      } else {
+        unchangedCount++;
+      }
+    });
+
+    lastResult = {
+      keyCols: keyCols,
+      added: added,
+      removed: removed,
+      modified: modified,
+      unchangedCount: unchangedCount,
+      dupA: classA.dup,
+      dupB: classB.dup,
+      missingA: classA.missing,
+      missingB: classB.missing
+    };
+
+    pageState = { added: 1, removed: 1, modified: 1 };
+    renderResult();
+  }
+
+  document.getElementById("btn-compare").addEventListener("click", compare);
+
+  // ---- T7：渲染 ----
+
+  function renderFieldsBlock(table, row) {
+    return table.headers.map(function (h, i) {
+      return '<div class="field-row"><span class="field-name">' + escapeHtml(h) + '</span><span class="field-value">' + escapeHtml(cellAt(row, i)) + '</span></div>';
+    }).join("");
+  }
+
+  function renderAddedItem(item) {
+    return '<div class="result-item"><div class="result-key">Key: ' + escapeHtml(item.key.split(KEY_SEP).join(" / ")) + '</div>' +
+      renderFieldsBlock(tableB, item.row) + '</div>';
+  }
+
+  function renderRemovedItem(item) {
+    return '<div class="result-item"><div class="result-key">Key: ' + escapeHtml(item.key.split(KEY_SEP).join(" / ")) + '</div>' +
+      renderFieldsBlock(tableA, item.row) + '</div>';
+  }
+
+  function renderModifiedItem(item) {
+    var rows = item.changes.map(function (c) {
+      return '<div class="diff-row"><span class="field-name">' + escapeHtml(c.field) + '</span>' +
+        '<span class="diff-old swatch-modified">' + escapeHtml(c.oldVal) + '</span>' +
+        '<span class="diff-new swatch-modified">' + escapeHtml(c.newVal) + '</span></div>';
+    }).join("");
+    return '<div class="result-item"><div class="result-key">Key: ' + escapeHtml(item.key.split(KEY_SEP).join(" / ")) + '</div>' + rows + '</div>';
+  }
+
+  function renderPaged(listKey, items, renderItemFn, containerEl, pagerEl) {
+    if (items.length === 0) {
+      containerEl.innerHTML = '<div class="empty">無資料</div>';
+      pagerEl.innerHTML = "";
+      return;
+    }
+    var totalPages = Math.ceil(items.length / PAGE_SIZE);
+    if (pageState[listKey] > totalPages) pageState[listKey] = totalPages;
+    if (pageState[listKey] < 1) pageState[listKey] = 1;
+    var page = pageState[listKey];
+    var start = (page - 1) * PAGE_SIZE;
+    var pageItems = items.slice(start, start + PAGE_SIZE);
+    containerEl.innerHTML = pageItems.map(renderItemFn).join("");
+
+    var pagerHtml = "";
+    if (totalPages > 1) {
+      pagerHtml += '<button type="button" class="pager-prev" data-list="' + listKey + '"' + (page <= 1 ? " disabled" : "") + '>上一頁</button>';
+      pagerHtml += '<span>第 ' + page + ' / ' + totalPages + ' 頁</span>';
+      pagerHtml += '<button type="button" class="pager-next" data-list="' + listKey + '"' + (page >= totalPages ? " disabled" : "") + '>下一頁</button>';
+    }
+    pagerEl.innerHTML = pagerHtml;
+  }
+
+  function renderWarnList(container, entries) {
+    if (entries.length === 0) {
+      container.innerHTML = '<div class="empty">無</div>';
+      return;
+    }
+    container.innerHTML = entries.map(function (e) {
+      return '<div class="warn-item">Key: ' + escapeHtml(e.key.split(KEY_SEP).join(" / ")) + '，原始列號：' + e.lines.join(", ") + '</div>';
+    }).join("");
+  }
+
+  function renderResult() {
+    if (!lastResult) return;
+    statAdded.textContent = String(lastResult.added.length);
+    statRemoved.textContent = String(lastResult.removed.length);
+    statModified.textContent = String(lastResult.modified.length);
+    statUnchanged.textContent = String(lastResult.unchangedCount);
+
+    var dupAll = lastResult.dupA.concat(lastResult.dupB);
+    var missingAll = lastResult.missingA.concat(lastResult.missingB);
+    var dupLineCount = dupAll.reduce(function (sum, e) { return sum + e.lines.length; }, 0);
+    var missingLineCount = missingAll.reduce(function (sum, e) { return sum + e.lines.length; }, 0);
+    statDup.textContent = String(dupLineCount);
+    statMissing.textContent = String(missingLineCount);
+
+    renderWarnList(warnDupEl, dupAll);
+    renderWarnList(warnMissingEl, missingAll);
+
+    renderPaged("added", lastResult.added, renderAddedItem, listAdded, pagerAdded);
+    renderPaged("removed", lastResult.removed, renderRemovedItem, listRemoved, pagerRemoved);
+    renderPaged("modified", lastResult.modified, renderModifiedItem, listModified, pagerModified);
+  }
+
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest ? e.target.closest(".pager-prev, .pager-next") : null;
+    if (!btn || !lastResult) return;
+    var listKey = btn.getAttribute("data-list");
+    if (btn.classList.contains("pager-prev")) pageState[listKey] -= 1;
+    else pageState[listKey] += 1;
+    renderResult();
+  });
+
+  // ---- T8：下載 CSV ----
+
+  function buildFullRowTable(headers, items) {
+    return {
+      headers: headers,
+      rows: items.map(function (item) { return item.row; }),
+      meta: { headerCount: headers.length }
+    };
+  }
+
+  document.getElementById("btn-download-added").addEventListener("click", function () {
+    if (!lastResult || !tableB) { showToast("請先完成比對"); return; }
+    var table = buildFullRowTable(tableB.headers, lastResult.added);
+    downloadFile("added.csv", toCsv(table), "text/csv;charset=utf-8");
+  });
+
+  document.getElementById("btn-download-removed").addEventListener("click", function () {
+    if (!lastResult || !tableA) { showToast("請先完成比對"); return; }
+    var table = buildFullRowTable(tableA.headers, lastResult.removed);
+    downloadFile("removed.csv", toCsv(table), "text/csv;charset=utf-8");
+  });
+
+  document.getElementById("btn-download-modified").addEventListener("click", function () {
+    if (!lastResult) { showToast("請先完成比對"); return; }
+    var headers = lastResult.keyCols.concat(["欄位", "舊值", "新值"]);
+    var rows = [];
+    var line = 1;
+    lastResult.modified.forEach(function (item) {
+      var keyValues = item.key.split(KEY_SEP);
+      item.changes.forEach(function (c) {
+        line++;
+        rows.push({ line: line, cells: keyValues.concat([c.field, c.oldVal, c.newVal]) });
+      });
+    });
+    var table = { headers: headers, rows: rows, meta: { headerCount: headers.length } };
+    downloadFile("modified.csv", toCsv(table), "text/csv;charset=utf-8");
+  });
+
+  // ---- T9：HTML 摘要報告（含全部明細，獨立於離線版） ----
+
+  function buildReportHtml() {
+    var r = lastResult;
+    var dupAll = r ? r.dupA.concat(r.dupB) : [];
+    var missingAll = r ? r.missingA.concat(r.missingB) : [];
+
+    function fieldsHtml(table, row) {
+      return table.headers.map(function (h, i) {
+        return '<div class="field-row"><span class="field-name">' + escapeHtml(h) + '</span><span class="field-value">' + escapeHtml(cellAt(row, i)) + '</span></div>';
+      }).join("");
+    }
+
+    function addedHtml() {
+      if (!r || r.added.length === 0) return '<div class="empty">無</div>';
+      return r.added.map(function (item) {
+        return '<div class="result-item"><div class="result-key">Key: ' + escapeHtml(item.key.split(KEY_SEP).join(" / ")) + '</div>' + fieldsHtml(tableB, item.row) + '</div>';
+      }).join("");
+    }
+
+    function removedHtml() {
+      if (!r || r.removed.length === 0) return '<div class="empty">無</div>';
+      return r.removed.map(function (item) {
+        return '<div class="result-item"><div class="result-key">Key: ' + escapeHtml(item.key.split(KEY_SEP).join(" / ")) + '</div>' + fieldsHtml(tableA, item.row) + '</div>';
+      }).join("");
+    }
+
+    function modifiedHtml() {
+      if (!r || r.modified.length === 0) return '<div class="empty">無</div>';
+      return r.modified.map(function (item) {
+        var rows = item.changes.map(function (c) {
+          return '<div class="diff-row"><span class="field-name">' + escapeHtml(c.field) + '</span>' +
+            '<span class="diff-old swatch-modified">' + escapeHtml(c.oldVal) + '</span>' +
+            '<span class="diff-new swatch-modified">' + escapeHtml(c.newVal) + '</span></div>';
+        }).join("");
+        return '<div class="result-item"><div class="result-key">Key: ' + escapeHtml(item.key.split(KEY_SEP).join(" / ")) + '</div>' + rows + '</div>';
+      }).join("");
+    }
+
+    function warnHtml(entries) {
+      if (entries.length === 0) return '<div class="empty">無</div>';
+      return entries.map(function (e) {
+        return '<div class="warn-item">Key: ' + escapeHtml(e.key.split(KEY_SEP).join(" / ")) + '，原始列號：' + e.lines.join(", ") + '</div>';
+      }).join("");
+    }
+
+    var style = "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',sans-serif;margin:24px;color:#1f2328;}" +
+      ".card{border:1px solid #d9d9de;border-radius:8px;padding:16px;margin-top:16px;}" +
+      ".stat-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #d9d9de;}" +
+      ".result-item{border:1px solid #d9d9de;border-radius:8px;padding:8px 10px;margin-top:8px;}" +
+      ".result-key{font-weight:600;margin-bottom:4px;}" +
+      ".field-row{display:grid;grid-template-columns:140px 1fr;gap:8px;font-size:0.88rem;padding:2px 0;}" +
+      ".diff-row{display:grid;grid-template-columns:140px 1fr 1fr;gap:8px;font-size:0.88rem;padding:2px 0;}" +
+      ".swatch-modified{background:#fef3c7;border-radius:3px;padding:2px 4px;}" +
+      ".warn-item{padding:2px 0;border-bottom:1px dashed #d9d9de;}" +
+      ".empty{color:#6b7280;}";
+
+    var html = "<!DOCTYPE html>\n<html lang=\"zh-Hant\"><head><meta charset=\"UTF-8\">" +
+      "<title>兩期清冊異動報告</title><style>" + style + "</style></head><body>" +
+      "<h1>兩期清冊異動報告</h1>" +
+      "<div class=\"card\"><h2>統計摘要</h2>" +
+      "<div class=\"stat-row\"><span>新增</span><span>" + (r ? r.added.length : 0) + "</span></div>" +
+      "<div class=\"stat-row\"><span>移除</span><span>" + (r ? r.removed.length : 0) + "</span></div>" +
+      "<div class=\"stat-row\"><span>異動</span><span>" + (r ? r.modified.length : 0) + "</span></div>" +
+      "<div class=\"stat-row\"><span>無異動</span><span>" + (r ? r.unchangedCount : 0) + "</span></div>" +
+      "<div class=\"stat-row\"><span>略過（Key 重複）</span><span>" + dupAll.reduce(function (s, e) { return s + e.lines.length; }, 0) + "</span></div>" +
+      "<div class=\"stat-row\"><span>略過（Key 缺值）</span><span>" + missingAll.reduce(function (s, e) { return s + e.lines.length; }, 0) + "</span></div>" +
+      "</div>" +
+      "<div class=\"card\"><h2>Key 重複，略過比對</h2>" + warnHtml(dupAll) + "</div>" +
+      "<div class=\"card\"><h2>Key 缺值，略過比對</h2>" + warnHtml(missingAll) + "</div>" +
+      "<div class=\"card\"><h2>新增明細</h2>" + addedHtml() + "</div>" +
+      "<div class=\"card\"><h2>移除明細</h2>" + removedHtml() + "</div>" +
+      "<div class=\"card\"><h2>異動明細</h2>" + modifiedHtml() + "</div>" +
+      "</body></html>";
+    return html;
+  }
+
+  document.getElementById("btn-download-report").addEventListener("click", function () {
+    if (!lastResult) { showToast("請先完成比對"); return; }
+    downloadFile("period-diff-report.html", buildReportHtml(), "text/html;charset=utf-8");
+  });
+
+  // ---- T9：下載本工具離線版（buildCleanHtmlCopy，清空資料） ----
+
+  function buildCleanHtmlCopy() {
+    var clone = document.documentElement.cloneNode(true);
+
+    var sA = clone.querySelector("#status-a");
+    if (sA) sA.textContent = "尚未上傳";
+    var sB = clone.querySelector("#status-b");
+    if (sB) sB.textContent = "尚未上傳";
+
+    var fA = clone.querySelector("#file-a");
+    if (fA) fA.value = "";
+    var fB = clone.querySelector("#file-b");
+    if (fB) fB.value = "";
+
+    var encA = clone.querySelector("#encoding-fallback-a");
+    if (encA) { encA.innerHTML = ""; encA.classList.add("hidden"); }
+    var encB = clone.querySelector("#encoding-fallback-b");
+    if (encB) { encB.innerHTML = ""; encB.classList.add("hidden"); }
+
+    var fieldDiff = clone.querySelector("#field-diff");
+    if (fieldDiff) fieldDiff.innerHTML = '<div class="empty">尚未上傳兩份檔案</div>';
+
+    var keyList = clone.querySelector("#key-checkbox-list");
+    if (keyList) keyList.innerHTML = '<div class="empty">尚未上傳兩份檔案</div>';
+
+    var statIds = ["stat-added", "stat-removed", "stat-modified", "stat-unchanged", "stat-dup", "stat-missing"];
+    statIds.forEach(function (id) {
+      var el = clone.querySelector("#" + id);
+      if (el) el.textContent = "0";
+    });
+
+    var warnDup = clone.querySelector("#warn-dup");
+    if (warnDup) warnDup.innerHTML = '<div class="empty">尚未比對</div>';
+    var warnMissing = clone.querySelector("#warn-missing");
+    if (warnMissing) warnMissing.innerHTML = '<div class="empty">尚未比對</div>';
+
+    var listIds = ["list-added", "list-removed", "list-modified"];
+    listIds.forEach(function (id) {
+      var el = clone.querySelector("#" + id);
+      if (el) el.innerHTML = '<div class="empty">尚未比對</div>';
+    });
+    var pagerIds = ["pager-added", "pager-removed", "pager-modified"];
+    pagerIds.forEach(function (id) {
+      var el = clone.querySelector("#" + id);
+      if (el) el.innerHTML = "";
+    });
+
+    var toastEl = clone.querySelector("#__shared_toast");
+    if (toastEl && toastEl.parentNode) toastEl.parentNode.removeChild(toastEl);
+
+    var navBack = clone.querySelector(".nav-back");
+    if (navBack && navBack.parentNode) navBack.parentNode.removeChild(navBack);
+
+    var htmlStr = "<!DOCTYPE html>\n" + clone.outerHTML;
+    downloadFile("period-diff-offline.html", htmlStr, "text/html;charset=utf-8");
+  }
+
+  document.getElementById("btn-download-offline").addEventListener("click", buildCleanHtmlCopy);
+})();
+</script>
+</body>
+</html>
