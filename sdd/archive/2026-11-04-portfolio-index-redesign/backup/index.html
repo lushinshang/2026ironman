@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VibeCoding 作品集</title>
+<style>
+:root {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-border: #d9d9de;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-danger: #dc2626;
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+h1, h2, h3 {
+  line-height: 1.3;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+header.intro {
+  margin-bottom: 24px;
+}
+
+header.intro .eyebrow {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0 0 4px;
+}
+
+header.intro h1 {
+  margin: 0 0 12px;
+  font-size: 1.6rem;
+}
+
+header.intro blockquote {
+  margin: 0 0 12px;
+  padding: 12px 16px;
+  border-left: 3px solid var(--color-primary);
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  color: var(--color-text);
+}
+
+header.intro p.desc {
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tool-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.tool-card:hover {
+  border-color: var(--color-primary);
+}
+
+.tool-card .day {
+  color: var(--color-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.tool-card h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.tool-card p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+section.pending {
+  margin-top: 32px;
+}
+
+section.pending h2 {
+  font-size: 1.1rem;
+  color: var(--color-text-muted);
+}
+
+ul.pending-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+ul.pending-list li {
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+ul.pending-list .badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  margin-right: 8px;
+}
+
+footer {
+  margin-top: 32px;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header class="intro">
+    <p class="eyebrow">2026 iThome 鐵人賽・VibeCoding 系列</p>
+    <h1>VibeCoding 作品集</h1>
+    <blockquote>Vibe Coding 不是隨想隨做，而是把腦中的想法，一步一步和自己的表達、AI 的理解、最後做出的產品對齊：<strong>想 → 說 → 對 → 做</strong>。</blockquote>
+    <p class="desc">30 天挑戰中，每天用這套對齊方法做出一個零依賴、單檔 HTML 的文字處理小工具。以下是已完成上線的作品。</p>
+  </header>
+
+  <div class="grid">
+
+    <a class="card tool-card" href="Day01_text-health-check/index.html">
+      <span class="day">Day01</span>
+      <h2>文字健檢工作台</h2>
+      <p>中英文字數、標點空白統計、連續空白與重複標點偵測、過長段落提示。</p>
+    </a>
+
+    <a class="card tool-card" href="Day02_ai-text-cleaner/index.html">
+      <span class="day">Day02</span>
+      <h2>AI 回答 → Office 文字清理器</h2>
+      <p>清掉 Markdown 標記、emoji、分隔線，輸出 Word／Email／純文字三種模式。</p>
+    </a>
+
+    <a class="card tool-card" href="Day03_filler-word-checker/index.html">
+      <span class="day">Day03</span>
+      <h2>贅詞與 AI 味檢查器</h2>
+      <p>詞庫比對、詞頻統計、段落開頭同構偵測，詞庫可編輯匯入匯出。</p>
+    </a>
+
+    <a class="card tool-card" href="Day04_zh-tw-localizer/index.html">
+      <span class="day">Day04</span>
+      <h2>繁簡與台灣在地化轉換器</h2>
+      <p>內嵌 OpenCC 詞典做簡繁轉換與台灣用語替換，可逐項接受／取消。</p>
+    </a>
+
+    <a class="card tool-card" href="Day05_reversible-deidentifier/index.html">
+      <span class="day">Day05–06</span>
+      <h2>可逆式文字去識別化</h2>
+      <p>個資 Token 化並產生 mapping，可用 mapping 在本機還原。</p>
+    </a>
+
+    <a class="card tool-card" href="Day07_text-diff/index.html">
+      <span class="day">Day07</span>
+      <h2>文字差異比對器</h2>
+      <p>逐句比對兩份文字，刪除與新增配對成「修改」，未變動區塊摺疊。</p>
+    </a>
+
+    <a class="card tool-card" href="Day08_csv-doctor/index.html">
+      <span class="day">Day08</span>
+      <h2>CSV Doctor &amp; Cleaner</h2>
+      <p>編碼與分隔符偵測、欄數不齊與型別混雜健檢，逐項確認後匯出乾淨 CSV。</p>
+    </a>
+
+    <a class="card tool-card" href="Day09_csv-period-diff/index.html">
+      <span class="day">Day09</span>
+      <h2>兩期清冊異動報告</h2>
+      <p>兩份 CSV 以主鍵比對，列出新增、刪除與欄位異動，可匯出異動清單。</p>
+    </a>
+
+    <a class="card tool-card" href="Day10_csv-batch-splitter/index.html">
+      <span class="day">Day10</span>
+      <h2>總表 → 分單位批次拆檔</h2>
+      <p>依指定欄位把總表拆成多份 CSV，一次打包成 ZIP 下載，檔名自動淨化。</p>
+    </a>
+
+    <a class="card tool-card" href="Day11_csv-pivot-dashboard/index.html">
+      <span class="day">Day11–12</span>
+      <h2>CSV Pivot Dashboard</h2>
+      <p>多欄 Group By 與彙總管線，手寫 SVG 長條／折線／圓餅圖，可匯出靜態快照儀表板。</p>
+    </a>
+
+    <a class="card tool-card" href="Day13_csv-one-page-report/index.html">
+      <span class="day">Day13</span>
+      <h2>CSV 一頁式管理報告</h2>
+      <p>KPI 卡片、Top5/Bottom5、占比與趨勢彙整成單頁報告，A4 列印分頁與 SVG 相容版型。</p>
+    </a>
+
+    <a class="card tool-card" href="Day14_image-batch-optimizer/index.html">
+      <span class="day">Day14</span>
+      <h2>圖片批次最佳化工作台</h2>
+      <p>等比例縮放、品質壓縮二分逼近、批次處理與打包 ZIP 下載。</p>
+    </a>
+
+    <a class="card tool-card" href="Day15_exif-privacy-cleaner/index.html">
+      <span class="day">Day15</span>
+      <h2>EXIF 隱私檢查與清除</h2>
+      <p>解析 JPEG APP1 二進位標籤、四級隱私風險提示、無損剔除 EXIF/XMP 與前後對照。</p>
+    </a>
+
+    <a class="card tool-card" href="Day16_screenshot-sanitizer/index.html">
+      <span class="day">Day16</span>
+      <h2>Screenshot Privacy Sanitizer</h2>
+      <p>支援黑箱、馬賽克與模糊三種底層像素抹除，具備可撤銷操作管線與 Before/After 防呆。</p>
+    </a>
+
+    <a class="card tool-card" href="Day17_document-perspective-corrector/index.html">
+      <span class="day">Day17</span>
+      <h2>文件照片透視校正器</h2>
+      <p>四角拖曳對齊、高斯消去法求解單應性矩陣、雙線性插值校正與黑白灰階增強。</p>
+    </a>
+
+    <a class="card tool-card" href="Day18_photo-evidence-sheet/index.html">
+      <span class="day">Day18</span>
+      <h2>工作成果照片附件產生器</h2>
+      <p>大批次匯入照片、原子綁定圖說排序、2/4/6 張 A4 分頁與標準列印版面輸出。</p>
+    </a>
+
+    <a class="card tool-card" href="Day19_pdf-to-jpg/index.html">
+      <span class="day">Day19</span>
+      <h2>PDF 轉 JPG 批次工具</h2>
+      <p>逐頁 2.0x 高解析渲染轉 JPG、品質壓縮滑桿、非同步進度條與 ZIP 打包下載。</p>
+    </a>
+
+    <a class="card tool-card" href="Day20_pdf-text-search/index.html">
+      <span class="day">Day20</span>
+      <h2>PDF 文字擷取與全文搜尋</h2>
+      <p>多頁文字層抽取、150ms 防抖全文搜尋、關鍵字高亮跳轉與 TXT/MD/剪貼簿匯出。</p>
+    </a>
+
+    <a class="card tool-card" href="Day21_pdf-organizer/index.html">
+      <span class="day">Day21</span>
+      <h2>PDF 拆分 / 合併 / 重排</h2>
+      <p>多檔匯入、原生拖曳重排、90° 順時針旋轉、標記刪除還原、多輸出群組分派與 ZIP 打包。</p>
+    </a>
+
+    <a class="card tool-card" href="Day22_pdf-review-stamper/index.html">
+      <span class="day">Day22</span>
+      <h2>PDF 頁碼 / 浮水印 / 送審章</h2>
+      <p>完整內嵌 Noto Sans TC 中文字型、頁首尾頁碼、四種預設送審章與角度位置自訂預覽。</p>
+    </a>
+
+    <a class="card tool-card" href="Day23_pdf-password-manager/index.html">
+      <span class="day">Day23</span>
+      <h2>PDF 密碼管理器</h2>
+      <p>批次解鎖、設定密碼、更換密碼三大模式，明碼/遮罩切換、零持久化洩密防禦與容錯處理。</p>
+    </a>
+
+    <a class="card tool-card" href="Day24_pdf-secure-redactor/index.html">
+      <span class="day">Day24</span>
+      <h2>PDF 安全遮蔽 / 選擇性點陣化</h2>
+      <p>互動式矩形遮蔽框選、選擇性點陣化徹底銷毀底層文字層、未遮蔽頁向量 100% 原樣保留。</p>
+    </a>
+
+    <a class="card tool-card" href="Day25_pdf-delivery-cleaner/index.html">
+      <span class="day">Day25</span>
+      <h2>PDF 對外交付清理器</h2>
+      <p>6 大類對外風險物件自動掃描、選擇性清洗、前後對照表、安心零風險提示與固定檔名交付。</p>
+    </a>
+
+    <a class="card tool-card" href="Day26_office-content-publisher/index.html">
+      <span class="day">Day26</span>
+      <h2>Office Content Publisher</h2>
+      <p>Markdown/TXT 筆記與 CSV 數據雙模式發布、型別感知智慧排序、獨立網頁匯出與乾淨列印。</p>
+    </a>
+
+    <a class="card tool-card" href="Day27_document-tools/index.html">
+      <span class="day">Day27</span>
+      <h2>Document Tools 重製版</h2>
+      <p>圖片互轉/Resize/壓縮、PDF 合併/拆分/轉圖、Markdown 編輯預覽輸出，整合前 26 天模組的壓軸產品。</p>
+    </a>
+
+    <a class="card tool-card" href="Day28_scheduled-work-dashboard/index.html">
+      <span class="day">Day28</span>
+      <h2>每日自動更新工作 Dashboard</h2>
+      <p>GitHub Actions 排程抓取聯合信用卡中心信用卡盜刷詐欺月統計、Repo 即資料庫、本月摘要卡片（可切換單一詐欺型態）、手刻 SVG 趨勢圖，不可下載離線使用。</p>
+    </a>
+
+    <a class="card tool-card" href="Day29_public-data-snapshot/index.html">
+      <span class="day">Day29</span>
+      <h2>公開資訊變更雷達</h2>
+      <p>每 6 小時巡一次 iThome RSS，有新文章才建立通知，沒有變化就不留紀錄；用 GitHub Issue 當通知信箱，免額外金鑰。</p>
+    </a>
+
+    <a class="card tool-card" href="Day30_ooxml-privacy-cleaner/index.html">
+      <span class="day">Day30</span>
+      <h2>Office 文件隱私 Metadata 清除工具</h2>
+      <p>DOCX/XLSX/PPTX 三格式的作者/公司/註解/內嵌縮圖/樞紐分析表快取/裁切圖片原圖殘留一鍵清除，PowerPoint 裁切圖片改用 Canvas 燒進像素，不只是刪除裁切標記。</p>
+    </a>
+
+  </div>
+
+  <section class="pending">
+    <h2>後續進度</h2>
+    <ul class="pending-list">
+      <li><span class="badge">開發中</span>Level 3（Cloudflare Workers，Day31 起）尚未提案。</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>2026 iThome 鐵人賽・VibeCoding 系列</p>
+  </footer>
+
+</div>
+</body>
+</html>

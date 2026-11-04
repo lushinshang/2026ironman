@@ -4,11 +4,11 @@ from pathlib import Path
 from playwright.async_api import async_playwright
 
 async def capture():
-    target_dir = Path("/Users/<USER>/projects/2_Practice/tools/2026ironman/VibeCoding/Day01_text-health-check")
+    target_dir = Path(__file__).resolve().parent
     html_file = target_dir / "index.html"
     if not html_file.is_file():
         #  fallback to tools/text-health-check.html
-        html_file = Path("/Users/<USER>/projects/2_Practice/tools/2026ironman/VibeCoding/tools/text-health-check.html")
+        html_file = target_dir.parent / "tools" / "text-health-check.html"
     
     url = f"file://{html_file.resolve()}"
     print(f"Loading {url}")

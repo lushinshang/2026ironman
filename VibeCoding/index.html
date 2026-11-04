@@ -2,361 +2,383 @@
 <html lang="zh-Hant-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VibeCoding 作品集</title>
+<meta name="description" content="2026 iThome 鐵人賽 VibeCoding 系列：用「想、說、對、做」四層對齊的方法，做出 28 個單檔 HTML 工具，涵蓋文字、CSV、圖片、PDF、Office 文件與 GitHub Actions 自動化。">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#EDEFF1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101215" media="(prefers-color-scheme: dark)">
+<meta property="og:type" content="website">
+<meta property="og:title" content="VibeCoding 作品集">
+<meta property="og:description" content="腦中的藍圖，和最後做出來的東西，對得上嗎？28 個單檔 HTML 工具，記錄想、說、對、做四層對齊。">
+<meta property="og:locale" content="zh_TW">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2315171B'/%3E%3Ccircle cx='26' cy='28' r='15' fill='%2300A6D0'/%3E%3Ccircle cx='38' cy='28' r='15' fill='%23E8307F' style='mix-blend-mode:screen'/%3E%3Ccircle cx='32' cy='40' r='15' fill='%23F7C600' style='mix-blend-mode:screen'/%3E%3C/svg%3E">
+<script>
+/* 在繪製前套用已存的主題，避免閃白 */
+try { var t = localStorage.getItem('vc-theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
 <style>
 :root {
-  --color-bg: #f7f7f8;
-  --color-surface: #ffffff;
-  --color-border: #d9d9de;
-  --color-text: #1f2328;
-  --color-text-muted: #6b7280;
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-danger: #dc2626;
-  --radius: 8px;
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --paper: #EDEFF1;
+  --ink: #15171B;
+  --muted: #4A5059;
+  --line: #C9CED4;
+  --cyan: #00A6D0;
+  --mag: #E8307F;
+  --yel: #F7C600;
+  --acc: #00698A;
+  --acc2: #B0155D;
+  --blend: multiply;
+  --font: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
 }
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  font-family: var(--font-sans);
-  color: var(--color-text);
-  background: var(--color-bg);
-  line-height: 1.6;
-}
-
-.container {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 24px 16px;
-}
-
-h1, h2, h3 {
-  line-height: 1.3;
-}
-
-.card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: 16px;
-}
-
-header.intro {
-  margin-bottom: 24px;
-}
-
-header.intro .eyebrow {
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
-  margin: 0 0 4px;
-}
-
-header.intro h1 {
-  margin: 0 0 12px;
-  font-size: 1.6rem;
-}
-
-header.intro blockquote {
-  margin: 0 0 12px;
-  padding: 12px 16px;
-  border-left: 3px solid var(--color-primary);
-  background: var(--color-surface);
-  border-radius: var(--radius);
-  color: var(--color-text);
-}
-
-header.intro p.desc {
-  color: var(--color-text-muted);
-  margin: 0;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-@media (max-width: 640px) {
-  .grid {
-    grid-template-columns: 1fr;
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #101215;
+    --ink: #E9ECEF;
+    --muted: #A9B0B8;
+    --line: #2B3036;
+    --cyan: #19C1E8;
+    --mag: #FF5C9D;
+    --yel: #FFD43B;
+    --acc: #5CD3F2;
+    --acc2: #FF8DB9;
+    --blend: screen;
+    color-scheme: dark;
   }
 }
-
-.tool-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  text-decoration: none;
-  color: inherit;
-  transition: border-color 0.15s ease;
+:root[data-theme="dark"] {
+  --paper: #101215;
+  --ink: #E9ECEF;
+  --muted: #A9B0B8;
+  --line: #2B3036;
+  --cyan: #19C1E8;
+  --mag: #FF5C9D;
+  --yel: #FFD43B;
+  --acc: #5CD3F2;
+  --acc2: #FF8DB9;
+  --blend: screen;
+  color-scheme: dark;
 }
 
-.tool-card:hover {
-  border-color: var(--color-primary);
-}
-
-.tool-card .day {
-  color: var(--color-primary);
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.tool-card h2 {
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
   margin: 0;
-  font-size: 1.1rem;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 1rem;
+  line-height: 1.7;
+  overflow-x: hidden;
 }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--acc); outline-offset: 3px; border-radius: 2px; }
 
-.tool-card p {
+.skip {
+  position: absolute; left: 1rem; top: -4rem; z-index: 10;
+  background: var(--ink); color: var(--paper);
+  padding: .6rem 1rem; text-decoration: none; font-weight: 700;
+}
+.skip:focus { top: 1rem; }
+
+.wrap { width: min(100% - 2rem, 76rem); margin-inline: auto; }
+
+/* ---------- Hero ---------- */
+.top { padding-block: 1.25rem 0; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.series { margin: 0; font-weight: 700; }
+.series span { color: var(--muted); font-weight: 400; }
+.theme {
+  font: inherit; font-size: .9rem; color: var(--ink); background: transparent;
+  border: 1px solid var(--line); padding: .5rem .9rem; min-height: 44px; cursor: pointer; white-space: nowrap;
+}
+.theme:hover { border-color: var(--ink); }
+
+.hero { padding-block: clamp(2rem, 6vw, 5rem) clamp(1.5rem, 4vw, 3rem); }
+h1.mark {
   margin: 0;
-  color: var(--color-text-muted);
-  font-size: 0.95rem;
+  display: flex; justify-content: space-between;
+  font-size: min(22vw, 19rem);
+  font-weight: 900;
+  line-height: 1;
 }
-
-section.pending {
-  margin-top: 32px;
+.g { position: relative; display: inline-block; isolation: isolate; }
+.g b {
+  position: absolute; inset: 0;
+  font-weight: inherit;
+  mix-blend-mode: var(--blend);
+  pointer-events: none;
+  animation: reg 1.15s cubic-bezier(.16, .84, .24, 1) both;
+  animation-delay: var(--d, 0s);
 }
-
-section.pending h2 {
-  font-size: 1.1rem;
-  color: var(--color-text-muted);
+.g .c { color: var(--cyan); --x: -.07em; --y: .03em; }
+.g .m { color: var(--mag);  --x: .06em;  --y: -.05em; }
+.g .y { color: var(--yel);  --x: .02em;  --y: .07em; }
+.g .k {
+  position: relative; z-index: 1; display: block; color: var(--ink);
+  animation: regk 1.15s cubic-bezier(.16, .84, .24, 1) both;
+  animation-delay: var(--d, 0s);
 }
+@keyframes reg  { 0% { transform: translate(var(--x), var(--y)); opacity: 1; } 82% { transform: none; opacity: 1; } 100% { transform: none; opacity: 0; } }
+@keyframes regk { from { transform: translate(.03em, -.02em); } to { transform: none; } }
+.g:nth-child(2) { --d: .08s; }
+.g:nth-child(3) { --d: .16s; }
+.g:nth-child(4) { --d: .24s; }
 
-ul.pending-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.lede { max-width: 38em; margin: clamp(1.25rem, 3vw, 2rem) 0 0; font-size: clamp(1.1rem, 2.2vw, 1.4rem); line-height: 1.6; }
+.sub { max-width: 38em; margin: .75rem 0 0; color: var(--muted); }
+
+/* ---------- Controls ---------- */
+.controls { position: relative; border-bottom: 1px solid var(--line); padding-block: 1.25rem 1rem; }
+.controls::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 6px; background: linear-gradient(90deg, var(--cyan) 0 25%, var(--mag) 25% 50%, var(--yel) 50% 75%, var(--ink) 75% 100%); }
+.controls .wrap { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; align-items: center; justify-content: space-between; }
+.chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+.chip {
+  font: inherit; font-size: .95rem; color: var(--ink); background: transparent;
+  border: 1px solid var(--line); padding: .45rem .95rem; min-height: 44px; cursor: pointer;
 }
-
-ul.pending-list li {
-  background: var(--color-surface);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius);
-  padding: 10px 14px;
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
+.chip:hover { border-color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.search { display: flex; align-items: center; gap: .6rem; }
+.search label { color: var(--muted); font-size: .9rem; white-space: nowrap; }
+.search input {
+  font: inherit; color: var(--ink); background: transparent;
+  border: 1px solid var(--line); padding: .45rem .8rem; min-height: 44px; width: min(100%, 17rem);
 }
+.search input::placeholder { color: var(--muted); opacity: 1; }
+.search input:hover { border-color: var(--ink); }
+.status { margin: .75rem 0 0; color: var(--muted); font-size: .9rem; }
 
-ul.pending-list .badge {
-  display: inline-block;
-  font-size: 0.75rem;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  margin-right: 8px;
+/* ---------- 作品列表 ---------- */
+.grp { display: grid; grid-template-columns: minmax(11rem, 17rem) 1fr; gap: 1rem 3rem; padding-block: 2.25rem; border-bottom: 1px solid var(--line); }
+.grp-head { position: sticky; top: 1.25rem; align-self: start; }
+.grp-head h2 { margin: 0; font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1.2; font-weight: 900; }
+.grp-head p { margin: .5rem 0 0; color: var(--muted); font-size: .92rem; line-height: 1.6; }
+.rows { list-style: none; margin: 0; padding: 0; }
+.rows li + li { border-top: 1px solid var(--line); }
+.row {
+  display: grid; grid-template-columns: 5.5rem 1fr; gap: .15rem 1rem;
+  padding: 1.05rem .25rem; text-decoration: none;
 }
+.day { grid-row: 1 / span 2; color: var(--acc); font-weight: 700; font-variant-numeric: tabular-nums; padding-top: .1rem; }
+.name { font-size: 1.125rem; font-weight: 700; line-height: 1.4; transition: text-shadow .18s ease; }
+.desc { color: var(--muted); font-size: .95rem; line-height: 1.65; max-width: 40em; }
+.row:hover .name, .row:focus-visible .name { text-shadow: .06em 0 var(--cyan), -.06em 0 var(--mag); }
+.row:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
 
-footer {
-  margin-top: 32px;
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
-  text-align: center;
+/* ---------- 方法論 ---------- */
+.method { padding-block: 3rem; }
+.method h2 { margin: 0 0 1.25rem; font-size: clamp(1.5rem, 3vw, 2.25rem); font-weight: 900; line-height: 1.2; }
+.layers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin: 0; }
+.layers div { border-top: 3px solid var(--ink); padding-top: .75rem; }
+.layers div:nth-child(1) { border-color: var(--cyan); }
+.layers div:nth-child(2) { border-color: var(--mag); }
+.layers div:nth-child(3) { border-color: var(--yel); }
+.layers dt { font-weight: 900; font-size: 1.5rem; line-height: 1.3; }
+.layers dd { margin: .25rem 0 0; color: var(--muted); font-size: .95rem; }
+.next { margin: 2rem 0 0; padding: 1rem 1.25rem; border-left: 4px solid var(--acc); }
+.next strong { display: block; }
+footer { padding-block: 1.5rem 3rem; color: var(--muted); font-size: .9rem; border-top: 1px solid var(--line); }
+footer p { margin: 0; }
+
+@media (max-width: 820px) {
+  .grp { grid-template-columns: 1fr; gap: .5rem; padding-block: 1.75rem; }
+  .grp-head { position: static; }
+  .layers { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+  .series span { display: block; font-size: .85rem; }
+  .row { grid-template-columns: 1fr; padding-inline: 0; }
+  .day { grid-row: auto; }
+  .layers { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .g b { display: none; }
+  .g .k { animation: none; }
+  .name { transition: none; }
+  .row:hover .name, .row:focus-visible .name { text-shadow: none; text-decoration: underline; text-underline-offset: .2em; }
 }
 </style>
 </head>
 <body>
-<div class="container">
+<a class="skip" href="#works">跳到作品列表</a>
 
-  <header class="intro">
-    <p class="eyebrow">2026 iThome 鐵人賽・VibeCoding 系列</p>
-    <h1>VibeCoding 作品集</h1>
-    <blockquote>Vibe Coding 不是隨想隨做，而是把腦中的想法，一步一步和自己的表達、AI 的理解、最後做出的產品對齊：<strong>想 → 說 → 對 → 做</strong>。</blockquote>
-    <p class="desc">30 天挑戰中，每天用這套對齊方法做出一個零依賴、單檔 HTML 的文字處理小工具。以下是已完成上線的作品。</p>
-  </header>
-
-  <div class="grid">
-
-    <a class="card tool-card" href="Day01_text-health-check/index.html">
-      <span class="day">Day01</span>
-      <h2>文字健檢工作台</h2>
-      <p>中英文字數、標點空白統計、連續空白與重複標點偵測、過長段落提示。</p>
-    </a>
-
-    <a class="card tool-card" href="Day02_ai-text-cleaner/index.html">
-      <span class="day">Day02</span>
-      <h2>AI 回答 → Office 文字清理器</h2>
-      <p>清掉 Markdown 標記、emoji、分隔線，輸出 Word／Email／純文字三種模式。</p>
-    </a>
-
-    <a class="card tool-card" href="Day03_filler-word-checker/index.html">
-      <span class="day">Day03</span>
-      <h2>贅詞與 AI 味檢查器</h2>
-      <p>詞庫比對、詞頻統計、段落開頭同構偵測，詞庫可編輯匯入匯出。</p>
-    </a>
-
-    <a class="card tool-card" href="Day04_zh-tw-localizer/index.html">
-      <span class="day">Day04</span>
-      <h2>繁簡與台灣在地化轉換器</h2>
-      <p>內嵌 OpenCC 詞典做簡繁轉換與台灣用語替換，可逐項接受／取消。</p>
-    </a>
-
-    <a class="card tool-card" href="Day05_reversible-deidentifier/index.html">
-      <span class="day">Day05–06</span>
-      <h2>可逆式文字去識別化</h2>
-      <p>個資 Token 化並產生 mapping，可用 mapping 在本機還原。</p>
-    </a>
-
-    <a class="card tool-card" href="Day07_text-diff/index.html">
-      <span class="day">Day07</span>
-      <h2>文字差異比對器</h2>
-      <p>逐句比對兩份文字，刪除與新增配對成「修改」，未變動區塊摺疊。</p>
-    </a>
-
-    <a class="card tool-card" href="Day08_csv-doctor/index.html">
-      <span class="day">Day08</span>
-      <h2>CSV Doctor &amp; Cleaner</h2>
-      <p>編碼與分隔符偵測、欄數不齊與型別混雜健檢，逐項確認後匯出乾淨 CSV。</p>
-    </a>
-
-    <a class="card tool-card" href="Day09_csv-period-diff/index.html">
-      <span class="day">Day09</span>
-      <h2>兩期清冊異動報告</h2>
-      <p>兩份 CSV 以主鍵比對，列出新增、刪除與欄位異動，可匯出異動清單。</p>
-    </a>
-
-    <a class="card tool-card" href="Day10_csv-batch-splitter/index.html">
-      <span class="day">Day10</span>
-      <h2>總表 → 分單位批次拆檔</h2>
-      <p>依指定欄位把總表拆成多份 CSV，一次打包成 ZIP 下載，檔名自動淨化。</p>
-    </a>
-
-    <a class="card tool-card" href="Day11_csv-pivot-dashboard/index.html">
-      <span class="day">Day11–12</span>
-      <h2>CSV Pivot Dashboard</h2>
-      <p>多欄 Group By 與彙總管線，手寫 SVG 長條／折線／圓餅圖，可匯出靜態快照儀表板。</p>
-    </a>
-
-    <a class="card tool-card" href="Day13_csv-one-page-report/index.html">
-      <span class="day">Day13</span>
-      <h2>CSV 一頁式管理報告</h2>
-      <p>KPI 卡片、Top5/Bottom5、占比與趨勢彙整成單頁報告，A4 列印分頁與 SVG 相容版型。</p>
-    </a>
-
-    <a class="card tool-card" href="Day14_image-batch-optimizer/index.html">
-      <span class="day">Day14</span>
-      <h2>圖片批次最佳化工作台</h2>
-      <p>等比例縮放、品質壓縮二分逼近、批次處理與打包 ZIP 下載。</p>
-    </a>
-
-    <a class="card tool-card" href="Day15_exif-privacy-cleaner/index.html">
-      <span class="day">Day15</span>
-      <h2>EXIF 隱私檢查與清除</h2>
-      <p>解析 JPEG APP1 二進位標籤、四級隱私風險提示、無損剔除 EXIF/XMP 與前後對照。</p>
-    </a>
-
-    <a class="card tool-card" href="Day16_screenshot-sanitizer/index.html">
-      <span class="day">Day16</span>
-      <h2>Screenshot Privacy Sanitizer</h2>
-      <p>支援黑箱、馬賽克與模糊三種底層像素抹除，具備可撤銷操作管線與 Before/After 防呆。</p>
-    </a>
-
-    <a class="card tool-card" href="Day17_document-perspective-corrector/index.html">
-      <span class="day">Day17</span>
-      <h2>文件照片透視校正器</h2>
-      <p>四角拖曳對齊、高斯消去法求解單應性矩陣、雙線性插值校正與黑白灰階增強。</p>
-    </a>
-
-    <a class="card tool-card" href="Day18_photo-evidence-sheet/index.html">
-      <span class="day">Day18</span>
-      <h2>工作成果照片附件產生器</h2>
-      <p>大批次匯入照片、原子綁定圖說排序、2/4/6 張 A4 分頁與標準列印版面輸出。</p>
-    </a>
-
-    <a class="card tool-card" href="Day19_pdf-to-jpg/index.html">
-      <span class="day">Day19</span>
-      <h2>PDF 轉 JPG 批次工具</h2>
-      <p>逐頁 2.0x 高解析渲染轉 JPG、品質壓縮滑桿、非同步進度條與 ZIP 打包下載。</p>
-    </a>
-
-    <a class="card tool-card" href="Day20_pdf-text-search/index.html">
-      <span class="day">Day20</span>
-      <h2>PDF 文字擷取與全文搜尋</h2>
-      <p>多頁文字層抽取、150ms 防抖全文搜尋、關鍵字高亮跳轉與 TXT/MD/剪貼簿匯出。</p>
-    </a>
-
-    <a class="card tool-card" href="Day21_pdf-organizer/index.html">
-      <span class="day">Day21</span>
-      <h2>PDF 拆分 / 合併 / 重排</h2>
-      <p>多檔匯入、原生拖曳重排、90° 順時針旋轉、標記刪除還原、多輸出群組分派與 ZIP 打包。</p>
-    </a>
-
-    <a class="card tool-card" href="Day22_pdf-review-stamper/index.html">
-      <span class="day">Day22</span>
-      <h2>PDF 頁碼 / 浮水印 / 送審章</h2>
-      <p>完整內嵌 Noto Sans TC 中文字型、頁首尾頁碼、四種預設送審章與角度位置自訂預覽。</p>
-    </a>
-
-    <a class="card tool-card" href="Day23_pdf-password-manager/index.html">
-      <span class="day">Day23</span>
-      <h2>PDF 密碼管理器</h2>
-      <p>批次解鎖、設定密碼、更換密碼三大模式，明碼/遮罩切換、零持久化洩密防禦與容錯處理。</p>
-    </a>
-
-    <a class="card tool-card" href="Day24_pdf-secure-redactor/index.html">
-      <span class="day">Day24</span>
-      <h2>PDF 安全遮蔽 / 選擇性點陣化</h2>
-      <p>互動式矩形遮蔽框選、選擇性點陣化徹底銷毀底層文字層、未遮蔽頁向量 100% 原樣保留。</p>
-    </a>
-
-    <a class="card tool-card" href="Day25_pdf-delivery-cleaner/index.html">
-      <span class="day">Day25</span>
-      <h2>PDF 對外交付清理器</h2>
-      <p>6 大類對外風險物件自動掃描、選擇性清洗、前後對照表、安心零風險提示與固定檔名交付。</p>
-    </a>
-
-    <a class="card tool-card" href="Day26_office-content-publisher/index.html">
-      <span class="day">Day26</span>
-      <h2>Office Content Publisher</h2>
-      <p>Markdown/TXT 筆記與 CSV 數據雙模式發布、型別感知智慧排序、獨立網頁匯出與乾淨列印。</p>
-    </a>
-
-    <a class="card tool-card" href="Day27_document-tools/index.html">
-      <span class="day">Day27</span>
-      <h2>Document Tools 重製版</h2>
-      <p>圖片互轉/Resize/壓縮、PDF 合併/拆分/轉圖、Markdown 編輯預覽輸出，整合前 26 天模組的壓軸產品。</p>
-    </a>
-
-    <a class="card tool-card" href="Day28_scheduled-work-dashboard/index.html">
-      <span class="day">Day28</span>
-      <h2>每日自動更新工作 Dashboard</h2>
-      <p>GitHub Actions 排程抓取聯合信用卡中心信用卡盜刷詐欺月統計、Repo 即資料庫、本月摘要卡片（可切換單一詐欺型態）、手刻 SVG 趨勢圖，不可下載離線使用。</p>
-    </a>
-
-    <a class="card tool-card" href="Day29_public-data-snapshot/index.html">
-      <span class="day">Day29</span>
-      <h2>公開資訊變更雷達</h2>
-      <p>每 6 小時巡一次 iThome RSS，有新文章才建立通知，沒有變化就不留紀錄；用 GitHub Issue 當通知信箱，免額外金鑰。</p>
-    </a>
-
-    <a class="card tool-card" href="Day30_ooxml-privacy-cleaner/index.html">
-      <span class="day">Day30</span>
-      <h2>Office 文件隱私 Metadata 清除工具</h2>
-      <p>DOCX/XLSX/PPTX 三格式的作者/公司/註解/內嵌縮圖/樞紐分析表快取/裁切圖片原圖殘留一鍵清除，PowerPoint 裁切圖片改用 Canvas 燒進像素，不只是刪除裁切標記。</p>
-    </a>
-
+<header class="wrap">
+  <div class="top">
+    <p class="series">VibeCoding 作品集 <span>2026 iThome 鐵人賽</span></p>
+    <button type="button" class="theme" id="theme" aria-label="主題：自動，按下切換" hidden>主題：自動</button>
   </div>
+  <div class="hero">
+    <h1 class="mark">
+      <span class="g"><b class="c" aria-hidden="true">想</b><b class="m" aria-hidden="true">想</b><b class="y" aria-hidden="true">想</b><span class="k">想</span></span>
+      <span class="g"><b class="c" aria-hidden="true">說</b><b class="m" aria-hidden="true">說</b><b class="y" aria-hidden="true">說</b><span class="k">說</span></span>
+      <span class="g"><b class="c" aria-hidden="true">對</b><b class="m" aria-hidden="true">對</b><b class="y" aria-hidden="true">對</b><span class="k">對</span></span>
+      <span class="g"><b class="c" aria-hidden="true">做</b><b class="m" aria-hidden="true">做</b><b class="y" aria-hidden="true">做</b><span class="k">做</span></span>
+    </h1>
+    <p class="lede">腦中的藍圖，和 AI 最後做出來的東西，對得上嗎？這個系列用 30 天、28 個單檔 HTML 工具回答這個問題。</p>
+    <p class="sub">Vibe Coding 不是隨想隨做，而是把想法一步一步和自己的表達、AI 的理解、最後的產品對齊。每天一個工具，從文字、CSV、圖片到 PDF 與 Office 文件，Day28 起加入 GitHub Actions 排程。</p>
+  </div>
+</header>
 
-  <section class="pending">
-    <h2>後續進度</h2>
-    <ul class="pending-list">
-      <li><span class="badge">開發中</span>Level 3（Cloudflare Workers，Day31 起）尚未提案。</li>
-    </ul>
-  </section>
+<section class="controls" id="controls" aria-label="篩選作品" hidden>
+  <div class="wrap">
+    <div class="chips" role="group" aria-label="作品分類">
+      <button type="button" class="chip" data-f="all" aria-pressed="true">全部</button>
+          <button type="button" class="chip" data-f="text" aria-pressed="false">純文字</button>
+          <button type="button" class="chip" data-f="csv" aria-pressed="false">CSV</button>
+          <button type="button" class="chip" data-f="img" aria-pressed="false">圖片</button>
+          <button type="button" class="chip" data-f="pdf" aria-pressed="false">PDF 與發布</button>
+          <button type="button" class="chip" data-f="int" aria-pressed="false">整合</button>
+          <button type="button" class="chip" data-f="act" aria-pressed="false">自動化</button>
+          <button type="button" class="chip" data-f="ooxml" aria-pressed="false">Office</button>
+    </div>
+    <div class="search">
+      <label for="q">搜尋作品</label>
+      <input id="q" type="search" autocomplete="off" placeholder="例如 PDF、隱私">
+    </div>
+  </div>
+  <div class="wrap"><p class="status" id="status" role="status" aria-live="polite"></p></div>
+</section>
 
-  <footer>
-    <p>2026 iThome 鐵人賽・VibeCoding 系列</p>
-  </footer>
+<main id="works" class="wrap" tabindex="-1">
+    <section class="grp" data-g="text" aria-labelledby="h-text">
+      <div class="grp-head"><h2 id="h-text">純文字</h2><p>Day01–07。從純字串統計，到可逆的個資去識別化</p></div>
+      <ul class="rows">
+        <li data-g="text"><a class="row" href="Day01_text-health-check/index.html"><span class="day">Day01</span><span class="name">文字健檢工作台</span><span class="desc">中英文字數、標點空白統計、連續空白與重複標點偵測、過長段落提示。</span></a></li>
+        <li data-g="text"><a class="row" href="Day02_ai-text-cleaner/index.html"><span class="day">Day02</span><span class="name">AI 回答 → Office 文字清理器</span><span class="desc">清掉 Markdown 標記、emoji、分隔線，輸出 Word／Email／純文字三種模式。</span></a></li>
+        <li data-g="text"><a class="row" href="Day03_filler-word-checker/index.html"><span class="day">Day03</span><span class="name">贅詞與 AI 味檢查器</span><span class="desc">詞庫比對、詞頻統計、段落開頭同構偵測，詞庫可編輯匯入匯出。</span></a></li>
+        <li data-g="text"><a class="row" href="Day04_zh-tw-localizer/index.html"><span class="day">Day04</span><span class="name">繁簡與台灣在地化轉換器</span><span class="desc">內嵌 OpenCC 詞典做簡繁轉換與台灣用語替換，可逐項接受／取消。</span></a></li>
+        <li data-g="text"><a class="row" href="Day05_reversible-deidentifier/index.html"><span class="day">Day05–06</span><span class="name">可逆式文字去識別化</span><span class="desc">個資 Token 化並產生 mapping，可用 mapping 在本機還原。</span></a></li>
+        <li data-g="text"><a class="row" href="Day07_text-diff/index.html"><span class="day">Day07</span><span class="name">文字差異比對器</span><span class="desc">逐句比對兩份文字，刪除與新增配對成「修改」，未變動區塊摺疊。</span></a></li>
+      </ul>
+    </section>
+    <section class="grp" data-g="csv" aria-labelledby="h-csv">
+      <div class="grp-head"><h2 id="h-csv">CSV</h2><p>Day08–13。解析、比對、拆檔，到圖表與一頁報告</p></div>
+      <ul class="rows">
+        <li data-g="csv"><a class="row" href="Day08_csv-doctor/index.html"><span class="day">Day08</span><span class="name">CSV Doctor &amp; Cleaner</span><span class="desc">編碼與分隔符偵測、欄數不齊與型別混雜健檢，逐項確認後匯出乾淨 CSV。</span></a></li>
+        <li data-g="csv"><a class="row" href="Day09_csv-period-diff/index.html"><span class="day">Day09</span><span class="name">兩期清冊異動報告</span><span class="desc">兩份 CSV 以主鍵比對，列出新增、刪除與欄位異動，可匯出異動清單。</span></a></li>
+        <li data-g="csv"><a class="row" href="Day10_csv-batch-splitter/index.html"><span class="day">Day10</span><span class="name">總表 → 分單位批次拆檔</span><span class="desc">依指定欄位把總表拆成多份 CSV，一次打包成 ZIP 下載，檔名自動淨化。</span></a></li>
+        <li data-g="csv"><a class="row" href="Day11_csv-pivot-dashboard/index.html"><span class="day">Day11–12</span><span class="name">CSV Pivot Dashboard</span><span class="desc">多欄 Group By 與彙總管線，手寫 SVG 長條／折線／圓餅圖，可匯出靜態快照儀表板。</span></a></li>
+        <li data-g="csv"><a class="row" href="Day13_csv-one-page-report/index.html"><span class="day">Day13</span><span class="name">CSV 一頁式管理報告</span><span class="desc">KPI 卡片、Top5/Bottom5、占比與趨勢彙整成單頁報告，A4 列印分頁與 SVG 相容版型。</span></a></li>
+      </ul>
+    </section>
+    <section class="grp" data-g="img" aria-labelledby="h-img">
+      <div class="grp-head"><h2 id="h-img">圖片</h2><p>Day14–18。壓縮、隱私清除、透視校正與列印版面</p></div>
+      <ul class="rows">
+        <li data-g="img"><a class="row" href="Day14_image-batch-optimizer/index.html"><span class="day">Day14</span><span class="name">圖片批次最佳化工作台</span><span class="desc">等比例縮放、品質壓縮二分逼近、批次處理與打包 ZIP 下載。</span></a></li>
+        <li data-g="img"><a class="row" href="Day15_exif-privacy-cleaner/index.html"><span class="day">Day15</span><span class="name">EXIF 隱私檢查與清除</span><span class="desc">解析 JPEG APP1 二進位標籤、四級隱私風險提示、無損剔除 EXIF/XMP 與前後對照。</span></a></li>
+        <li data-g="img"><a class="row" href="Day16_screenshot-sanitizer/index.html"><span class="day">Day16</span><span class="name">Screenshot Privacy Sanitizer</span><span class="desc">支援黑箱、馬賽克與模糊三種底層像素抹除，具備可撤銷操作管線與 Before/After 防呆。</span></a></li>
+        <li data-g="img"><a class="row" href="Day17_document-perspective-corrector/index.html"><span class="day">Day17</span><span class="name">文件照片透視校正器</span><span class="desc">四角拖曳對齊、高斯消去法求解單應性矩陣、雙線性插值校正與黑白灰階增強。</span></a></li>
+        <li data-g="img"><a class="row" href="Day18_photo-evidence-sheet/index.html"><span class="day">Day18</span><span class="name">工作成果照片附件產生器</span><span class="desc">大批次匯入照片、原子綁定圖說排序、2/4/6 張 A4 分頁與標準列印版面輸出。</span></a></li>
+      </ul>
+    </section>
+    <section class="grp" data-g="pdf" aria-labelledby="h-pdf">
+      <div class="grp-head"><h2 id="h-pdf">PDF 與發布</h2><p>Day19–26。擷取、重排、加密、遮蔽、清理，與 Markdown 發布</p></div>
+      <ul class="rows">
+        <li data-g="pdf"><a class="row" href="Day19_pdf-to-jpg/index.html"><span class="day">Day19</span><span class="name">PDF 轉 JPG 批次工具</span><span class="desc">逐頁 2.0x 高解析渲染轉 JPG、品質壓縮滑桿、非同步進度條與 ZIP 打包下載。</span></a></li>
+        <li data-g="pdf"><a class="row" href="Day20_pdf-text-search/index.html"><span class="day">Day20</span><span class="name">PDF 文字擷取與全文搜尋</span><span class="desc">多頁文字層抽取、150ms 防抖全文搜尋、關鍵字高亮跳轉與 TXT/MD/剪貼簿匯出。</span></a></li>
+        <li data-g="pdf"><a class="row" href="Day21_pdf-organizer/index.html"><span class="day">Day21</span><span class="name">PDF 拆分 / 合併 / 重排</span><span class="desc">多檔匯入、原生拖曳重排、90° 順時針旋轉、標記刪除還原、多輸出群組分派與 ZIP 打包。</span></a></li>
+        <li data-g="pdf"><a class="row" href="Day22_pdf-review-stamper/index.html"><span class="day">Day22</span><span class="name">PDF 頁碼 / 浮水印 / 送審章</span><span class="desc">完整內嵌 Noto Sans TC 中文字型、頁首尾頁碼、四種預設送審章與角度位置自訂預覽。</span></a></li>
+        <li data-g="pdf"><a class="row" href="Day23_pdf-password-manager/index.html"><span class="day">Day23</span><span class="name">PDF 密碼管理器</span><span class="desc">批次解鎖、設定密碼、更換密碼三大模式，明碼/遮罩切換、零持久化洩密防禦與容錯處理。</span></a></li>
+        <li data-g="pdf"><a class="row" href="Day24_pdf-secure-redactor/index.html"><span class="day">Day24</span><span class="name">PDF 安全遮蔽 / 選擇性點陣化</span><span class="desc">互動式矩形遮蔽框選、選擇性點陣化徹底銷毀底層文字層、未遮蔽頁向量 100% 原樣保留。</span></a></li>
+        <li data-g="pdf"><a class="row" href="Day25_pdf-delivery-cleaner/index.html"><span class="day">Day25</span><span class="name">PDF 對外交付清理器</span><span class="desc">6 大類對外風險物件自動掃描、選擇性清洗、前後對照表、安心零風險提示與固定檔名交付。</span></a></li>
+        <li data-g="pdf"><a class="row" href="Day26_office-content-publisher/index.html"><span class="day">Day26</span><span class="name">Office Content Publisher</span><span class="desc">Markdown/TXT 筆記與 CSV 數據雙模式發布、型別感知智慧排序、獨立網頁匯出與乾淨列印。</span></a></li>
+      </ul>
+    </section>
+    <section class="grp" data-g="int" aria-labelledby="h-int">
+      <div class="grp-head"><h2 id="h-int">整合</h2><p>Day27。把前 26 天的模組組成一個工具</p></div>
+      <ul class="rows">
+        <li data-g="int"><a class="row" href="Day27_document-tools/index.html"><span class="day">Day27</span><span class="name">Document Tools 重製版</span><span class="desc">圖片互轉/Resize/壓縮、PDF 合併/拆分/轉圖、Markdown 編輯預覽輸出，整合前 26 天模組的壓軸產品。</span></a></li>
+      </ul>
+    </section>
+    <section class="grp" data-g="act" aria-labelledby="h-act">
+      <div class="grp-head"><h2 id="h-act">自動化</h2><p>Day28–29。GitHub Actions 排程，Repo 即資料庫</p></div>
+      <ul class="rows">
+        <li data-g="act"><a class="row" href="Day28_scheduled-work-dashboard/index.html"><span class="day">Day28</span><span class="name">每日自動更新工作 Dashboard</span><span class="desc">GitHub Actions 排程抓取聯合信用卡中心信用卡盜刷詐欺月統計、Repo 即資料庫、本月摘要卡片（可切換單一詐欺型態）、手刻 SVG 趨勢圖，不可下載離線使用。</span></a></li>
+        <li data-g="act"><a class="row" href="Day29_public-data-snapshot/index.html"><span class="day">Day29</span><span class="name">公開資訊變更雷達</span><span class="desc">每小時巡一次 iThome RSS，有新文章才建立通知，沒有變化就不留紀錄；用 GitHub Issue 當通知信箱，免額外金鑰。</span></a></li>
+      </ul>
+    </section>
+    <section class="grp" data-g="ooxml" aria-labelledby="h-ooxml">
+      <div class="grp-head"><h2 id="h-ooxml">Office</h2><p>Day30。DOCX、XLSX、PPTX 的隱私 metadata 清除</p></div>
+      <ul class="rows">
+        <li data-g="ooxml"><a class="row" href="Day30_ooxml-privacy-cleaner/index.html"><span class="day">Day30</span><span class="name">Office 文件隱私 Metadata 清除工具</span><span class="desc">DOCX/XLSX/PPTX 三格式的作者/公司/註解/內嵌縮圖/樞紐分析表快取/裁切圖片原圖殘留一鍵清除，PowerPoint 裁切圖片改用 Canvas 燒進像素，不只是刪除裁切標記。</span></a></li>
+      </ul>
+    </section>
+  <p class="status" id="empty" hidden>沒有符合的作品。換個關鍵字，或選「全部」。</p>
+</main>
 
-</div>
+<section class="method wrap" aria-labelledby="h-method">
+  <h2 id="h-method">四層對齊</h2>
+  <dl class="layers">
+    <div><dt>想</dt><dd>腦中原本的藍圖。</dd></div>
+    <div><dt>說</dt><dd>把藍圖用自己的話說清楚。</dd></div>
+    <div><dt>對</dt><dd>確認 AI 的理解，和你說的一致。</dd></div>
+    <div><dt>做</dt><dd>最後的產品，和一開始的藍圖比對。</dd></div>
+  </dl>
+  <p class="next"><strong>後續進度</strong>Level 3（Cloudflare Workers，Day31 起）尚未提案。</p>
+</section>
+
+<footer>
+  <div class="wrap"><p>2026 iThome 鐵人賽 VibeCoding 系列</p></div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  var root = document.documentElement;
+
+  /* ---- 主題：自動／淺色／深色 ---- */
+  var btn = document.getElementById('theme');
+  btn.hidden = false;
+  var modes = ['auto', 'light', 'dark'];
+  var names = { auto: '自動', light: '淺色', dark: '深色' };
+  function saved() { try { return localStorage.getItem('vc-theme'); } catch (e) { return null; } }
+  function save(v) { try { if (v === 'auto') localStorage.removeItem('vc-theme'); else localStorage.setItem('vc-theme', v); } catch (e) {} }
+  var mode = saved() === 'light' || saved() === 'dark' ? saved() : 'auto';
+  function paint() {
+    if (mode === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', mode);
+    btn.textContent = '主題：' + names[mode];
+    btn.setAttribute('aria-label', '主題：' + names[mode] + '，按下切換');
+  }
+  btn.addEventListener('click', function () { mode = modes[(modes.indexOf(mode) + 1) % 3]; save(mode); paint(); });
+  paint();
+
+  /* ---- 篩選與搜尋（無 JS 時整個控制列保持隱藏，列表完整可用） ---- */
+  var controls = document.getElementById('controls');
+  controls.hidden = false;
+  var chips = [].slice.call(document.querySelectorAll('.chip'));
+  var q = document.getElementById('q');
+  var items = [].slice.call(document.querySelectorAll('.rows li'));
+  var groups = [].slice.call(document.querySelectorAll('.grp'));
+  var status = document.getElementById('status');
+  var empty = document.getElementById('empty');
+  var filter = 'all';
+
+  function apply() {
+    var term = q.value.trim().toLowerCase();
+    var shown = 0;
+    items.forEach(function (li) {
+      var okG = filter === 'all' || li.getAttribute('data-g') === filter;
+      var okQ = !term || li.textContent.toLowerCase().indexOf(term) !== -1;
+      li.hidden = !(okG && okQ);
+      if (!li.hidden) shown++;
+    });
+    groups.forEach(function (g) { g.hidden = !g.querySelector('li:not([hidden])'); });
+    empty.hidden = shown !== 0;
+    status.textContent = '顯示 ' + shown + ' 個作品，共 ' + items.length + ' 個';
+  }
+  chips.forEach(function (c) {
+    c.addEventListener('click', function () {
+      filter = c.getAttribute('data-f');
+      chips.forEach(function (x) { x.setAttribute('aria-pressed', x === c ? 'true' : 'false'); });
+      apply();
+    });
+  });
+  q.addEventListener('input', apply);
+  apply();
+})();
+</script>
 </body>
 </html>
